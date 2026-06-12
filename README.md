@@ -133,13 +133,7 @@ Write code in any language.
 | sql_solution | SQL | 🗄️ |
 | go_solution | Go | 🐹 |
 | rs_solution | Rust | 🦀 |
-| php_solution | PHP | 🐘 |
-| rb_solution | Ruby | 🔴 |
 | ts_solution | TypeScript | 🟦 |
-| kt_solution | Kotlin | 🟧 |
-| scala_solution | Scala | 🔷 |
-| swift_solution | Swift | ⚙️ |
-| dart_solution | Dart | 🔶 |
 
 ### Category 4: Interview Prep
 
@@ -215,7 +209,7 @@ Write code in any language.
 
 ## 🎯 Why This Is Unique
 
-### Emoji-Rich Format
+### Structured answer
 
 Every response can be made visual and friendly.
 
