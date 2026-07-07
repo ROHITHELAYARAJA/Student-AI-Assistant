@@ -1,0 +1,739 @@
+/*
+  side_panel.css
+  ──────────────
+  This file controls ALL the visual styling.
+  CSS = Cascading Style Sheets.
+  Every rule looks like:   selector { property: value; }
+  The selector picks which HTML element to style.
+  The property+value defines HOW it looks.
+*/
+
+
+/* ═══════════════════════════════════════════════════
+   CSS VARIABLES (Custom Properties)
+   Think of these as named colors/values we reuse.
+   Writing --bg: #0f1117 means "name this color --bg".
+   Then we use var(--bg) anywhere instead of repeating
+   the hex code. If we want to change the color later,
+   we only change it in ONE place here.
+══════════════════════════════════════════════════ */
+:root {
+  --bg:        #0f1117;   /* main background: very dark navy */
+  --surface:   #181c27;   /* card/panel background: slightly lighter */
+  --surface2:  #1e2335;   /* input/button background: even lighter */
+  --border:    #2a3050;   /* border color for boxes */
+  --accent:    #4f8ef7;   /* main blue accent for highlights */
+  --accent2:   #7c5cfc;   /* purple accent for secondary highlights */
+  --green:     #22c55e;   /* success/active green */
+  --red:       #f87171;   /* error/warning red */
+  --text:      #e2e8f0;   /* main text color: light gray */
+  --muted:     #7a88a8;   /* secondary/hint text: darker gray */
+  --radius:    8px;       /* border-radius: rounded corners amount */
+  --font:      'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ── RESET ───────────────────────────────────────────
+   Browsers add default margin/padding to elements.
+   We reset them to 0 so we have full control.
+   * = applies to EVERY element on the page.
+   box-sizing: border-box means: when we set width=200px,
+   padding and border are INCLUDED in that 200px (easier math).
+────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── BASE HTML & BODY ────────────────────────────────
+   html and body are the outermost containers.
+   We make them fill the full browser panel height.
+────────────────────────────────────────────────── */
+html, body {
+  width: 100%;           /* fill full width of the side panel */
+  height: 100%;          /* fill full height */
+  overflow-x: hidden;    /* no horizontal scrollbar */
+}
+
+body {
+  background: var(--bg);          /* dark background */
+  color: var(--text);             /* default text color */
+  font-family: var(--font);       /* font for everything */
+  font-size: 13px;                /* base font size */
+  display: flex;                  /* flexbox: stack children vertically */
+  flex-direction: column;         /* stack: header → tabs → main */
+  min-height: 100vh;              /* at least full viewport height */
+}
+
+
+/* ═══════════════════════════════════════════════════
+   HEADER
+   The top sticky bar with logo and action buttons.
+   position: sticky + top: 0 means it stays at top
+   even when user scrolls down.
+══════════════════════════════════════════════════ */
+.header {
+  display: flex;                   /* items side by side */
+  align-items: center;             /* vertically center items */
+  justify-content: space-between;  /* logo left, buttons right */
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;                /* sticks to top on scroll */
+  top: 0;
+  z-index: 100;                    /* stays above other content */
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 7px;                        /* space between icon and text */
+  font-size: 15px;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+
+.logo-icon { font-size: 18px; }
+
+/* gradient text effect on "AI" in the logo */
+.logo-text strong {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;    /* clips gradient to text shape */
+  -webkit-text-fill-color: transparent; /* makes original color invisible */
+  background-clip: text;
+}
+
+.header-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Small square icon buttons (📝 and 🗑️) */
+.icon-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius);
+  width: 30px;
+  height: 30px;
+  cursor: pointer;                 /* hand cursor on hover */
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;   /* smooth color change on hover */
+}
+
+.icon-btn:hover { background: var(--border); }
+
+
+/* ═══════════════════════════════════════════════════
+   TAB BAR
+   The 7 category tabs below the header.
+   overflow-x: auto = horizontal scroll if tabs overflow.
+   scrollbar-width: none = hide the scrollbar (still scrollable).
+══════════════════════════════════════════════════ */
+.tab-bar {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 2px;
+  padding: 8px 10px 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;               /* sticks below header */
+  top: 53px;                      /* height of header */
+  z-index: 99;
+}
+
+.tab-bar::-webkit-scrollbar { display: none; } /* hide scrollbar in Chrome */
+
+.tab {
+  flex-shrink: 0;                 /* don't shrink — allow overflow/scroll */
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-radius: 6px 6px 0 0;    /* rounded top corners only */
+  cursor: pointer;
+  font-size: 11.5px;
+  font-family: var(--font);
+  white-space: nowrap;            /* don't wrap text */
+  transition: color 0.15s, background 0.15s;
+  border-bottom: 2px solid transparent; /* invisible underline by default */
+}
+
+.tab:hover { color: var(--text); background: var(--surface2); }
+
+/* active tab: blue text + blue underline */
+.tab.active {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+  font-weight: 600;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   MAIN SCROLL AREA
+   The scrollable content below the sticky bars.
+   flex: 1 = grows to fill remaining height.
+   overflow-y: auto = vertical scroll when content overflows.
+══════════════════════════════════════════════════ */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 10px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;                      /* space between each section */
+}
+
+/* thin custom scrollbar for the main area */
+.main::-webkit-scrollbar { width: 4px; }
+.main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+
+/* ═══════════════════════════════════════════════════
+   INPUT MODE TOGGLE
+   The 3 radio-style buttons: Type / Mic / File
+   We style them like pill buttons.
+══════════════════════════════════════════════════ */
+.mode-toggle {
+  display: flex;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px;
+}
+
+/* Each mode button = a label styled as a button */
+.mode-btn {
+  flex: 1;                        /* each takes equal width */
+  text-align: center;
+  padding: 7px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+  user-select: none;              /* can't accidentally select the text */
+  font-family: var(--font);
+}
+
+.mode-btn:hover { color: var(--text); background: var(--surface2); }
+
+/* active mode = highlighted blue background */
+.mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   CONTEXT BAR (Topic input + Language dropdown)
+══════════════════════════════════════════════════ */
+.context-bar {
+  display: flex;
+  gap: 6px;
+}
+
+/* shared styles for both the text input and the select dropdown */
+.ctx-input, .ctx-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 7px 10px;
+  font-family: var(--font);
+  font-size: 12px;
+  outline: none;                  /* remove default blue browser focus ring */
+  transition: border-color 0.2s;
+}
+
+.ctx-input { flex: 1; }          /* topic input fills available space */
+
+/* show blue border when user clicks inside */
+.ctx-input:focus, .ctx-select:focus { border-color: var(--accent); }
+
+.ctx-select { cursor: pointer; }
+.ctx-select option { background: var(--surface2); } /* style dropdown options */
+
+
+/* ═══════════════════════════════════════════════════
+   INPUT PANELS (Type / Mic / File)
+   Only one panel is visible at a time.
+   .hidden = display:none (set by JS)
+══════════════════════════════════════════════════ */
+.input-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+
+/* hidden class = completely removes element from view */
+.hidden { display: none !important; }
+
+/* Header row inside input panel (label + Clear button) */
+.input-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.input-label {
+  font-size: 11.5px;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Small utility buttons (Clear, Remove, etc.) */
+.mini-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 5px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.mini-btn:hover { color: var(--red); border-color: var(--red); }
+
+/* The main typing textarea where user writes/pastes content */
+.user-textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12.5px;
+  padding: 10px;
+  resize: vertical;               /* user can drag to resize height */
+  outline: none;
+  line-height: 1.6;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.user-textarea:focus { border-color: var(--accent); }
+
+/* placeholder text styling (the hint text shown when empty) */
+.user-textarea::placeholder { color: var(--muted); }
+
+/* live character count shown below textarea */
+.char-count {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+}
+
+
+/* ── MIC PANEL ─────────────────────────────────────── */
+
+.mic-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The big circular mic button */
+.mic-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  border-radius: 50%;             /* circle shape */
+  width: 80px;
+  height: 80px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  font-family: var(--font);
+  color: var(--text);
+}
+
+.mic-btn:hover { border-color: var(--accent); }
+
+/* when actively recording: pulse red border */
+.mic-btn.recording {
+  border-color: var(--red);
+  background: rgba(248, 113, 113, 0.1);  /* semi-transparent red bg */
+  animation: pulse 1s infinite;
+}
+
+/* pulse animation: repeatedly grows and shrinks border */
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(248, 113, 113, 0); }
+}
+
+.mic-icon { font-size: 24px; }
+.mic-status { font-size: 10px; color: var(--muted); }
+
+/*
+  The editable div that shows transcribed speech.
+  contenteditable="true" makes it like a textarea
+  but styled as a div (more flexible).
+*/
+.mic-transcript {
+  width: 100%;
+  min-height: 70px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.6;
+  outline: none;
+}
+
+/* placeholder trick for contenteditable div:
+   shows the data-placeholder text when div is empty */
+.mic-transcript:empty::before {
+  content: attr(data-placeholder); /* reads from data-placeholder attribute */
+  color: var(--muted);
+  pointer-events: none;            /* clicks pass through to the div */
+}
+
+.mic-transcript:focus { border-color: var(--accent); }
+
+.mic-warning {
+  font-size: 11.5px;
+  color: var(--red);
+  text-align: center;
+  padding: 6px;
+}
+
+
+/* ── FILE UPLOAD PANEL ─────────────────────────────── */
+
+/* The clickable upload zone — styled like a dashed drop area */
+.file-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px;
+  border: 2px dashed var(--border);   /* dashed border = upload area signal */
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--surface2);
+  text-align: center;
+}
+
+.file-drop-zone:hover {
+  border-color: var(--accent);
+  background: rgba(79, 142, 247, 0.05); /* very subtle blue tint */
+}
+
+.file-drop-icon { font-size: 28px; }
+.file-drop-text { font-size: 13px; color: var(--text); font-weight: 600; }
+.file-drop-sub  { font-size: 11px; color: var(--muted); }
+
+/* The panel showing file name + content after upload */
+.file-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.file-name {
+  font-size: 12px;
+  color: var(--green);             /* green = success/loaded */
+  font-weight: 600;
+}
+
+/* Textarea showing the extracted file text */
+.file-text-preview {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 8px 10px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+  min-height: 80px;
+}
+
+.file-text-preview:focus { border-color: var(--accent); }
+
+
+/* ═══════════════════════════════════════════════════
+   SELECTION BAR
+   Shows the text user highlighted on the webpage.
+   border-left: colored left border = visual indicator.
+══════════════════════════════════════════════════ */
+.selection-bar {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent2); /* purple left border */
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  min-height: 36px;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.4;
+  word-break: break-word;         /* break long URLs/words */
+}
+
+/* when text IS selected: green left border + white text */
+.selection-bar.has-text {
+  color: var(--text);
+  border-left-color: var(--green);
+}
+
+
+/* ═══════════════════════════════════════════════════
+   OPERATION BUTTON GRID (the 100 feature buttons)
+══════════════════════════════════════════════════ */
+.op-group { display: none; }       /* all groups hidden by default */
+.op-group.active { display: block; } /* JS adds "active" to show current */
+
+/* 2-column grid layout for the buttons */
+.op-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* two equal columns */
+  gap: 6px;
+}
+
+/* Individual feature button */
+.op-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 9px 8px;
+  font-size: 11.5px;
+  font-family: var(--font);
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.2;
+  transition: background 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;            /* don't wrap button text */
+  overflow: hidden;
+  text-overflow: ellipsis;        /* show "..." if text too long */
+}
+
+.op-btn:hover {
+  background: var(--border);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* while API call is in progress */
+.op-btn.loading {
+  border-color: var(--accent2);
+  color: var(--accent2);
+  pointer-events: none;           /* disable clicking while loading */
+}
+
+/* after result arrives: green border confirms success */
+.op-btn.active-result {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+
+/* ═══════════════════════════════════════════════════
+   LOADING SPINNER
+   Hidden by default, shown during API call.
+══════════════════════════════════════════════════ */
+.loader {
+  display: none;                  /* hidden by default */
+  align-items: center;
+  gap: 10px;
+  padding: 14px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.loader.visible { display: flex; } /* JS adds "visible" to show */
+
+/* The spinning circle animation */
+.loader-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);  /* only top is blue = creates spin effect */
+  border-radius: 50%;               /* circle */
+  animation: spin 0.7s linear infinite; /* spin forever */
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } } /* 360° rotation */
+
+.loader-text { color: var(--muted); font-size: 12px; }
+
+
+/* ═══════════════════════════════════════════════════
+   OUTPUT SECTION
+   Where the AI response is displayed.
+══════════════════════════════════════════════════ */
+.output-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* header row: operation name on left, buttons on right */
+.output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* small text showing which feature was used, e.g. "SUMMARIZE" */
+.output-op-label {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;      /* all caps */
+  letter-spacing: 0.5px;
+}
+
+.output-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Copy and Send-to-Notes buttons */
+.copy-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 5px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.copy-btn:hover { color: var(--text); border-color: var(--accent); }
+
+/* The main result box */
+.output-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  min-height: 80px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-wrap;          /* preserve line breaks from API response */
+  word-break: break-word;
+}
+
+/* centered placeholder shown before any result */
+.output-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 10px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-icon { font-size: 28px; }
+.output-empty p { font-size: 12px; line-height: 1.5; max-width: 220px; }
+
+/* error messages in red */
+.output-error {
+  color: var(--red);
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   NOTES PANEL
+   The save-your-notes section at the bottom.
+══════════════════════════════════════════════════ */
+.notes-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;               /* clips children to rounded corners */
+}
+
+.notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.notes-header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* The blue Save button */
+.save-btn {
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  border-radius: 5px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-family: var(--font);
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+
+.save-btn:hover { opacity: 0.85; }
+
+/* The notes text area */
+.notes-area {
+  width: 100%;
+  height: 180px;
+  background: var(--surface);
+  border: none;                   /* no border (panel border handles it) */
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 10px 12px;
+  resize: vertical;
+  outline: none;
+  line-height: 1.6;
+}
+
+.notes-area::placeholder { color: var(--muted); }

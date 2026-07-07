@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<!--
+  side_panel.html
+  ───────────────
+  This is the main UI file for the Chrome Extension side panel.
+  Everything the user SEES is written here as HTML tags.
+  The browser reads this file and draws the visual interface.
+
+  How Chrome Extension side panel works:
+  - When user clicks the extension icon, Chrome opens this file
+    in a narrow panel on the right side of the browser.
+  - It works like a mini website: HTML = structure, CSS = design, JS = logic.
+-->
+<html lang="en">
+<head>
+  <!-- charset: tells browser to support all characters including emojis -->
+  <meta charset="UTF-8" />
+
+  <!-- title: shown in the browser tab (not visible in side panel but good practice) -->
+  <title>Study Assistant AI</title>
+
+  <!-- link: connects our CSS file so styles apply to this HTML -->
+  <link rel="stylesheet" href="side_panel.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════
+       HEADER SECTION
+       This is the top bar that always stays visible.
+       It shows the logo and action buttons.
+  ══════════════════════════════════════════════════ -->
+  <header class="header">
+
+    <!-- Logo area on the left side -->
+    <div class="header-logo">
+      <span class="logo-icon">⚡</span>
+      <!-- <strong> makes "AI" bold inside the logo text -->
+      <span class="logo-text">Study<strong>AI</strong></span>
+    </div>
+
+    <!-- Small icon buttons on the right side of header -->
+    <div class="header-actions">
+      <!-- title="..." shows a tooltip when user hovers over the button -->
+      <button class="icon-btn" id="notesToggleBtn" title="Toggle Notes">📝</button>
+      <button class="icon-btn" id="clearBtn" title="Clear Output">🗑️</button>
+    </div>
+
+  </header>
+
+
+  <!-- ═══════════════════════════════════════════════
+       CATEGORY TAB BAR
+       These 7 buttons switch between the 100 features.
+       Each tab shows a different group of operation buttons.
+       data-cat="core" is a custom attribute we read in JS
+       to know which category was clicked.
+  ══════════════════════════════════════════════════ -->
+  <nav class="tab-bar" id="tabBar">
+    <!-- "active" class = highlighted/selected tab (starts on Core) -->
+    <button class="tab active" data-cat="core">📚 Core</button>
+    <button class="tab" data-cat="exam">🎯 Exam</button>
+    <button class="tab" data-cat="code">💻 Code</button>
+    <button class="tab" data-cat="interview">🤝 Interview</button>
+    <button class="tab" data-cat="math">🔢 Math</button>
+    <button class="tab" data-cat="research">🔬 Research</button>
+    <button class="tab" data-cat="extras">✨ Extras</button>
+  </nav>
+
+
+  <!-- ═══════════════════════════════════════════════
+       MAIN SCROLLABLE CONTENT AREA
+       Everything inside <main> scrolls when content
+       is taller than the visible panel height.
+  ══════════════════════════════════════════════════ -->
+  <main class="main">
+
+
+    <!-- ─────────────────────────────────────────────
+         INPUT MODE TOGGLE
+         Three radio buttons let user choose HOW they
+         want to give text to the AI:
+           1. Type it themselves
+           2. Speak with microphone
+           3. Upload a file (PDF, DOCX, TXT)
+         Only one mode can be active at a time.
+    ────────────────────────────────────────────── -->
+    <div class="mode-toggle">
+
+      <!-- Each label wraps an input+span. Clicking the label
+           also checks the hidden radio input inside it. -->
+      <label class="mode-btn active" id="modeTypeLabel">
+        <!-- type="radio" means only one can be selected at a time -->
+        <!-- name="inputMode" groups all three together -->
+        <!-- value="type" is what JS reads to know which mode -->
+        <!-- checked means this one starts as selected -->
+        <input type="radio" name="inputMode" value="type" checked hidden />
+        ⌨️ Type
+      </label>
+
+      <label class="mode-btn" id="modeMicLabel">
+        <input type="radio" name="inputMode" value="mic" hidden />
+        🎙️ Mic
+      </label>
+
+      <label class="mode-btn" id="modeFileLabel">
+        <input type="radio" name="inputMode" value="file" hidden />
+        📄 File
+      </label>
+
+    </div>
+
+
+    <!-- ─────────────────────────────────────────────
+         CONTEXT BAR
+         Small inputs for extra info the AI needs:
+         - Topic/Goal: what subject is this about?
+         - Language: for coding features, which language?
+    ────────────────────────────────────────────── -->
+    <section class="context-bar">
+      <!-- placeholder text shows when the input is empty -->
+      <input class="ctx-input" id="topicInput" type="text"
+             placeholder="Topic / Goal (optional)" />
+
+      <!-- A dropdown select for programming language -->
+      <select class="ctx-select" id="langSelect">
+        <option value="Java">Java</option>
+        <option value="Python">Python</option>
+        <option value="JavaScript">JavaScript</option>
+        <option value="C++">C++</option>
+        <option value="TypeScript">TypeScript</option>
+        <option value="Go">Go</option>
+        <option value="Rust">Rust</option>
+        <option value="SQL">SQL</option>
+      </select>
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────
+         INPUT PANELS — only one shows at a time
+         JS hides/shows these based on the mode toggle.
+    ────────────────────────────────────────────── -->
+
+    <!-- MODE 1: TYPE — user types or pastes their own text -->
+    <section class="input-panel" id="panelType">
+
+      <div class="input-panel-header">
+        <span class="input-label">✏️ Your Content</span>
+        <!-- Clears the textarea when clicked -->
+        <button class="mini-btn" id="clearTextBtn">Clear</button>
+      </div>
+
+      <!--
+        textarea: a multi-line text box
+        id="userTextArea": JS uses this to read what the user typed
+        placeholder: hint text shown when empty
+        rows="6": default height (user can resize it)
+      -->
+      <textarea
+        id="userTextArea"
+        class="user-textarea"
+        rows="6"
+        placeholder="Type your content here, OR paste text you copied from any website, book, or document..."></textarea>
+
+      <!-- Shows a live character count so user knows how much they typed -->
+      <div class="char-count" id="charCount">0 characters</div>
+
+    </section>
+
+
+    <!-- MODE 2: MIC — user speaks and it converts to text -->
+    <section class="input-panel hidden" id="panelMic">
+
+      <!-- The big mic button the user taps to start/stop recording -->
+      <div class="mic-area">
+        <button class="mic-btn" id="micBtn">
+          <span class="mic-icon">🎙️</span>
+          <!-- This text changes: "Tap to speak" → "Listening..." -->
+          <span class="mic-status" id="micStatus">Tap to speak</span>
+        </button>
+
+        <!--
+          Shows the transcribed (spoken → text) result.
+          contenteditable="true" means user can also edit
+          the transcribed text before sending to AI.
+        -->
+        <div class="mic-transcript" id="micTranscript"
+             contenteditable="true"
+             data-placeholder="Your speech will appear here. You can edit it before using.">
+        </div>
+
+        <!-- Clears the transcribed text -->
+        <button class="mini-btn" id="clearMicBtn">Clear</button>
+      </div>
+
+      <!-- Warning shown if browser doesn't support microphone -->
+      <div class="mic-warning" id="micWarning" style="display:none;">
+        ⚠️ Microphone not supported in this browser. Use Chrome.
+      </div>
+
+    </section>
+
+
+    <!-- MODE 3: FILE — user uploads a document -->
+    <section class="input-panel hidden" id="panelFile">
+
+      <!--
+        The actual file input is hidden (ugly default browser style).
+        We style a nice custom button instead, and clicking it
+        triggers the hidden file input via JS.
+      -->
+      <input type="file" id="fileInput" hidden
+             accept=".txt,.pdf,.doc,.docx,.md,.csv" />
+
+      <!-- This styled div acts as our custom upload button -->
+      <div class="file-drop-zone" id="fileDropZone">
+        <span class="file-drop-icon">📂</span>
+        <p class="file-drop-text">Click to upload a file</p>
+        <p class="file-drop-sub">Supports: TXT, PDF, DOCX, MD, CSV</p>
+      </div>
+
+      <!-- Shows the filename and extracted text after upload -->
+      <div class="file-preview" id="filePreview" style="display:none;">
+
+        <!-- Top bar with filename and a remove button -->
+        <div class="file-preview-header">
+          <span class="file-name" id="fileName">📄 filename.txt</span>
+          <button class="mini-btn" id="removeFileBtn">✕ Remove</button>
+        </div>
+
+        <!--
+          Shows the extracted text from the uploaded file.
+          readonly means user can read but not edit (they can edit
+          in the textarea panel instead).
+          We make it editable so users can trim if needed.
+        -->
+        <textarea class="file-text-preview" id="fileTextContent"
+                  rows="6"
+                  placeholder="File content will appear here..."></textarea>
+
+      </div>
+
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────
+         SELECTED TEXT PREVIEW (from webpage)
+         Shows what text the user has highlighted
+         on the current webpage.
+         This is SEPARATE from the type/mic/file input.
+         User can use webpage selection OR their own input.
+    ────────────────────────────────────────────── -->
+    <section class="selection-bar" id="selectionBar">
+      <span class="selection-label">
+        🖱️ Or highlight text on any webpage — it auto-appears here
+      </span>
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────
+         100 FEATURE OPERATION BUTTONS
+         Grouped by category. Only the active category's
+         group is visible at one time.
+         data-op="summarize" tells JS which operation to send.
+    ────────────────────────────────────────────── -->
+    <section class="ops-panel" id="opsPanel">
+
+      <!-- ── CORE STUDY (20 features) ── -->
+      <div class="op-group active" data-cat="core">
+        <div class="op-grid">
+          <button class="op-btn" data-op="summarize">📝 Summarize</button>
+          <button class="op-btn" data-op="keypoints">🔑 Key Points</button>
+          <button class="op-btn" data-op="notes">📒 Study Notes</button>
+          <button class="op-btn" data-op="define">📖 Definitions</button>
+          <button class="op-btn" data-op="examples">💡 Examples</button>
+          <button class="op-btn" data-op="compare">⚖️ Compare</button>
+          <button class="op-btn" data-op="formulas">🧮 Formulas</button>
+          <button class="op-btn" data-op="diagram">📊 Diagram</button>
+          <button class="op-btn" data-op="timeline">📅 Timeline</button>
+          <button class="op-btn" data-op="pros_cons">↕️ Pros & Cons</button>
+          <button class="op-btn" data-op="why_how">❓ Why & How</button>
+          <button class="op-btn" data-op="difficult">🧩 Simplify</button>
+          <button class="op-btn" data-op="realworld">🌍 Real World</button>
+          <button class="op-btn" data-op="related">🔗 Related Topics</button>
+          <button class="op-btn" data-op="flashcards">🃏 Flashcards</button>
+          <button class="op-btn" data-op="mnemonics">🧠 Mnemonics</button>
+          <button class="op-btn" data-op="study_plan">📅 Study Plan</button>
+          <button class="op-btn" data-op="check_understanding">✅ Check Understanding</button>
+          <button class="op-btn" data-op="quiz">🎲 Quiz</button>
+          <button class="op-btn" data-op="essay_write">✍️ Write Essay</button>
+        </div>
+      </div>
+
+      <!-- ── EXAM PREP (15 features) ── -->
+      <div class="op-group" data-cat="exam">
+        <div class="op-grid">
+          <button class="op-btn" data-op="exam_questions">❓ Exam Questions</button>
+          <button class="op-btn" data-op="mistakes">⚠️ Common Mistakes</button>
+          <button class="op-btn" data-op="tricks">⚡ Shortcuts & Tricks</button>
+          <button class="op-btn" data-op="past_questions">📜 Past Questions</button>
+          <button class="op-btn" data-op="answer_template">📋 Answer Template</button>
+          <button class="op-btn" data-op="score_predictor">📈 Score Predictor</button>
+          <button class="op-btn" data-op="highlights">🌟 Highlights</button>
+          <button class="op-btn" data-op="quick_summary">⚡ Quick Summary</button>
+          <button class="op-btn" data-op="onepager">📄 One Pager</button>
+          <button class="op-btn" data-op="revision">🔄 Revision Guide</button>
+          <button class="op-btn" data-op="important">🔥 Most Important</button>
+          <button class="op-btn" data-op="weightage">⚖️ Mark Weightage</button>
+          <button class="op-btn" data-op="tips_exam">💪 Exam Tips</button>
+          <button class="op-btn" data-op="time_mgmt">⏱️ Time Management</button>
+          <button class="op-btn" data-op="stress">🧘 Stress Relief</button>
+        </div>
+      </div>
+
+      <!-- ── CODING (15 features) ── -->
+      <div class="op-group" data-cat="code">
+        <div class="op-grid">
+          <button class="op-btn" data-op="code">💻 Write Code</button>
+          <button class="op-btn" data-op="code_explain">🔍 Explain Code</button>
+          <button class="op-btn" data-op="optimize">🚀 Optimize</button>
+          <button class="op-btn" data-op="debug">🐛 Debug</button>
+          <button class="op-btn" data-op="convert">🔄 Convert Language</button>
+          <button class="op-btn" data-op="complexity">📊 Complexity</button>
+          <button class="op-btn" data-op="test">🧪 Test Cases</button>
+          <button class="op-btn" data-op="leetcode">🏆 LeetCode Solve</button>
+          <button class="op-btn" data-op="algorithm">⚙️ Algorithm</button>
+          <button class="op-btn" data-op="datastructure">🗂️ Data Structure</button>
+          <button class="op-btn" data-op="code_compare">↔️ Compare Code</button>
+          <button class="op-btn" data-op="pattern">🎯 Identify Pattern</button>
+          <button class="op-btn" data-op="pseudocode">📝 Pseudocode</button>
+          <button class="op-btn" data-op="project_idea">💡 Project Ideas</button>
+          <button class="op-btn" data-op="roadmap">🗺️ Roadmap</button>
+        </div>
+      </div>
+
+      <!-- ── INTERVIEW PREP (10 features) ── -->
+      <div class="op-group" data-cat="interview">
+        <div class="op-grid">
+          <button class="op-btn" data-op="interview_q">❓ Interview Q&A</button>
+          <button class="op-btn" data-op="coding_pattern">💻 Coding Patterns</button>
+          <button class="op-btn" data-op="hr_questions">🤝 HR Questions</button>
+          <button class="op-btn" data-op="system_design">🏗️ System Design</button>
+          <button class="op-btn" data-op="resume_tips">📄 Resume Tips</button>
+          <button class="op-btn" data-op="answer_star">⭐ STAR Answer</button>
+          <button class="op-btn" data-op="mock_interview">🎤 Mock Interview</button>
+          <button class="op-btn" data-op="company_prep">🏢 Company Prep</button>
+          <button class="op-btn" data-op="salary_tips">💰 Salary Tips</button>
+          <button class="op-btn" data-op="career_path">🛤️ Career Path</button>
+        </div>
+      </div>
+
+      <!-- ── MATH & SCIENCE (15 features) ── -->
+      <div class="op-group" data-cat="math">
+        <div class="op-grid">
+          <button class="op-btn" data-op="math_solve">🔢 Solve Math</button>
+          <button class="op-btn" data-op="math_explain">📐 Explain Math</button>
+          <button class="op-btn" data-op="derivatives">∂ Derivatives</button>
+          <button class="op-btn" data-op="integrals">∫ Integrals</button>
+          <button class="op-btn" data-op="graph">📈 Graph</button>
+          <button class="op-btn" data-op="chemistry">⚗️ Chemistry</button>
+          <button class="op-btn" data-op="physics">⚛️ Physics</button>
+          <button class="op-btn" data-op="bio">🧬 Biology</button>
+          <button class="op-btn" data-op="stats">📊 Statistics</button>
+          <button class="op-btn" data-op="probability">🎲 Probability</button>
+          <button class="op-btn" data-op="linear_algebra">🔢 Linear Algebra</button>
+          <button class="op-btn" data-op="calculus">📉 Calculus</button>
+          <button class="op-btn" data-op="geometry">📐 Geometry</button>
+          <button class="op-btn" data-op="trig">📏 Trigonometry</button>
+          <button class="op-btn" data-op="number_theory">🔣 Number Theory</button>
+        </div>
+      </div>
+
+      <!-- ── RESEARCH & AI (15 features) ── -->
+      <div class="op-group" data-cat="research">
+        <div class="op-grid">
+          <button class="op-btn" data-op="summarize_research">📄 Research Summary</button>
+          <button class="op-btn" data-op="cite">🔖 Generate Citation</button>
+          <button class="op-btn" data-op="references">📚 References</button>
+          <button class="op-btn" data-op="verify_citation">✅ Verify Citation</button>
+          <button class="op-btn" data-op="related_research">🔗 Related Research</button>
+          <button class="op-btn" data-op="ai_explain">🤖 Explain AI</button>
+          <button class="op-btn" data-op="ml_model">🧠 ML Model</button>
+          <button class="op-btn" data-op="nn_arch">🕸️ Neural Network</button>
+          <button class="op-btn" data-op="deep_learning">🔬 Deep Learning</button>
+          <button class="op-btn" data-op="nlp">💬 NLP</button>
+          <button class="op-btn" data-op="cv">👁️ Computer Vision</button>
+          <button class="op-btn" data-op="data_viz">📊 Data Viz</button>
+          <button class="op-btn" data-op="ethics_ai">⚖️ AI Ethics</button>
+          <button class="op-btn" data-op="ai_trends">📡 AI Trends</button>
+          <button class="op-btn" data-op="career_ai">🚀 AI Career</button>
+        </div>
+      </div>
+
+      <!-- ── BONUS EXTRAS (10 features) ── -->
+      <div class="op-group" data-cat="extras">
+        <div class="op-grid">
+          <button class="op-btn" data-op="translate">🌐 Simplify English</button>
+          <button class="op-btn" data-op="voice_note">🎙️ Clean Notes</button>
+          <button class="op-btn" data-op="ask_ai">💬 Ask AI</button>
+          <button class="op-btn" data-op="debate">⚔️ Debate Both Sides</button>
+          <button class="op-btn" data-op="story">📖 Explain as Story</button>
+          <button class="op-btn" data-op="analogy">🔄 Analogy</button>
+          <button class="op-btn" data-op="mindmap">🗺️ Mind Map</button>
+          <button class="op-btn" data-op="acronym">🅰️ Acronym</button>
+          <button class="op-btn" data-op="recommend">📚 Recommend Resources</button>
+          <button class="op-btn" data-op="motivate">🔥 Motivate Me</button>
+        </div>
+      </div>
+
+    </section>
+    <!-- END ops-panel -->
+
+
+    <!-- ─────────────────────────────────────────────
+         LOADING SPINNER
+         Hidden by default. JS adds "visible" class
+         to show it while waiting for API response.
+    ────────────────────────────────────────────── -->
+    <div class="loader" id="loader">
+      <div class="loader-spinner"></div>
+      <span class="loader-text" id="loaderText">Generating answer...</span>
+    </div>
+
+
+    <!-- ─────────────────────────────────────────────
+         AI OUTPUT SECTION
+         Shows the result returned from Spring Boot.
+         Starts with an empty state message.
+    ────────────────────────────────────────────── -->
+    <section class="output-section" id="outputSection">
+
+      <!-- Header bar: shows which operation ran + Copy button -->
+      <!-- style="display:none" hides it until we have a result -->
+      <div class="output-header" id="outputHeader" style="display:none;">
+        <span class="output-op-label" id="outputOpLabel"></span>
+        <div class="output-actions">
+          <!-- Copies the AI result to clipboard -->
+          <button class="copy-btn" id="copyBtn">📋 Copy</button>
+          <!-- Sends the AI result down to the Notes area -->
+          <button class="copy-btn" id="sendToNotesBtn">📝 → Notes</button>
+        </div>
+      </div>
+
+      <!-- The box where AI result text is displayed -->
+      <div class="output-box" id="outputBox">
+        <!-- Default empty state shown before any result -->
+        <div class="output-empty">
+          <span class="empty-icon">🎓</span>
+          <p>Type, speak, or upload content above — then click any feature button to get AI output.</p>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ─────────────────────────────────────────────
+         NOTES PANEL
+         Hidden by default. Opens when user clicks 📝
+         in the header. Saves text to Chrome storage
+         so it persists even after closing the panel.
+    ────────────────────────────────────────────── -->
+    <section class="notes-panel" id="notesPanel" style="display:none;">
+
+      <div class="notes-header">
+        <span>📝 Study Notes</span>
+        <div class="notes-header-actions">
+          <!-- Saves notes to Chrome's local storage -->
+          <button class="save-btn" id="saveNotesBtn">Save</button>
+          <!-- Clears all notes after confirmation -->
+          <button class="mini-btn" id="clearNotesBtn">Clear</button>
+        </div>
+      </div>
+
+      <!--
+        The notes textarea.
+        User can type freely here or receive content
+        from the "Send to Notes" button above.
+      -->
+      <textarea class="notes-area" id="notesArea"
+                placeholder="Your saved notes appear here. Type freely or use → Notes button to send AI results here.">
+      </textarea>
+
+    </section>
+
+
+  </main>
+  <!-- END main -->
+
+  <!--
+    script tag at the BOTTOM of body.
+    Why at the bottom? Because JS needs the HTML elements
+    to exist before it can find them with getElementById.
+    If we put it in <head>, the elements don't exist yet.
+  -->
+  <script src="side_panel.js"></script>
+
+</body>
+</html>
