@@ -10,8 +10,8 @@ This project is built in two parts that work together.
 
 | Part | Share | What It Does |
 |---|---|---|
-| Chrome Extension (Frontend) | 35% | The UI panel the student sees and uses inside Chrome |
-| Spring Boot Backend | 65% | The brain — receives requests, builds prompts, calls Groq AI, returns answers |
+| Chrome Extension (Frontend) | 55% | The UI panel the student sees and uses inside Chrome |
+| Spring Boot Backend | 45% | The brain — receives requests, builds prompts, calls Groq AI, returns answers |
 
 The extension is what the student **sees**. The backend is what **thinks**.
 
