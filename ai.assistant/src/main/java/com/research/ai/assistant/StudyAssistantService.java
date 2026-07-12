@@ -7,6 +7,39 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 
+/*
+ * ============================================================================
+ * WHAT CHANGED FROM YOUR ORIGINAL VERSION — READ THIS FIRST
+ * ============================================================================
+ *
+ * Problem: gpt-oss-120b was returning bloated, table-heavy, emoji-filled
+ * output (see your "explain DOM" screenshot) because none of your prompts
+ * told it what NOT to do. Left unconstrained, it defaults to markdown
+ * tables (which force it to pad every cell to "look complete"), adds
+ * emoji headers, writes a preamble ("Below is a ready-to-use..."), and a
+ * closing summary table nobody asked for.
+ *
+ * Fix applied to EVERY case below:
+ *   1. A shared FORMAT_RULES block (see below) is appended to every prompt.
+ *      It bans markdown tables, bans emoji, bans intro/outro fluff, and
+ *      forces plain numbered headings.
+ *   2. Every case that previously said "give detailed answer" or similar
+ *      open-ended instructions now has an explicit word/sentence cap, so
+ *      the model can't pad.
+ *   3. Every case's structure is now spelled out as a literal plain-text
+ *      skeleton (e.g. "1. [question]\nAnswer: [text]") instead of vague
+ *      instructions like "give a table with these columns" — vague
+ *      structure requests are exactly what pushes the model toward tables.
+ *
+ * One honest caveat: I have not run this against the live Groq API to
+ * confirm gpt-oss-120b obeys every constraint perfectly — model instruction-
+ * following isn't 100% reliable even with explicit rules. If you still see
+ * a table or emoji slip through on some case, the fix is to make that
+ * case's skeleton even more literal (paste an exact example output back
+ * into the prompt), not to add more rules to FORMAT_RULES.
+ * ============================================================================
+ */
+
 @Service
 public class StudyAssistantService {
 
@@ -23,6 +56,17 @@ public class StudyAssistantService {
         this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
     }
+
+    // Appended to the end of every single prompt. This is what actually
+    // fixes the messiness — see comment block above.
+    private static final String FORMAT_RULES =
+            "\n\nSTRICT OUTPUT FORMAT RULES (follow exactly):\n" +
+                    "- Do NOT use markdown tables.\n" +
+                    "- Do NOT use emoji or decorative symbols.\n" +
+                    "- Do NOT write any introduction, preamble, or closing summary — start directly with the first heading.\n" +
+                    "- Use plain numbered or capitalized headings only (e.g. '1. Topic' or 'KEY POINTS').\n" +
+                    "- Keep bullet nesting to a maximum of one level.\n" +
+                    "- Follow the exact structure given in this prompt — do not add extra sections.";
 
     public String processContent(StudyRequest request) {
         String prompt = buildPrompt(request);
@@ -63,10 +107,13 @@ public class StudyAssistantService {
             return "Error parsing response: " + e.getMessage();
         }
     }
+
     private String buildPrompt(StudyRequest request) {
         String content = request.getContent() != null ? request.getContent().trim() : "";
         String goal = request.getResearchGoal() != null ? request.getResearchGoal().trim() : "General";
         String language = request.getProgrammingLanguage() != null ? request.getProgrammingLanguage().trim() : "Java";
+
+        String base;
 
         switch (request.getOperation()) {
 
@@ -75,819 +122,914 @@ public class StudyAssistantService {
             // ═══════════════════════════════
 
             case "summarize":
-                return "You are a student study assistant. Summarize the following content clearly.\n\n" +
+                base = "You are a student study assistant. Summarize the following content clearly.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give output in this format:\n" +
-                        "IN SHORT: Write 2 simple sentences.\n" +
-                        "KEY POINTS: List 5 bullet points.\n" +
-                        "IMPORTANT TERMS: List 3 to 5 key terms.\n" +
-                        "Keep it simple for a student to understand.";
+                        "Structure:\n" +
+                        "IN SHORT: 2 sentences max.\n" +
+                        "KEY POINTS: 5 single-line bullets.\n" +
+                        "IMPORTANT TERMS: 3 to 5 terms, one line each.";
+                break;
 
             case "keypoints":
-                return "You are a study assistant. Extract exactly 10 key points from this content for exam preparation.\n\n" +
+                base = "You are a study assistant. Extract exactly 10 key points from this content for exam preparation.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give output as a numbered list 1 to 10.\n" +
-                        "Each point must be short, clear, and exam-ready.\n" +
-                        "Do not add extra text.";
+                        "Structure: a numbered list 1 to 10, one line per point, no sub-bullets.";
+                break;
 
             case "notes":
-                return "You are a study assistant. Create structured study notes for the topic: " + goal + "\n\n" +
+                base = "You are a study assistant. Create structured study notes for the topic: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Format the notes with clear sections and subsections.\n" +
-                        "Each section must have a heading, key points, and what to remember.\n" +
-                        "Make it perfect for revision.";
+                        "Structure: numbered sections (e.g. '1. [Section Name]'), each followed by up to 4 " +
+                        "single-line bullet points and one 'Remember:' line. Maximum 5 sections.";
+                break;
 
             case "define":
-                return "You are a study assistant. Find and define all important terms in the content below.\n\n" +
+                base = "You are a study assistant. Find and define all important terms in the content below.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "For each term give:\n" +
+                        "Structure, for at least 5 terms:\n" +
                         "TERM: name\n" +
-                        "DEFINITION: one simple line\n" +
-                        "EXAMPLE: one easy real example\n\n" +
-                        "Define at least 5 terms.";
+                        "DEFINITION: one sentence\n" +
+                        "EXAMPLE: one sentence";
+                break;
 
             case "examples":
-                return "You are a study assistant. Give real world examples for: " + goal + "\n\n" +
+                base = "You are a study assistant. Give real world examples for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give at least 3 examples.\n" +
-                        "For each example explain: what it is, where it is used, and why it relates to the topic.\n" +
-                        "Use simple language a student can understand.";
+                        "Structure, for at least 3 examples:\n" +
+                        "EXAMPLE: name\n" +
+                        "WHAT: one sentence\n" +
+                        "WHY IT RELATES: one sentence";
+                break;
 
             case "compare":
-                return "You are a study assistant. Compare the topics mentioned in: " + goal + "\n\n" +
+                base = "You are a study assistant. Compare the topics mentioned in: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Create a comparison with these points: Definition, Key difference, When to use, Advantage, Disadvantage.\n" +
-                        "Show both sides clearly.\n" +
-                        "End with a one-line summary of which is better and when.";
+                        "Structure (plain text, NOT a table):\n" +
+                        "[TOPIC A NAME]\n" +
+                        "Definition: one sentence\n" +
+                        "Key difference: one sentence\n" +
+                        "When to use: one sentence\n\n" +
+                        "[TOPIC B NAME]\n" +
+                        "Definition: one sentence\n" +
+                        "Key difference: one sentence\n" +
+                        "When to use: one sentence\n\n" +
+                        "VERDICT: one line on which is better and when.";
+                break;
 
             case "formulas":
-                return "You are a study assistant. List all formulas related to: " + goal + "\n\n" +
+                base = "You are a study assistant. List all formulas related to: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "For each formula give:\n" +
+                        "Structure, for each formula:\n" +
                         "FORMULA: the equation\n" +
-                        "VARIABLES: what each letter means\n" +
-                        "WHEN TO USE: the situation\n" +
-                        "EXAMPLE: one solved example\n\n" +
-                        "List all formulas found in the content.";
+                        "VARIABLES: one line, comma-separated\n" +
+                        "WHEN TO USE: one sentence\n" +
+                        "EXAMPLE: one solved line";
+                break;
 
             case "diagram":
-                return "You are a study assistant. Explain the following content using a text-based diagram or flowchart.\n\n" +
+                base = "You are a study assistant. Explain the following content using a text-based diagram or flowchart.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Draw a simple ASCII diagram using arrows and boxes.\n" +
-                        "Label each part clearly.\n" +
-                        "After the diagram, explain each part in 1 line.\n" +
-                        "Make it easy to visualize for a student.";
+                        "Draw a simple ASCII diagram using arrows (->) and boxes ([ ]).\n" +
+                        "After the diagram, add 'PARTS EXPLAINED:' with one line per part.";
+                break;
 
             case "timeline":
-                return "You are a study assistant. Create a chronological timeline for: " + goal + "\n\n" +
+                base = "You are a study assistant. Create a chronological timeline for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "List events in order from oldest to newest.\n" +
-                        "For each event give: date or period, what happened, why it was important.\n" +
-                        "Highlight the most important milestone.";
+                        "Structure, oldest to newest:\n" +
+                        "[Date/Period] - [Event]: one sentence on why it mattered.\n" +
+                        "End with 'KEY MILESTONE:' one line.";
+                break;
 
             case "pros_cons":
-                return "You are a study assistant. List pros and cons for: " + goal + "\n\n" +
+                base = "You are a study assistant. List pros and cons for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give at least 4 pros and 4 cons.\n" +
-                        "Each point must have a short explanation.\n" +
-                        "End with a one-line verdict.";
+                        "Structure:\n" +
+                        "PROS: 4 single-line bullets, each with a short reason.\n" +
+                        "CONS: 4 single-line bullets, each with a short reason.\n" +
+                        "VERDICT: one line.";
+                break;
 
             case "why_how":
-                return "You are a study assistant. Explain WHY and HOW for: " + goal + "\n\n" +
+                base = "You are a study assistant. Explain WHY and HOW for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "WHY section: explain the reason and purpose in simple words.\n" +
-                        "HOW section: give step by step process with clear steps.\n" +
-                        "Use simple language suitable for a student.";
+                        "Structure:\n" +
+                        "WHY: 2 to 3 sentences.\n" +
+                        "HOW: numbered steps, one line each, max 6 steps.";
+                break;
 
             case "difficult":
-                return "You are a study assistant. Simplify this difficult concept for a student.\n\n" +
+                base = "You are a study assistant. Simplify this difficult concept for a student.\n\n" +
                         "Topic: " + goal + "\n" +
                         "Content: " + content + "\n\n" +
-                        "Explain it like you are teaching a 10 year old child.\n" +
-                        "Use very simple words, a relatable analogy, and one easy example.\n" +
-                        "Then give the key thing to remember in one line.";
+                        "Structure:\n" +
+                        "SIMPLE EXPLANATION: as if teaching a 10 year old, max 4 sentences.\n" +
+                        "ANALOGY: one everyday comparison, max 2 sentences.\n" +
+                        "REMEMBER THIS: one line.";
+                break;
 
             case "realworld":
-                return "You are a study assistant. Give real world applications for: " + goal + "\n\n" +
+                base = "You are a study assistant. Give real world applications for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give at least 4 real world uses.\n" +
-                        "For each: name the industry, describe how it is used, and why it matters.\n" +
-                        "Make it interesting and relatable for a student.";
+                        "Structure, at least 4 uses:\n" +
+                        "INDUSTRY: name\n" +
+                        "HOW USED: one sentence\n" +
+                        "WHY IT MATTERS: one sentence";
+                break;
 
             case "related":
-                return "You are a study assistant. Suggest related topics to study after: " + goal + "\n\n" +
+                base = "You are a study assistant. Suggest related topics to study after: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "List 5 related topics.\n" +
-                        "For each topic explain why it is related and what the student will learn.\n" +
-                        "Give a recommended study order from easiest to hardest.";
+                        "Structure: 5 numbered topics, each with one line on why it's related, ordered easiest to hardest.";
+                break;
 
             case "flashcards":
-                return "You are a study assistant. Create 10 flashcards from this content for: " + goal + "\n\n" +
+                base = "You are a study assistant. Create 10 flashcards from this content for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "For each flashcard give:\n" +
-                        "QUESTION: a clear exam-style question\n" +
-                        "ANSWER: a short direct answer\n\n" +
-                        "Make questions cover the most important concepts.";
+                        "Structure, repeated 10 times:\n" +
+                        "Q: [question]\n" +
+                        "A: [short direct answer]";
+                break;
 
             case "mnemonics":
-                return "You are a study assistant. Create memory tricks and mnemonics to remember: " + goal + "\n\n" +
+                base = "You are a study assistant. Create memory tricks and mnemonics to remember: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Create at least 2 mnemonics.\n" +
-                        "For each mnemonic: give the word or phrase, explain what each letter or part stands for, and how it helps remember the concept.\n" +
-                        "Make them fun and easy to recall.";
+                        "Structure, at least 2 mnemonics:\n" +
+                        "MNEMONIC: the word or phrase\n" +
+                        "MEANING: what each letter stands for, one line\n" +
+                        "WHY IT HELPS: one sentence";
+                break;
 
             case "study_plan":
-                return "You are a study assistant. Create a 7 day study plan for: " + goal + "\n\n" +
+                base = "You are a study assistant. Create a 7 day study plan for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "For each day give: topic to study, time needed in minutes, and specific task to complete.\n" +
-                        "Include revision days and practice days.\n" +
-                        "Make it realistic for a student with other subjects too.";
+                        "Structure, one block per day:\n" +
+                        "DAY 1: [topic] - [time in minutes] - [specific task]\n" +
+                        "(repeat through DAY 7, include at least one revision day)";
+                break;
 
             case "check_understanding":
-                return "You are a study assistant. Test the student's understanding of: " + goal + "\n\n" +
+                base = "You are a study assistant. Test the student's understanding of: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "List 3 must-know concepts from this topic.\n" +
-                        "Ask 3 questions to check understanding.\n" +
-                        "Give the correct answers after each question.\n" +
-                        "Tell the student what they must revise if they got it wrong.";
+                        "Structure:\n" +
+                        "MUST-KNOW CONCEPTS: 3 single-line bullets.\n" +
+                        "QUESTION 1 / ANSWER 1, QUESTION 2 / ANSWER 2, QUESTION 3 / ANSWER 3 (one line each).\n" +
+                        "IF WRONG, REVISE: one line.";
+                break;
 
             case "quiz":
-                return "You are a study assistant. Create a quiz with 5 multiple choice questions from: " + goal + "\n\n" +
+                base = "You are a study assistant. Create a quiz with 5 multiple choice questions from: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "For each question give:\n" +
-                        "QUESTION: clear question\n" +
-                        "A B C D options\n" +
-                        "CORRECT ANSWER: the letter\n" +
-                        "EXPLANATION: why that answer is correct in one line\n\n" +
-                        "Make questions exam-level difficulty.";
+                        "Structure, repeated 5 times:\n" +
+                        "Q: [question]\n" +
+                        "A) [option] B) [option] C) [option] D) [option]\n" +
+                        "CORRECT: [letter]\n" +
+                        "WHY: one sentence";
+                break;
 
             case "essay_write":
-                return "You are a study assistant. Write a complete essay on: " + goal + "\n\n" +
+                base = "You are a study assistant. Write a complete essay on: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Structure the essay as:\n" +
-                        "INTRODUCTION: 2 sentences introducing the topic\n" +
-                        "BODY PARAGRAPH 1: first main point with explanation\n" +
-                        "BODY PARAGRAPH 2: second main point with explanation\n" +
-                        "BODY PARAGRAPH 3: third main point with explanation\n" +
-                        "CONCLUSION: summarize in 2 sentences\n\n" +
-                        "Use formal academic language.";
+                        "Structure: INTRODUCTION (2 sentences), BODY 1, BODY 2, BODY 3 (3 to 4 sentences each), " +
+                        "CONCLUSION (2 sentences). Formal academic language, no headings inside the essay itself " +
+                        "other than these five labels.";
+                break;
 
             // ═══════════════════════════════
             // EXAM PREP (21-35)
             // ═══════════════════════════════
 
             case "exam_questions":
-                return "You are an exam preparation assistant. Generate likely exam questions for: " + goal + "\n\n" +
+                base = "You are an exam preparation assistant. Generate likely exam questions for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give 3 MCQ questions with 4 options and correct answer.\n" +
-                        "Give 3 short answer questions with 2 line answers.\n" +
-                        "Give 2 long answer questions with key points to cover.\n" +
-                        "Focus on questions that are most likely to appear in exam.";
+                        "Structure:\n" +
+                        "MCQ (3 questions): Q, 4 options, CORRECT: letter.\n" +
+                        "SHORT ANSWER (3 questions): Q, Answer in 2 lines.\n" +
+                        "LONG ANSWER (2 questions): Q, key points to cover as single-line bullets.";
+                break;
 
             case "mistakes":
-                return "You are a study assistant. List common mistakes students make in: " + goal + "\n\n" +
+                base = "You are a study assistant. List common mistakes students make in: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give at least 5 common mistakes.\n" +
-                        "For each mistake: describe the wrong way, explain why it is wrong, give the correct approach.\n" +
-                        "Focus on mistakes that cost marks in exam.";
+                        "Structure, at least 5 mistakes:\n" +
+                        "MISTAKE: one line\n" +
+                        "WHY WRONG: one sentence\n" +
+                        "CORRECT APPROACH: one sentence";
+                break;
 
             case "tricks":
-                return "You are a study assistant. Give shortcuts and tricks to solve problems faster in: " + goal + "\n\n" +
+                base = "You are a study assistant. Give shortcuts and tricks to solve problems faster in: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give at least 5 tricks.\n" +
-                        "For each trick: explain what it is, when to use it, and show an example.\n" +
-                        "Focus on tricks that save time in exam.";
+                        "Structure, at least 5 tricks:\n" +
+                        "TRICK: one line\n" +
+                        "WHEN TO USE: one sentence\n" +
+                        "EXAMPLE: one line";
+                break;
 
             case "past_questions":
-                return "You are an exam assistant. Generate past exam style questions for: " + goal + "\n\n" +
+                base = "You are an exam assistant. Generate past exam style questions for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Create 5 questions in the style of university or board exams.\n" +
-                        "Include mix of MCQ, short answer, and long answer questions.\n" +
-                        "Give model answers for each question.\n" +
-                        "Mark the important keywords in each answer.";
+                        "Structure, 5 questions mixing MCQ/short/long:\n" +
+                        "Q: [question]\n" +
+                        "MODEL ANSWER: [concise answer with key terms in CAPS]";
+                break;
 
             case "answer_template":
-                return "You are an exam assistant. Give a perfect answer writing template for: " + goal + "\n\n" +
+                base = "You are an exam assistant. Give a perfect answer writing template for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Show the ideal structure for writing exam answers.\n" +
-                        "Give a sample answer using the template.\n" +
-                        "List the keywords and phrases that score full marks.\n" +
-                        "Give tips on what examiners look for.";
+                        "Structure:\n" +
+                        "TEMPLATE: numbered structure, one line per part.\n" +
+                        "SAMPLE ANSWER: using the template, max 100 words.\n" +
+                        "SCORING KEYWORDS: comma-separated list.";
+                break;
 
             case "score_predictor":
-                return "You are an exam assistant. Analyze this content and tell which topics to focus on for maximum marks: " + goal + "\n\n" +
+                base = "You are an exam assistant. Analyze this content and tell which topics to focus on for maximum marks: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Categorize topics as HIGH priority, MEDIUM priority, LOW priority.\n" +
-                        "For each category list the topics and estimated marks.\n" +
-                        "Give a strategy to score above 80 percent.";
+                        "Structure:\n" +
+                        "HIGH PRIORITY: topics as single-line bullets with estimated marks.\n" +
+                        "MEDIUM PRIORITY: same format.\n" +
+                        "LOW PRIORITY: same format.\n" +
+                        "STRATEGY: 2 to 3 sentences.";
+                break;
 
             case "highlights":
-                return "You are a study assistant. Extract the most important highlights from this content for: " + goal + "\n\n" +
+                base = "You are a study assistant. Extract the most important highlights from this content for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give 5 must-know points that will definitely come in exam.\n" +
-                        "Give 3 bonus points for extra marks.\n" +
-                        "Mark each point with its importance level: HIGH, MEDIUM, or LOW.";
+                        "Structure:\n" +
+                        "MUST-KNOW (5 points): one line each, tag with (HIGH).\n" +
+                        "BONUS (3 points): one line each, tag with (MEDIUM) or (LOW).";
+                break;
 
             case "quick_summary":
-                return "You are a study assistant. Give a 1 minute revision summary of this content.\n\n" +
+                base = "You are a study assistant. Give a 1 minute revision summary of this content.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give exactly 3 points only.\n" +
-                        "Each point must be one short sentence.\n" +
-                        "Focus only on what is most important for exam.\n" +
-                        "No extra explanation needed.";
+                        "Structure: exactly 3 numbered points, one short sentence each. Nothing else.";
+                break;
 
             case "onepager":
-                return "You are a study assistant. Create a one page cheat sheet for: " + goal + "\n\n" +
+                base = "You are a study assistant. Create a one page cheat sheet for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Include: key definitions, important formulas, key points, common exam questions.\n" +
-                        "Keep everything very short and clear.\n" +
-                        "Format it so a student can revise the entire topic in 5 minutes.";
+                        "Structure:\n" +
+                        "DEFINITIONS: up to 5 single-line entries.\n" +
+                        "FORMULAS: up to 5 single-line entries.\n" +
+                        "KEY POINTS: up to 5 single-line bullets.\n" +
+                        "LIKELY QUESTIONS: up to 3 single-line entries.";
+                break;
 
             case "revision":
-                return "You are a study assistant. Create a complete revision guide for: " + goal + "\n\n" +
+                base = "You are a study assistant. Create a complete revision guide for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Cover: main concepts, key formulas, important definitions, example problems.\n" +
-                        "Organize from basic to advanced.\n" +
-                        "Add a quick self-test with 3 questions at the end.";
+                        "Structure:\n" +
+                        "MAIN CONCEPTS: up to 5 single-line bullets, basic to advanced order.\n" +
+                        "KEY FORMULAS: up to 5 single-line entries.\n" +
+                        "DEFINITIONS: up to 5 single-line entries.\n" +
+                        "SELF-TEST: 3 questions, one line each, no answers given.";
+                break;
 
             case "important":
-                return "You are a study assistant. List the 5 most important topics to study in: " + goal + "\n\n" +
+                base = "You are a study assistant. List the 5 most important topics to study in: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Rank them from most important to least important for exam.\n" +
-                        "For each topic explain why it is important and what type of question it appears in.\n" +
-                        "Give a study tip for each topic.";
+                        "Structure, ranked most to least important:\n" +
+                        "TOPIC: name\n" +
+                        "WHY: one sentence\n" +
+                        "TIP: one sentence";
+                break;
 
             case "weightage":
-                return "You are an exam assistant. Analyze the mark weightage for: " + goal + "\n\n" +
+                base = "You are an exam assistant. Analyze the mark weightage for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Estimate the percentage of marks each topic carries.\n" +
-                        "List topics from highest to lowest weightage.\n" +
-                        "Give advice on how much time to spend on each topic.\n" +
-                        "Focus on maximizing score with minimum effort.";
+                        "Structure, highest to lowest weightage:\n" +
+                        "TOPIC: name - APPROX WEIGHTAGE: percent - TIME ADVICE: one line";
+                break;
 
             case "tips_exam":
-                return "You are an exam coach. Give practical exam writing tips for: " + goal + "\n\n" +
-                        "Give at least 8 specific tips.\n" +
-                        "Include tips for: reading questions, managing time, writing answers, handling MCQ, avoiding common errors.\n" +
-                        "Make each tip actionable and specific to the subject.";
+                base = "You are an exam coach. Give practical exam writing tips for: " + goal + "\n\n" +
+                        "Structure: 8 numbered tips, one sentence each, covering reading questions, time " +
+                        "management, answer writing, MCQ strategy, and common errors.";
+                break;
 
             case "time_mgmt":
-                return "You are an exam coach. Create a time management plan for: " + goal + " exam.\n\n" +
-                        "Assume the exam is 3 hours long.\n" +
-                        "Tell how many minutes to spend on each section.\n" +
-                        "Give tips for: starting strong, handling difficult questions, using remaining time for review.\n" +
-                        "Include a time allocation table.";
+                base = "You are an exam coach. Create a time management plan for: " + goal + " exam.\n\n" +
+                        "Assume a 3 hour exam.\n\n" +
+                        "Structure:\n" +
+                        "TIME ALLOCATION: [Section] - [Minutes] (one line per section).\n" +
+                        "TIPS: 3 single-line bullets covering start strategy, difficult questions, and review time.";
+                break;
 
             case "stress":
-                return "You are a student counselor. Give practical stress relief tips for a student preparing for: " + goal + " exam.\n\n" +
-                        "Give 5 techniques to reduce exam anxiety.\n" +
-                        "Include: breathing exercises, study breaks, sleep tips, positive thinking, day-before-exam routine.\n" +
-                        "Make it practical and easy to follow for a student.";
+                base = "You are a student counselor. Give practical stress relief tips for a student preparing for: " + goal + " exam.\n\n" +
+                        "Structure: 5 numbered techniques (breathing, breaks, sleep, mindset, day-before " +
+                        "routine), one to two sentences each.";
+                break;
 
             // ═══════════════════════════════
             // CODING (36-50)
             // ═══════════════════════════════
 
             case "code":
-                return "You are a coding assistant. Write a complete working solution in " + language + " only.\n\n" +
+                base = "You are a coding assistant. Write a complete working solution in " + language + " only.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Rules:\n" +
-                        "1. Write ONLY " + language + " code. Never write any other language.\n" +
-                        "2. Write complete working code with proper imports.\n" +
-                        "3. Add comments explaining each important line.\n" +
-                        "4. After the code give: approach used, time complexity, space complexity, and one example with input and output.";
+                        "Rules: write ONLY " + language + " code with proper imports and inline comments on " +
+                        "non-obvious lines.\n" +
+                        "After the code add:\n" +
+                        "APPROACH: 2 to 3 sentences.\n" +
+                        "TIME COMPLEXITY: one line.\n" +
+                        "SPACE COMPLEXITY: one line.\n" +
+                        "EXAMPLE: one input/output line.";
+                break;
 
             case "code_explain":
-                return "You are a coding teacher. Explain this " + language + " code line by line.\n\n" +
+                base = "You are a coding teacher. Explain this " + language + " code line by line.\n\n" +
                         "Code: " + content + "\n\n" +
-                        "For each line or block explain: what it does, why it is needed, and what happens if removed.\n" +
-                        "At the end give: overall purpose of the code, time complexity, and space complexity.\n" +
-                        "Use simple language a beginner can understand.";
+                        "Structure: for each logical block, '[Block name]: one to two sentence explanation.'\n" +
+                        "End with OVERALL PURPOSE (1 sentence), TIME COMPLEXITY (1 line), SPACE COMPLEXITY (1 line).";
+                break;
 
             case "optimize":
-                return "You are a coding expert. Optimize this " + language + " code for better performance.\n\n" +
+                base = "You are a coding expert. Optimize this " + language + " code for better performance.\n\n" +
                         "Code: " + content + "\n\n" +
-                        "Give the optimized code with comments.\n" +
-                        "Show: before complexity vs after complexity.\n" +
-                        "List all optimizations made and why each improves performance.\n" +
-                        "The optimized code must be complete and working.";
+                        "Give the optimized code with inline comments, then:\n" +
+                        "BEFORE COMPLEXITY: one line.\n" +
+                        "AFTER COMPLEXITY: one line.\n" +
+                        "CHANGES MADE: single-line bullets, max 5.";
+                break;
 
             case "debug":
-                return "You are a debugging expert. Find and fix all bugs in this " + language + " code.\n\n" +
+                base = "You are a debugging expert. Find and fix all bugs in this " + language + " code.\n\n" +
                         "Code: " + content + "\n\n" +
-                        "List each bug found: what is wrong, why it is wrong, how to fix it.\n" +
-                        "Give the complete corrected code.\n" +
-                        "Add comments where bugs were fixed.\n" +
-                        "Also mention any potential issues that could cause problems later.";
+                        "Structure:\n" +
+                        "BUGS FOUND: for each, one line 'What: ... Why: ... Fix: ...'\n" +
+                        "Then the complete corrected code with comments marking each fix.";
+                break;
 
             case "convert":
-                return "You are a coding assistant. Convert the following code to " + language + ".\n\n" +
+                base = "You are a coding assistant. Convert the following code to " + language + ".\n\n" +
                         "Original Code: " + content + "\n\n" +
-                        "Rules:\n" +
-                        "1. Write ONLY " + language + " code in the output.\n" +
-                        "2. Keep the same logic and algorithm.\n" +
-                        "3. Use proper " + language + " syntax and conventions.\n" +
-                        "4. Add comments explaining any language-specific changes made.";
+                        "Rules: output ONLY " + language + " code, same logic, idiomatic syntax, with brief " +
+                        "inline comments only where the conversion required a non-obvious change.";
+                break;
 
             case "complexity":
-                return "You are a coding expert. Analyze the time and space complexity of this " + language + " code.\n\n" +
+                base = "You are a coding expert. Analyze the time and space complexity of this " + language + " code.\n\n" +
                         "Code: " + content + "\n\n" +
-                        "Give:\n" +
-                        "TIME COMPLEXITY: Big O notation with explanation of why\n" +
-                        "SPACE COMPLEXITY: Big O notation with explanation of why\n" +
-                        "BEST CASE: complexity and when it occurs\n" +
-                        "WORST CASE: complexity and when it occurs\n" +
-                        "AVERAGE CASE: complexity\n" +
-                        "Suggest how to improve complexity if possible.";
+                        "Structure:\n" +
+                        "TIME COMPLEXITY: Big O, one sentence why.\n" +
+                        "SPACE COMPLEXITY: Big O, one sentence why.\n" +
+                        "BEST CASE: Big O, one line.\n" +
+                        "WORST CASE: Big O, one line.\n" +
+                        "IMPROVEMENT: one sentence, if possible.";
+                break;
 
             case "test":
-                return "You are a testing expert. Generate comprehensive test cases for this " + language + " code.\n\n" +
+                base = "You are a testing expert. Generate comprehensive test cases for this " + language + " code.\n\n" +
                         "Code: " + content + "\n\n" +
-                        "Give at least 8 test cases covering:\n" +
-                        "- Normal cases with expected input and output\n" +
-                        "- Edge cases like empty input, single element, large input\n" +
-                        "- Negative cases that should fail or throw error\n" +
-                        "Write actual test code in " + language + " using proper testing framework.";
+                        "Write actual runnable test code in " + language + " using a standard testing " +
+                        "framework, covering at least 8 cases: normal, edge (empty/single/large), and negative. " +
+                        "Add a one-line comment above each test stating what it checks.";
+                break;
 
             case "leetcode":
-                return "You are a competitive programmer. Solve this LeetCode problem in " + language + ".\n\n" +
+                base = "You are a competitive programmer. Solve this LeetCode problem in " + language + ".\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Give:\n" +
-                        "1. Brute force approach with code and complexity\n" +
-                        "2. Optimal approach with code and complexity\n" +
-                        "3. Step by step explanation of the optimal approach\n" +
-                        "4. Dry run with example showing how the code works\n" +
-                        "5. Similar LeetCode problems to practice\n\n" +
-                        "Write ONLY " + language + " code.";
+                        "Structure:\n" +
+                        "BRUTE FORCE: code + one-line complexity.\n" +
+                        "OPTIMAL: code + one-line complexity.\n" +
+                        "APPROACH: 2 to 3 sentences.\n" +
+                        "DRY RUN: one worked example, max 5 lines.\n" +
+                        "SIMILAR PROBLEMS: comma-separated list.";
+                break;
 
             case "algorithm":
-                return "You are a computer science teacher. Explain this algorithm in detail: " + goal + "\n\n" +
+                base = "You are a computer science teacher. Explain this algorithm in detail: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give:\n" +
-                        "WHAT IT IS: one paragraph definition\n" +
-                        "STEP BY STEP: numbered steps of how it works\n" +
-                        "TIME COMPLEXITY: with explanation\n" +
-                        "SPACE COMPLEXITY: with explanation\n" +
-                        "WHEN TO USE: best use cases\n" +
-                        "CODE EXAMPLE: simple implementation in " + language;
+                        "Structure:\n" +
+                        "WHAT IT IS: 2 sentences.\n" +
+                        "STEPS: numbered, one line each.\n" +
+                        "TIME COMPLEXITY: one line.\n" +
+                        "SPACE COMPLEXITY: one line.\n" +
+                        "WHEN TO USE: one sentence.\n" +
+                        "CODE: simple " + language + " implementation.";
+                break;
 
             case "datastructure":
-                return "You are a computer science teacher. Explain this data structure: " + goal + "\n\n" +
+                base = "You are a computer science teacher. Explain this data structure: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give:\n" +
-                        "WHAT IT IS: simple definition\n" +
-                        "HOW IT WORKS: internal structure and memory\n" +
-                        "OPERATIONS: list with time complexity for each\n" +
-                        "WHEN TO USE: best scenarios\n" +
-                        "CODE EXAMPLE: basic implementation in " + language + "\n" +
-                        "REAL WORLD USE: where it is used in actual software";
+                        "Structure:\n" +
+                        "WHAT IT IS: one sentence.\n" +
+                        "HOW IT WORKS: 2 to 3 sentences.\n" +
+                        "OPERATIONS: single-line entries, '[Operation] - O(...)'.\n" +
+                        "WHEN TO USE: one sentence.\n" +
+                        "CODE: basic " + language + " implementation.\n" +
+                        "REAL WORLD USE: one sentence.";
+                break;
 
             case "code_compare":
-                return "You are a coding expert. Compare these two code approaches.\n\n" +
+                base = "You are a coding expert. Compare these two code approaches.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Compare on: time complexity, space complexity, readability, performance, when to use each.\n" +
-                        "Show a table with all comparisons.\n" +
-                        "Give a clear recommendation on which approach is better and why.\n" +
-                        "Give example where each approach is preferred.";
+                        "Structure (plain text, NOT a table):\n" +
+                        "APPROACH A: time complexity, space complexity, readability — one line each.\n" +
+                        "APPROACH B: time complexity, space complexity, readability — one line each.\n" +
+                        "RECOMMENDATION: 2 sentences.";
+                break;
 
             case "pattern":
-                return "You are a coding expert. Identify the coding pattern used in this problem or code.\n\n" +
+                base = "You are a coding expert. Identify the coding pattern used in this problem or code.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Identify: the pattern name, why this pattern fits, how to recognize it in future problems.\n" +
-                        "List other problems that use the same pattern.\n" +
-                        "Give a template code for this pattern in " + language + ".";
+                        "Structure:\n" +
+                        "PATTERN: name.\n" +
+                        "WHY IT FITS: one sentence.\n" +
+                        "HOW TO RECOGNIZE: one sentence.\n" +
+                        "OTHER PROBLEMS: comma-separated list.\n" +
+                        "TEMPLATE CODE: in " + language + ".";
+                break;
 
             case "pseudocode":
-                return "You are a coding teacher. Write pseudocode for this problem before coding.\n\n" +
+                base = "You are a coding teacher. Write pseudocode for this problem before coding.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Write clear pseudocode step by step.\n" +
-                        "After pseudocode, convert it to actual " + language + " code.\n" +
-                        "Explain how each pseudocode step maps to the real code.\n" +
-                        "This helps understand the logic before writing actual code.";
+                        "Structure:\n" +
+                        "PSEUDOCODE: numbered steps, one line each.\n" +
+                        "CODE: " + language + " implementation matching the steps.\n" +
+                        "MAPPING: one line per step noting which code lines implement it.";
+                break;
 
             case "project_idea":
-                return "You are a project mentor. Suggest college project ideas related to: " + goal + "\n\n" +
-                        "Give 5 project ideas.\n" +
-                        "For each project give: project name, description, technologies to use, difficulty level, and what the student will learn.\n" +
-                        "Include at least one AI-based project idea.\n" +
-                        "Make projects suitable for final year or internship portfolio.";
+                base = "You are a project mentor. Suggest college project ideas related to: " + goal + "\n\n" +
+                        "Structure, 5 ideas, one AI-based:\n" +
+                        "PROJECT: name\n" +
+                        "DESCRIPTION: one sentence\n" +
+                        "TECH: comma-separated\n" +
+                        "DIFFICULTY: Beginner/Intermediate/Advanced\n" +
+                        "LEARNING: one sentence";
+                break;
 
             case "roadmap":
-                return "You are a learning mentor. Create a complete learning roadmap for: " + goal + "\n\n" +
-                        "Divide into phases: Beginner, Intermediate, Advanced.\n" +
-                        "For each phase list: topics to learn, resources to use, time needed, and mini projects to build.\n" +
-                        "Give a realistic timeline assuming 1 hour per day.\n" +
-                        "Focus on skills that are in-demand for jobs.";
+                base = "You are a learning mentor. Create a complete learning roadmap for: " + goal + "\n\n" +
+                        "Structure:\n" +
+                        "BEGINNER: topics (comma-separated), resources (comma-separated), time estimate, mini project (one line).\n" +
+                        "INTERMEDIATE: same format.\n" +
+                        "ADVANCED: same format.\n" +
+                        "TIMELINE: one line, assuming 1 hour/day.";
+                break;
 
             // ═══════════════════════════════
             // INTERVIEW PREP (51-60)
             // ═══════════════════════════════
 
             case "interview_q":
-                return "You are an interview coach. Generate interview questions and answers for: " + goal + "\n\n" +
-                        "Give 5 technical questions with detailed answers.\n" +
-                        "Give 3 conceptual questions with clear explanations.\n" +
-                        "Give 2 situational questions with STAR method answers.\n" +
-                        "Mark which questions are asked frequently in top companies.";
+                base = "You are an interview coach creating a clean, easy-to-read study sheet for: " + goal + "\n\n" +
+                        "Content: " + content + "\n\n" +
+                        "Structure:\n" +
+                        "TECHNICAL QUESTIONS\n" +
+                        "1. [question]\nAnswer: [max 80 words]\n(repeat for 5 questions)\n\n" +
+                        "CONCEPTUAL QUESTIONS\n" +
+                        "1. [question]\nAnswer: [max 80 words]\n(repeat for 3 questions)\n\n" +
+                        "SITUATIONAL (STAR) QUESTIONS\n" +
+                        "1. [question]\nSituation: [1 sentence]\nTask: [1 sentence]\nAction: [2 sentences]\n" +
+                        "Result: [1 sentence, with a number if possible]\n(repeat for 2 questions)";
+                break;
 
             case "coding_pattern":
-                return "You are an interview coach. Explain the most important coding patterns for interviews.\n\n" +
+                base = "You are an interview coach. Explain the most important coding patterns for interviews.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Cover these patterns: Sliding Window, Two Pointer, Fast and Slow Pointer, Merge Intervals, Cyclic Sort, Tree BFS, Tree DFS, Two Heaps, Subsets, Binary Search.\n" +
-                        "For each pattern: when to use it, template code in " + language + ", and one example problem.";
+                        "Cover: Sliding Window, Two Pointer, Fast and Slow Pointer, Merge Intervals, Cyclic " +
+                        "Sort, Tree BFS, Tree DFS, Two Heaps, Subsets, Binary Search.\n" +
+                        "Structure, per pattern:\n" +
+                        "PATTERN: name\n" +
+                        "WHEN TO USE: one sentence\n" +
+                        "TEMPLATE: short " + language + " code\n" +
+                        "EXAMPLE PROBLEM: one line";
+                break;
 
             case "hr_questions":
-                return "You are an HR interview coach. Generate HR interview questions and ideal answers.\n\n" +
-                        "Give 10 common HR questions.\n" +
-                        "For each question give: the question, what the interviewer really wants to know, and a sample strong answer.\n" +
-                        "Include questions about: strengths, weaknesses, teamwork, conflict, goals, and company fit.\n" +
-                        "Make answers sound natural and confident.";
+                base = "You are an HR interview coach. Generate HR interview questions and ideal answers.\n\n" +
+                        "Structure, 10 questions covering strengths, weaknesses, teamwork, conflict, goals, " +
+                        "and company fit:\n" +
+                        "Q: [question]\n" +
+                        "WHAT THEY WANT: one sentence\n" +
+                        "SAMPLE ANSWER: max 60 words";
+                break;
 
             case "system_design":
-                return "You are a system design expert. Explain the system design for: " + goal + "\n\n" +
-                        "Cover: requirements clarification, high level design, component details, database design, API design, scalability, and trade-offs.\n" +
-                        "Draw a simple text-based architecture diagram.\n" +
-                        "Explain each component and why it is needed.\n" +
-                        "Give estimated capacity and scale numbers.";
+                base = "You are a system design expert. Explain the system design for: " + goal + "\n\n" +
+                        "Structure:\n" +
+                        "REQUIREMENTS: single-line bullets.\n" +
+                        "HIGH LEVEL DESIGN: 2 to 3 sentences plus a text-based ASCII diagram.\n" +
+                        "COMPONENTS: '[Component] - one line role' entries.\n" +
+                        "DATABASE: one to two sentences.\n" +
+                        "API: key endpoints, one line each.\n" +
+                        "SCALABILITY: single-line bullets.\n" +
+                        "TRADE-OFFS: single-line bullets.\n" +
+                        "SCALE ESTIMATE: one line.";
+                break;
 
             case "resume_tips":
-                return "You are a resume coach. Give resume writing tips for the role: " + goal + "\n\n" +
-                        "Give tips for: summary section, skills section, experience section, projects section, education section.\n" +
-                        "List the most important keywords to include for this role.\n" +
-                        "Give 3 example bullet points showing weak vs strong resume writing.\n" +
-                        "Tell what recruiters look for in the first 30 seconds.";
+                base = "You are a resume coach. Give resume writing tips for the role: " + goal + "\n\n" +
+                        "Structure:\n" +
+                        "SUMMARY SECTION: one sentence tip.\n" +
+                        "SKILLS SECTION: one sentence tip.\n" +
+                        "EXPERIENCE SECTION: one sentence tip.\n" +
+                        "PROJECTS SECTION: one sentence tip.\n" +
+                        "KEYWORDS: comma-separated list.\n" +
+                        "WEAK VS STRONG: 3 paired one-line examples ('Weak: ... / Strong: ...').\n" +
+                        "FIRST 30 SECONDS: 2 sentences.";
+                break;
 
             case "answer_star":
-                return "You are an interview coach. Answer this interview question using the STAR method: " + goal + "\n\n" +
-                        "Give a complete STAR answer:\n" +
-                        "SITUATION: describe the context in 2 sentences\n" +
-                        "TASK: describe your responsibility in 2 sentences\n" +
-                        "ACTION: describe exactly what you did in 3 to 4 sentences\n" +
-                        "RESULT: describe the outcome with numbers if possible in 2 sentences\n\n" +
-                        "Also explain why this answer is strong and what to avoid.";
+                base = "You are an interview coach. Answer this interview question using the STAR method: " + goal + "\n\n" +
+                        "Structure:\n" +
+                        "SITUATION: 2 sentences.\n" +
+                        "TASK: 2 sentences.\n" +
+                        "ACTION: 3 to 4 sentences.\n" +
+                        "RESULT: 2 sentences, with a number if possible.\n" +
+                        "WHY THIS WORKS: 2 sentences.";
+                break;
 
             case "mock_interview":
-                return "You are an interviewer at a top tech company. Conduct a mock interview for the role: " + goal + "\n\n" +
-                        "Ask 5 interview questions one by one.\n" +
-                        "After each question give: what a strong answer looks like, common mistakes to avoid, and key points to mention.\n" +
-                        "Include mix of technical, behavioral, and situational questions.\n" +
-                        "End with overall feedback and areas to improve.";
+                base = "You are an interviewer at a top tech company. Conduct a mock interview for the role: " + goal + "\n\n" +
+                        "Structure, 5 questions mixing technical/behavioral/situational:\n" +
+                        "Q1: [question]\nSTRONG ANSWER LOOKS LIKE: one sentence.\nAVOID: one sentence.\n" +
+                        "(repeat through Q5)\n\n" +
+                        "OVERALL FEEDBACK: 2 to 3 sentences.";
+                break;
 
             case "company_prep":
-                return "You are an interview coach. Help prepare for interview at: " + goal + "\n\n" +
-                        "Give: company overview, tech stack they use, common interview questions, interview process rounds, what they look for in candidates.\n" +
-                        "Give 5 company-specific technical questions.\n" +
-                        "Give tips on how to research the company before interview.\n" +
-                        "List important topics to study for this company.";
+                base = "You are an interview coach. Help prepare for interview at: " + goal + "\n\n" +
+                        "Structure:\n" +
+                        "COMPANY OVERVIEW: 2 sentences.\n" +
+                        "TECH STACK: comma-separated.\n" +
+                        "INTERVIEW ROUNDS: single-line list.\n" +
+                        "WHAT THEY LOOK FOR: single-line bullets.\n" +
+                        "TECHNICAL QUESTIONS: 5, one line each.\n" +
+                        "RESEARCH TIPS: single-line bullets.";
+                break;
 
             case "salary_tips":
-                return "You are a career coach. Give salary negotiation tips for the role: " + goal + "\n\n" +
-                        "Give 5 practical negotiation tips.\n" +
-                        "Give sample scripts for: asking about salary, countering an offer, asking for time to decide.\n" +
-                        "Tell what benefits to negotiate besides salary.\n" +
-                        "Give the typical salary range for this role in India.";
+                base = "You are a career coach. Give salary negotiation tips for the role: " + goal + "\n\n" +
+                        "Structure:\n" +
+                        "TIPS: 5 numbered, one sentence each.\n" +
+                        "SCRIPTS: 3 short one-line scripts labeled (Asking about salary / Countering an offer / Asking for time).\n" +
+                        "OTHER BENEFITS TO NEGOTIATE: comma-separated list.\n" +
+                        "TYPICAL RANGE (INDIA): one line.";
+                break;
 
             case "career_path":
-                return "You are a career counselor. Explain the career path for: " + goal + "\n\n" +
-                        "Show progression from entry level to senior level.\n" +
-                        "For each level give: job title, years of experience needed, skills required, and average salary in India.\n" +
-                        "Give tips on how to grow faster in this career.\n" +
-                        "List top companies hiring for this field.";
+                base = "You are a career counselor. Explain the career path for: " + goal + "\n\n" +
+                        "Structure, entry to senior:\n" +
+                        "[LEVEL]: title, years of experience, key skills (comma-separated), avg salary in India — one line.\n" +
+                        "GROWTH TIPS: single-line bullets.\n" +
+                        "TOP HIRING COMPANIES: comma-separated list.";
+                break;
 
             // ═══════════════════════════════
             // MATH & SCIENCE (61-75)
             // ═══════════════════════════════
 
             case "math_solve":
-                return "You are a math teacher. Solve this problem step by step.\n\n" +
+                base = "You are a math teacher. Solve this problem step by step.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Show every single step clearly.\n" +
-                        "Write the formula used at each step.\n" +
-                        "Box the final answer clearly.\n" +
-                        "At the end explain the concept used to solve this problem.\n" +
-                        "Give one similar practice problem with answer.";
+                        "Structure: numbered steps, one line each, naming the formula used at each step. " +
+                        "End with 'FINAL ANSWER: [answer]' and 'CONCEPT USED: one sentence' and " +
+                        "'PRACTICE PROBLEM: one line'.";
+                break;
 
             case "math_explain":
-                return "You are a math teacher. Explain this math concept clearly: " + goal + "\n\n" +
+                base = "You are a math teacher. Explain this math concept clearly: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give: simple definition, why it is important, key formulas, step by step example, and common mistakes students make.\n" +
-                        "Use simple language a student can understand.\n" +
-                        "Give 2 practice problems with solutions.";
+                        "Structure:\n" +
+                        "DEFINITION: one sentence.\n" +
+                        "WHY IT MATTERS: one sentence.\n" +
+                        "KEY FORMULAS: single-line entries.\n" +
+                        "EXAMPLE: step by step, numbered lines.\n" +
+                        "COMMON MISTAKES: single-line bullets.\n" +
+                        "PRACTICE: 2 problems with answers, one line each.";
+                break;
 
             case "derivatives":
-                return "You are a calculus teacher. Find the derivative of this function step by step.\n\n" +
+                base = "You are a calculus teacher. Find the derivative of this function step by step.\n\n" +
                         "Function: " + content + "\n\n" +
-                        "Show: which differentiation rule is applied, every step of working, and the final simplified answer.\n" +
-                        "Name the rule used: power rule, chain rule, product rule, quotient rule, etc.\n" +
-                        "Give the derivative of similar functions for practice.";
+                        "Structure: RULE USED: name. STEPS: numbered lines. FINAL ANSWER: one line. " +
+                        "PRACTICE: one similar function, one line.";
+                break;
 
             case "integrals":
-                return "You are a calculus teacher. Evaluate this integral step by step.\n\n" +
+                base = "You are a calculus teacher. Evaluate this integral step by step.\n\n" +
                         "Integral: " + content + "\n\n" +
-                        "Show: which integration technique is used, every step of working, adding constant C if indefinite, and the final answer.\n" +
-                        "Name the technique used: substitution, integration by parts, partial fractions, etc.\n" +
-                        "Give a similar integral for practice with answer.";
+                        "Structure: TECHNIQUE USED: name. STEPS: numbered lines (include +C if indefinite). " +
+                        "FINAL ANSWER: one line. PRACTICE: one similar integral, one line.";
+                break;
 
             case "graph":
-                return "You are a math teacher. Explain how to sketch the graph of: " + content + "\n\n" +
-                        "Give: domain and range, x and y intercepts, symmetry, increasing and decreasing intervals, maximum and minimum points, and asymptotes if any.\n" +
-                        "Describe the overall shape of the graph.\n" +
-                        "Give key points to plot for an accurate sketch.";
+                base = "You are a math teacher. Explain how to sketch the graph of: " + content + "\n\n" +
+                        "Structure, one line each: DOMAIN, RANGE, X-INTERCEPTS, Y-INTERCEPTS, SYMMETRY, " +
+                        "INCREASING/DECREASING, MAX/MIN, ASYMPTOTES.\n" +
+                        "SHAPE: 2 sentences.\n" +
+                        "KEY POINTS TO PLOT: comma-separated coordinates.";
+                break;
 
             case "chemistry":
-                return "You are a chemistry teacher. Explain or solve: " + goal + "\n\n" +
+                base = "You are a chemistry teacher. Explain or solve: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "If it is a reaction: give balanced equation, type of reaction, and products formed.\n" +
-                        "If it is a concept: give definition, mechanism, and real example.\n" +
-                        "List important points to remember for exam.\n" +
-                        "Give common exam questions on this topic.";
+                        "If a reaction: BALANCED EQUATION, TYPE, PRODUCTS — one line each.\n" +
+                        "If a concept: DEFINITION, MECHANISM, EXAMPLE — one to two sentences each.\n" +
+                        "EXAM POINTS: single-line bullets.\n" +
+                        "EXAM QUESTIONS: 2, one line each.";
+                break;
 
             case "physics":
-                return "You are a physics teacher. Solve this physics problem step by step.\n\n" +
+                base = "You are a physics teacher. Solve this physics problem step by step.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Give: list the given values, identify what to find, write the formula, substitute values, show calculation, and state the final answer with units.\n" +
-                        "Explain the physics concept behind the problem.\n" +
-                        "Give one similar practice problem.";
+                        "Structure: GIVEN: single-line list. FIND: one line. FORMULA: one line. " +
+                        "CALCULATION: numbered steps. FINAL ANSWER: one line with units. " +
+                        "CONCEPT: 1 to 2 sentences. PRACTICE: one line.";
+                break;
 
             case "bio":
-                return "You are a biology teacher. Explain this biology topic: " + goal + "\n\n" +
+                base = "You are a biology teacher. Explain this biology topic: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give: clear explanation of the process, step by step if it is a process, key terms and their meanings, diagram description if applicable.\n" +
-                        "List important points for exam.\n" +
-                        "Give 3 expected exam questions with answers.";
+                        "Structure: EXPLANATION: 2 to 3 sentences or numbered steps if a process. " +
+                        "KEY TERMS: single-line entries. EXAM POINTS: single-line bullets. " +
+                        "EXAM QUESTIONS: 3, one line each with a one-line answer.";
+                break;
 
             case "stats":
-                return "You are a statistics teacher. Solve this statistics problem step by step.\n\n" +
+                base = "You are a statistics teacher. Solve this statistics problem step by step.\n\n" +
                         "Data: " + content + "\n\n" +
-                        "Calculate all relevant statistics: mean, median, mode, variance, standard deviation as applicable.\n" +
-                        "Show every calculation step.\n" +
-                        "Interpret what the results mean.\n" +
-                        "Give a practice problem with similar data.";
+                        "Structure: one line per statistic calculated (mean, median, mode, variance, std dev " +
+                        "as applicable), showing the calculation. INTERPRETATION: 1 to 2 sentences. " +
+                        "PRACTICE: one line.";
+                break;
 
             case "probability":
-                return "You are a probability teacher. Solve this probability problem step by step.\n\n" +
+                base = "You are a probability teacher. Solve this probability problem step by step.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Identify: type of probability problem, formula to use, sample space if needed.\n" +
-                        "Show every step of calculation.\n" +
-                        "Give the final probability as fraction, decimal, and percentage.\n" +
-                        "Explain what the answer means in plain language.";
+                        "Structure: TYPE: one line. FORMULA: one line. STEPS: numbered lines. " +
+                        "FINAL ANSWER: fraction, decimal, and percentage on one line. " +
+                        "MEANING: one sentence in plain language.";
+                break;
 
             case "linear_algebra":
-                return "You are a linear algebra teacher. Solve this linear algebra problem step by step.\n\n" +
+                base = "You are a linear algebra teacher. Solve this linear algebra problem step by step.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Show all matrix operations clearly.\n" +
-                        "Explain each step with the rule or property used.\n" +
-                        "Give the final answer clearly.\n" +
-                        "Explain when this type of problem appears in real applications.";
+                        "Structure: numbered steps, each naming the rule/property used. " +
+                        "FINAL ANSWER: one line. REAL APPLICATION: one sentence.";
+                break;
 
             case "calculus":
-                return "You are a calculus teacher. Solve this calculus problem step by step.\n\n" +
+                base = "You are a calculus teacher. Solve this calculus problem step by step.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Identify which calculus concept is needed.\n" +
-                        "Show every step with the rule used.\n" +
-                        "Give the final answer clearly.\n" +
-                        "Explain the concept used and give a similar practice problem.";
+                        "Structure: CONCEPT: one line. STEPS: numbered lines with rule used. " +
+                        "FINAL ANSWER: one line. PRACTICE: one line.";
+                break;
 
             case "geometry":
-                return "You are a geometry teacher. Solve this geometry problem step by step.\n\n" +
+                base = "You are a geometry teacher. Solve this geometry problem step by step.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Draw a text-based diagram if helpful.\n" +
-                        "List the given information, write the formula, show calculation, and give the final answer with units.\n" +
-                        "Name the theorem or property used.\n" +
-                        "Give a similar practice problem.";
+                        "Structure: DIAGRAM: simple ASCII if helpful. GIVEN: one line. FORMULA: one line. " +
+                        "CALCULATION: numbered steps. FINAL ANSWER: one line with units. " +
+                        "THEOREM USED: one line. PRACTICE: one line.";
+                break;
 
             case "trig":
-                return "You are a trigonometry teacher. Solve this trigonometry problem step by step.\n\n" +
+                base = "You are a trigonometry teacher. Solve this trigonometry problem step by step.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Show: which trig identity or formula is used, every step of simplification, and the final answer.\n" +
-                        "List all trig identities used.\n" +
-                        "Give the value in both exact form and decimal form.\n" +
-                        "Give a similar practice problem.";
+                        "Structure: IDENTITY/FORMULA USED: one line. STEPS: numbered lines. " +
+                        "FINAL ANSWER: exact and decimal form, one line. PRACTICE: one line.";
+                break;
 
             case "number_theory":
-                return "You are a number theory teacher. Solve this number theory problem step by step.\n\n" +
+                base = "You are a number theory teacher. Solve this number theory problem step by step.\n\n" +
                         "Problem: " + content + "\n\n" +
-                        "Show the theorem or property used.\n" +
-                        "Give complete proof or solution with every step.\n" +
-                        "Explain the concept in simple terms.\n" +
-                        "Give related number theory problems to practice.";
+                        "Structure: THEOREM/PROPERTY: one line. PROOF/SOLUTION: numbered steps. " +
+                        "PLAIN EXPLANATION: 1 to 2 sentences. RELATED PROBLEMS: comma-separated.";
+                break;
 
             // ═══════════════════════════════
             // RESEARCH & AI (76-90)
             // ═══════════════════════════════
 
             case "summarize_research":
-                return "You are a research assistant. Summarize this research paper clearly.\n\n" +
+                base = "You are a research assistant. Summarize this research paper clearly.\n\n" +
                         "Paper: " + content + "\n\n" +
-                        "Give:\n" +
-                        "OBJECTIVE: what the paper tries to solve\n" +
-                        "METHODOLOGY: how they did it\n" +
-                        "KEY FINDINGS: main results in bullet points\n" +
-                        "CONCLUSION: what was concluded\n" +
-                        "LIMITATIONS: what the paper did not cover\n" +
-                        "RELEVANCE: who should read this and why";
+                        "Structure, one to two sentences each: OBJECTIVE, METHODOLOGY, KEY FINDINGS " +
+                        "(single-line bullets), CONCLUSION, LIMITATIONS, RELEVANCE.";
+                break;
 
             case "cite":
-                return "You are a research assistant. Generate citations for this source.\n\n" +
+                base = "You are a research assistant. Generate citations for this source.\n\n" +
                         "Source details: " + content + "\n\n" +
-                        "Generate citation in these formats:\n" +
-                        "APA format\n" +
-                        "MLA format\n" +
-                        "IEEE format\n" +
-                        "Chicago format\n\n" +
-                        "Also show how to cite it as in-text citation in APA format.";
+                        "Structure, one line each: APA, MLA, IEEE, CHICAGO, IN-TEXT (APA).";
+                break;
 
             case "references":
-                return "You are a research assistant. Suggest relevant references and sources for: " + goal + "\n\n" +
+                base = "You are a research assistant. Suggest relevant references and sources for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give 5 types of credible sources to look for.\n" +
-                        "Suggest search keywords to find papers on this topic.\n" +
-                        "List recommended databases: IEEE, ACM, Google Scholar, etc.\n" +
-                        "Give tips on evaluating source credibility.";
+                        "Structure: SOURCE TYPES: single-line bullets. SEARCH KEYWORDS: comma-separated. " +
+                        "DATABASES: comma-separated. CREDIBILITY TIPS: single-line bullets.";
+                break;
 
             case "verify_citation":
-                return "You are a research assistant. Evaluate the credibility of this source.\n\n" +
+                base = "You are a research assistant. Evaluate the credibility of this source.\n\n" +
                         "Source: " + content + "\n\n" +
-                        "Check for: author credibility, publication quality, recency, citation count if mentioned, and bias.\n" +
-                        "Give a trust rating: HIGH, MEDIUM, or LOW with reasons.\n" +
-                        "Suggest how to cross-verify this information.\n" +
-                        "List any red flags if present.";
+                        "Structure, one line each: AUTHOR CREDIBILITY, PUBLICATION QUALITY, RECENCY, BIAS. " +
+                        "TRUST RATING: HIGH/MEDIUM/LOW with one-sentence reason. " +
+                        "CROSS-VERIFY: one sentence. RED FLAGS: single-line bullets if any.";
+                break;
 
             case "related_research":
-                return "You are a research assistant. Suggest related research areas for: " + goal + "\n\n" +
+                base = "You are a research assistant. Suggest related research areas for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give 5 related research topics worth exploring.\n" +
-                        "For each topic explain the connection and what gap it fills.\n" +
-                        "Suggest specific research questions to investigate.\n" +
-                        "Recommend starting resources for each related topic.";
+                        "Structure, 5 topics:\n" +
+                        "TOPIC: name\n" +
+                        "CONNECTION: one sentence\n" +
+                        "RESEARCH QUESTION: one sentence\n" +
+                        "STARTING RESOURCE: one line";
+                break;
 
             case "ai_explain":
-                return "You are an AI educator. Explain this AI concept clearly: " + goal + "\n\n" +
+                base = "You are an AI educator. Explain this AI concept clearly: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give: simple definition, how it works step by step, real world applications, advantages and limitations.\n" +
-                        "Use an analogy to make it easy to understand.\n" +
-                        "Give code example if applicable.\n" +
-                        "List related AI concepts to learn next.";
+                        "Structure: DEFINITION: one sentence. HOW IT WORKS: numbered steps. " +
+                        "APPLICATIONS: single-line bullets. PROS/CONS: single-line bullets each. " +
+                        "ANALOGY: one sentence. CODE EXAMPLE: if applicable. NEXT TOPICS: comma-separated.";
+                break;
 
             case "ml_model":
-                return "You are an ML educator. Explain this machine learning model: " + goal + "\n\n" +
+                base = "You are an ML educator. Explain this machine learning model: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Cover: type of learning, algorithm explanation, when to use it, hyperparameters, advantages and disadvantages.\n" +
-                        "Give a simple Python code example.\n" +
-                        "Compare with similar models.\n" +
-                        "List real datasets to practice with.";
+                        "Structure, one line each unless noted: LEARNING TYPE, ALGORITHM (2 to 3 sentences), " +
+                        "WHEN TO USE, KEY HYPERPARAMETERS (comma-separated), PROS, CONS. " +
+                        "CODE: simple Python example. COMPARISON: 1 to 2 sentences vs a similar model. " +
+                        "PRACTICE DATASETS: comma-separated.";
+                break;
 
             case "nn_arch":
-                return "You are a deep learning educator. Explain this neural network architecture.\n\n" +
+                base = "You are a deep learning educator. Explain this neural network architecture.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Cover: input layer, hidden layers, output layer, activation functions used, loss function, optimizer.\n" +
-                        "Draw a simple text-based architecture diagram.\n" +
-                        "Explain what each layer learns.\n" +
-                        "Give a simple implementation example.";
+                        "Structure: LAYERS: one line per layer type. ACTIVATIONS: one line. " +
+                        "LOSS FUNCTION: one line. OPTIMIZER: one line. ASCII DIAGRAM: simple text diagram. " +
+                        "WHAT EACH LAYER LEARNS: single-line bullets. CODE: simple implementation.";
+                break;
 
             case "deep_learning":
-                return "You are a deep learning educator. Explain this deep learning concept: " + goal + "\n\n" +
+                base = "You are a deep learning educator. Explain this deep learning concept: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Give: concept explanation, mathematical intuition in simple terms, architecture used, training process, real applications.\n" +
-                        "Compare with traditional machine learning approach.\n" +
-                        "Give a simple code example.\n" +
-                        "List important papers on this topic.";
+                        "Structure: CONCEPT: 2 sentences. INTUITION: 2 sentences, plain terms. " +
+                        "ARCHITECTURE: one line. TRAINING: numbered steps. APPLICATIONS: single-line bullets. " +
+                        "VS TRADITIONAL ML: 1 to 2 sentences. CODE: simple example. KEY PAPERS: comma-separated.";
+                break;
 
             case "nlp":
-                return "You are an NLP educator. Explain this NLP concept: " + goal + "\n\n" +
+                base = "You are an NLP educator. Explain this NLP concept: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Cover: what the task is, common approaches to solve it, popular models used, evaluation metrics, real applications.\n" +
-                        "Give a simple code example using Python.\n" +
-                        "List popular NLP libraries and tools.\n" +
-                        "Give practice datasets for this NLP task.";
+                        "Structure: TASK: one sentence. APPROACHES: single-line bullets. POPULAR MODELS: " +
+                        "comma-separated. METRICS: comma-separated. APPLICATIONS: single-line bullets. " +
+                        "CODE: simple Python example. LIBRARIES: comma-separated. DATASETS: comma-separated.";
+                break;
 
             case "cv":
-                return "You are a computer vision educator. Explain this computer vision concept: " + goal + "\n\n" +
+                base = "You are a computer vision educator. Explain this computer vision concept: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Cover: what the task involves, popular algorithms and models, how they work, applications in industry.\n" +
-                        "Give a simple code example using OpenCV or PyTorch.\n" +
-                        "Compare different approaches.\n" +
-                        "List benchmark datasets for this task.";
+                        "Structure: TASK: one sentence. ALGORITHMS: single-line bullets. HOW THEY WORK: " +
+                        "2 to 3 sentences. APPLICATIONS: single-line bullets. CODE: simple OpenCV or PyTorch " +
+                        "example. COMPARISON: 1 to 2 sentences. BENCHMARK DATASETS: comma-separated.";
+                break;
 
             case "data_viz":
-                return "You are a data visualization expert. Suggest the best visualization approach for this data.\n\n" +
+                base = "You are a data visualization expert. Suggest the best visualization approach for this data.\n\n" +
                         "Data: " + content + "\n\n" +
-                        "Recommend the best chart type and explain why.\n" +
-                        "Give alternatives and when to use each.\n" +
-                        "Provide code example in Python using matplotlib or seaborn.\n" +
-                        "List best practices for clear and effective data visualization.";
+                        "Structure: RECOMMENDED CHART: name and one-sentence reason. ALTERNATIVES: " +
+                        "single-line bullets with when to use. CODE: Python example using matplotlib or " +
+                        "seaborn. BEST PRACTICES: single-line bullets.";
+                break;
 
             case "ethics_ai":
-                return "You are an AI ethics expert. Discuss the ethical considerations for: " + goal + "\n\n" +
+                base = "You are an AI ethics expert. Discuss the ethical considerations for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Cover: bias and fairness, privacy concerns, transparency and explainability, accountability, social impact.\n" +
-                        "Give real examples of ethical issues that occurred.\n" +
-                        "Suggest guidelines for responsible AI development.\n" +
-                        "Discuss relevant laws and regulations.";
+                        "Structure, one to two sentences each: BIAS AND FAIRNESS, PRIVACY, TRANSPARENCY, " +
+                        "ACCOUNTABILITY, SOCIAL IMPACT.\n" +
+                        "REAL EXAMPLE: one sentence.\n" +
+                        "GUIDELINES: single-line bullets.\n" +
+                        "RELEVANT LAWS: comma-separated.";
+                break;
 
             case "ai_trends":
-                return "You are an AI researcher. Explain the latest trends in AI for: " + goal + "\n\n" +
-                        "Give the top 5 AI trends that are most relevant in 2025 and 2026.\n" +
-                        "For each trend: what it is, why it matters, current state, and future direction.\n" +
-                        "Mention key companies and research labs leading in each area.\n" +
-                        "Give advice on which trends are most important to follow for a student.";
+                base = "You are an AI researcher. Explain the latest trends in AI for: " + goal + "\n\n" +
+                        "Structure, top 5 trends:\n" +
+                        "TREND: name\n" +
+                        "WHY IT MATTERS: one sentence\n" +
+                        "CURRENT STATE: one sentence\n" +
+                        "LEADING LABS: comma-separated\n\n" +
+                        "MOST IMPORTANT TO FOLLOW: one sentence advice.";
+                break;
 
             case "career_ai":
-                return "You are an AI career counselor. Give career guidance for: " + goal + " in the AI field.\n\n" +
-                        "Cover: roles available, skills required, salary range in India, companies hiring, how to get started.\n" +
-                        "Give a 6 month plan to become job-ready in this AI role.\n" +
-                        "List top certifications and courses.\n" +
-                        "Give tips on building an AI portfolio.";
+                base = "You are an AI career counselor. Give career guidance for: " + goal + " in the AI field.\n\n" +
+                        "Structure: ROLES: comma-separated. SKILLS: comma-separated. SALARY RANGE (INDIA): " +
+                        "one line. HIRING COMPANIES: comma-separated. GETTING STARTED: 2 sentences. " +
+                        "6 MONTH PLAN: numbered monthly milestones. CERTIFICATIONS: comma-separated. " +
+                        "PORTFOLIO TIPS: single-line bullets.";
+                break;
 
             // ═══════════════════════════════
             // BONUS EXTRAS (91-100)
             // ═══════════════════════════════
 
             case "translate":
-                return "You are a study assistant. Explain the following content in very simple English that a school student can understand.\n\n" +
+                base = "You are a study assistant. Explain the following content in very simple English that a " +
+                        "school student can understand.\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Use only common everyday words.\n" +
-                        "Break down every difficult term.\n" +
-                        "Use short sentences.\n" +
-                        "Give a simple analogy from daily life to explain the main idea.";
+                        "Use short sentences and everyday words only. Max 6 sentences. " +
+                        "End with 'ANALOGY: one sentence.'";
+                break;
 
             case "voice_note":
-                return "You are a study assistant. Summarize these rough notes into clean organized study material.\n\n" +
+                base = "You are a study assistant. Summarize these rough notes into clean organized study material.\n\n" +
                         "Notes: " + content + "\n\n" +
-                        "Organize the notes with clear headings.\n" +
-                        "Fix any incomplete points and make them complete.\n" +
-                        "Highlight the most important points.\n" +
-                        "Remove any irrelevant or repeated information.";
+                        "Structure: numbered headings with single-line bullets under each. " +
+                        "Mark the single most important point with 'IMPORTANT:' prefix. " +
+                        "Do not repeat information.";
+                break;
 
             case "ask_ai":
-                return "You are a knowledgeable AI assistant. Answer this question thoroughly: " + goal + "\n\n" +
+                base = "You are a knowledgeable AI assistant. Answer this question thoroughly: " + goal + "\n\n" +
                         "Context: " + content + "\n\n" +
-                        "Give a complete and accurate answer.\n" +
-                        "Use examples to clarify.\n" +
-                        "If the question has multiple parts answer each part separately.\n" +
-                        "At the end suggest related questions the student might want to explore.";
+                        "Give a complete, accurate answer, max 200 words, with one concrete example. " +
+                        "If the question has multiple parts, answer each as its own numbered point. " +
+                        "End with 'RELATED QUESTIONS:' comma-separated list.";
+                break;
 
             case "debate":
-                return "You are a debate coach. Present both sides of this topic: " + goal + "\n\n" +
-                        "Give 4 strong arguments FOR the topic.\n" +
-                        "Give 4 strong arguments AGAINST the topic.\n" +
-                        "Give evidence or examples for each argument.\n" +
-                        "End with a balanced conclusion that considers both sides.\n" +
-                        "Do not show personal bias.";
+                base = "You are a debate coach. Present both sides of this topic: " + goal + "\n\n" +
+                        "Structure: FOR: 4 single-line arguments with brief evidence. " +
+                        "AGAINST: 4 single-line arguments with brief evidence. " +
+                        "CONCLUSION: 2 balanced sentences, no personal bias.";
+                break;
 
             case "story":
-                return "You are a creative teacher. Explain this concept as an engaging story: " + goal + "\n\n" +
+                base = "You are a creative teacher. Explain this concept as an engaging short story: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Create a short story where characters or objects represent the concepts.\n" +
-                        "Make the story interesting and easy to follow.\n" +
-                        "After the story, explain how the story maps to the actual concept.\n" +
-                        "The story should help the student remember the concept easily.";
+                        "Write a short story (max 200 words) where characters or objects represent the " +
+                        "concepts. After the story add 'MAPPING:' one line per concept-to-character link.";
+                break;
 
             case "analogy":
-                return "You are a creative teacher. Explain this concept using a simple analogy: " + goal + "\n\n" +
+                base = "You are a creative teacher. Explain this concept using a simple analogy: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Create 2 different analogies from everyday life.\n" +
-                        "For each analogy explain: what represents what, how the comparison works, and where the analogy breaks down.\n" +
-                        "The analogy should make a complex concept feel obvious and simple.";
+                        "Structure, 2 analogies:\n" +
+                        "ANALOGY: one sentence\n" +
+                        "MAPPING: one sentence\n" +
+                        "WHERE IT BREAKS DOWN: one sentence";
+                break;
 
             case "mindmap":
-                return "You are a study assistant. Create a text-based mind map for: " + goal + "\n\n" +
+                base = "You are a study assistant. Create a text-based mind map for: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Show the central topic in the middle.\n" +
-                        "Branch out to main topics.\n" +
-                        "Branch each main topic to subtopics.\n" +
-                        "Use indentation and symbols to show hierarchy clearly.\n" +
-                        "Cover all important aspects of the topic.";
+                        "Structure using indentation only (no tables, no emoji):\n" +
+                        "[CENTRAL TOPIC]\n" +
+                        "  - Main topic 1\n" +
+                        "    - Subtopic\n" +
+                        "  - Main topic 2\n" +
+                        "    - Subtopic\n" +
+                        "(cover all important aspects, max 2 indent levels)";
+                break;
 
             case "acronym":
-                return "You are a memory expert. Create acronyms to remember the key concepts in: " + goal + "\n\n" +
+                base = "You are a memory expert. Create acronyms to remember the key concepts in: " + goal + "\n\n" +
                         "Content: " + content + "\n\n" +
-                        "Create at least 2 meaningful acronyms.\n" +
-                        "For each acronym: give the word, explain what each letter stands for, and show how it helps remember the concept.\n" +
-                        "Make the acronyms pronounceable and easy to recall under exam pressure.";
+                        "Structure, at least 2 acronyms:\n" +
+                        "ACRONYM: the word\n" +
+                        "MEANING: one line per letter, comma-separated\n" +
+                        "WHY IT HELPS: one sentence";
+                break;
 
             case "recommend":
-                return "You are a learning mentor. Recommend the best resources to learn: " + goal + "\n\n" +
-                        "Give recommendations for: best books, best YouTube channels, best websites, best courses, best practice platforms.\n" +
-                        "For each resource give the name, why it is recommended, and who it is best for beginner intermediate or advanced.\n" +
-                        "Focus on free resources first then paid options.\n" +
-                        "Give a suggested order to use these resources.";
+                base = "You are a learning mentor. Recommend the best resources to learn: " + goal + "\n\n" +
+                        "Structure, free resources first:\n" +
+                        "BOOKS: comma-separated with one-line note.\n" +
+                        "YOUTUBE: comma-separated with one-line note.\n" +
+                        "WEBSITES: comma-separated with one-line note.\n" +
+                        "COURSES: comma-separated with one-line note.\n" +
+                        "PRACTICE PLATFORMS: comma-separated.\n" +
+                        "SUGGESTED ORDER: one line.";
+                break;
 
             case "motivate":
-                return "You are a student motivator. Give an encouraging and motivating message for a student studying: " + goal + "\n\n" +
-                        "Give a powerful motivational quote relevant to studying and exams.\n" +
-                        "Give 3 practical tips to stay focused and motivated while studying.\n" +
-                        "Remind the student why their hard work will pay off.\n" +
-                        "Keep the tone warm, encouraging, and energetic.\n" +
-                        "End with a strong call to action to get back to studying.";
+                base = "You are a student motivator. Give an encouraging message for a student studying: " + goal + "\n\n" +
+                        "Structure: QUOTE: one relevant quote. TIPS: 3 single-line practical tips. " +
+                        "REMINDER: one sentence on why the effort pays off. " +
+                        "Keep tone warm and energetic, max 120 words total.";
+                break;
 
             default:
-                return "You are a study assistant. Help the student understand this content clearly.\n\n" +
+                base = "You are a study assistant. Help the student understand this content clearly.\n\n" +
                         "Topic: " + goal + "\n" +
                         "Content: " + content + "\n\n" +
-                        "Give a clear explanation with key points, examples, and what is important to remember for exam.\n" +
-                        "Use simple language suitable for a student.";
+                        "Structure: EXPLANATION (max 4 sentences), KEY POINTS (single-line bullets), " +
+                        "EXAMPLE (one line), EXAM RELEVANCE (one sentence).";
+                break;
         }
-    }
 
+        return base + FORMAT_RULES;
+    }
 }
