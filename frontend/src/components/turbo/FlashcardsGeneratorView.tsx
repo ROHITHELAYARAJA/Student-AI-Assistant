@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
+import { TurboMascot } from './TurboMascot.js';
+import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
+import { TurboStudyPack, TurboFlashcard } from '../../types/turbo.js';
 import {
   Sparkles,
   BookOpen,
@@ -11,7 +14,12 @@ import {
   RotateCw,
   Shuffle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Brain,
+  CheckCircle2,
+  AlertCircle,
+  HelpCircle,
+  Loader2
 } from 'lucide-react';
 
 interface FlashcardsGeneratorViewProps {
@@ -22,72 +30,105 @@ interface FlashcardsGeneratorViewProps {
 }
 
 export const FlashcardsGeneratorView: React.FC<FlashcardsGeneratorViewProps> = ({
-  noteId = 'faang-sde',
-  topicTitle = 'Roadmap: Resume to FAANG/MAANG SDE',
+  noteId = 'current',
+  topicTitle = 'How to learn Java',
   onOpenUpgrade,
   onOpenEmma
 }) => {
-  const [selectedCount, setSelectedCount] = useState<number>(20);
-  const [instructions, setInstructions] = useState('');
-  const [isGenerated, setIsGenerated] = useState(false);
+  const [studyPack, setStudyPack] = useState<TurboStudyPack | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [memoryScore, setMemoryScore] = useState(85);
 
-  const cardSets = [
-    { count: 10, label: 'Quick review' },
-    { count: 20, label: 'Standard set', isDefault: true },
-    { count: 30, label: 'Comprehensive' },
-    { count: 50, label: 'Deep dive' }
-  ];
+  useEffect(() => {
+    const existing = getStudyPack(noteId) || getStudyPack(topicTitle);
+    if (existing) {
+      setStudyPack(existing);
+    } else {
+      setIsLoading(true);
+      fetchStudyPack(topicTitle)
+        .then((pack) => setStudyPack(pack))
+        .catch((err) => console.error('Failed to load study pack:', err))
+        .finally(() => setIsLoading(false));
+    }
+  }, [noteId, topicTitle]);
 
-  const generatedCards = [
+  const activeTitle = studyPack?.topic || topicTitle;
+
+  const cards: TurboFlashcard[] = studyPack?.flashcards?.cards || [
     {
-      id: 1,
-      front: 'What is the primary constraint when auditing a resume for a FAANG SDE role?',
-      back: 'Quantified impact and high-scale technical depth: highlighting latency reductions, throughput numbers, and measurable business metrics rather than passive task descriptions.'
+      id: 'c-1',
+      front: `What is the core execution model in ${activeTitle}?`,
+      back: `Code is compiled into platform-neutral bytecode and executed via runtime compilation (JIT/AOT) with automatic memory management.`,
+      category: 'Runtime Architecture',
+      masteryLevel: 'learning'
     },
     {
-      id: 2,
-      front: 'Why is the two-pointer / sliding-window pattern preferred for subarray problem solving?',
-      back: 'It reduces nested iteration from quadratic time O(n²) down to linear time O(n) by maintaining a moving window state.'
+      id: 'c-2',
+      front: `What is the difference between Stack and Heap memory for ${activeTitle}?`,
+      back: `Stack stores primitive variables and method call stack frames (fast, thread-isolated). Heap stores dynamic objects and reference data (globally shared, managed by Garbage Collection).`,
+      category: 'Memory Management',
+      masteryLevel: 'mastered'
     },
     {
-      id: 3,
-      front: 'When designing a caching layer for a distributed URL shortener, what prevents single point of failure?',
-      back: 'Consistent hashing with Redis Sentinel or Redis Cluster, enabling automatic master-replica failover and balanced partition distribution.'
+      id: 'c-3',
+      front: `How do you avoid concurrency race conditions in ${activeTitle}?`,
+      back: `By utilizing thread-safe primitives, atomic variables (CAS operations), synchronized locks, and immutable data structures.`,
+      category: 'Concurrency',
+      masteryLevel: 'new'
+    },
+    {
+      id: 'c-4',
+      front: `What is the optimal collection type for fast key lookups in ${activeTitle}?`,
+      back: `Hash Table / HashMap with hash code bucketing, which gives amortized O(1) lookup, insert, and deletion complexity.`,
+      category: 'Data Structures',
+      masteryLevel: 'learning'
     }
   ];
 
-  const handleGenerate = () => {
-    setIsGenerated(true);
-    setCurrentIdx(0);
+  const currentCard = cards[currentIdx] || cards[0];
+
+  const handleNext = () => {
     setIsFlipped(false);
+    setCurrentIdx((prev) => (prev < cards.length - 1 ? prev + 1 : 0));
+  };
+
+  const handlePrev = () => {
+    setIsFlipped(false);
+    setCurrentIdx((prev) => (prev > 0 ? prev - 1 : cards.length - 1));
+  };
+
+  const handleRateCard = (rating: 'hard' | 'good' | 'easy') => {
+    if (rating === 'easy') {
+      setMemoryScore((prev) => Math.min(100, prev + 2));
+    } else if (rating === 'hard') {
+      setMemoryScore((prev) => Math.max(40, prev - 3));
+    }
+    handleNext();
   };
 
   return (
-    <div className="min-h-screen bg-[#111114] text-zinc-100 flex flex-col font-sans select-none">
-      <header className="h-14 px-6 flex items-center justify-between border-b border-[#1E1E28] bg-[#111114] shrink-0">
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col font-body select-none">
+      {/* Top Header */}
+      <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 19l7-7 3 3-7 7-3-3z" />
-              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-              <path d="M2 2l7.586 7.586" />
-            </svg>
-            <span className="font-bold text-white text-base tracking-tight">turbo ai</span>
+            <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
+              ⚡
+            </div>
+            <span className="font-headline font-bold text-sm tracking-tight">turbo ai</span>
           </div>
 
-          <div className="h-4 w-[1px] bg-[#2A2A3A]" />
+          <div className="h-4 w-[1px] bg-[var(--color-border)]" />
 
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <button onClick={() => router.navigate('/dashboard')} className="hover:text-white transition-colors flex items-center gap-1">
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <button onClick={() => router.navigate('/dashboard')} className="hover:text-[var(--color-text)] transition-colors flex items-center gap-1">
               <span>🏠</span>
               <span>Home</span>
             </button>
             <span>›</span>
-            <button onClick={() => router.navigate(`/notes/${noteId}`)} className="text-zinc-200 font-medium truncate max-w-md hover:underline">
-              {topicTitle}
-            </button>
+            <span className="text-[var(--color-text)] font-medium truncate max-w-md">{activeTitle}</span>
           </div>
         </div>
 
@@ -99,186 +140,210 @@ export const FlashcardsGeneratorView: React.FC<FlashcardsGeneratorViewProps> = (
             <Sparkles size={13} className="fill-black" />
             <span>Upgrade</span>
           </button>
-
-          <button
-            onClick={() => router.navigate('/signup')}
-            className="w-8 h-8 rounded-full bg-[#582CD6] text-white font-bold text-xs flex items-center justify-center ring-2 ring-[#2F2450]"
-          >
-            E
-          </button>
         </div>
       </header>
 
+      {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-20 bg-[#111114] border-r border-[#1E1E28] flex flex-col items-center py-6 space-y-6 shrink-0">
-          <button onClick={() => router.navigate(`/notes/${noteId}`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+        {/* Navigation Sidebar */}
+        <aside className="w-20 bg-[var(--color-bg)] border-r border-[var(--color-border)] flex flex-col items-center py-6 space-y-6 shrink-0">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <BookOpen size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Learn</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/editor`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/editor`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <FileText size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Notes</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/quiz`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/quiz`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Award size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Quiz</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/flashcards`)} className="flex flex-col items-center gap-1.5 text-purple-400 group">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/flashcards`)}
+            className="flex flex-col items-center gap-1.5 text-purple-400 group"
+          >
             <div className="w-10 h-10 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center">
               <Layers size={18} />
             </div>
             <span className="text-[10px] font-bold tracking-tight">Flashcards</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/podcast`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/podcast`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Headphones size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Podcast</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/source`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/sources`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <FolderGit2 size={18} />
             </div>
-            <span className="text-[10px] font-medium tracking-tight">Source</span>
+            <span className="text-[10px] font-medium tracking-tight">Sources</span>
           </button>
         </aside>
 
-        <main className="flex-1 overflow-y-auto px-8 py-14 max-w-2xl mx-auto w-full flex flex-col items-center">
-          {!isGenerated ? (
-            <div className="w-full space-y-8">
-              <div className="text-center space-y-2">
-                <h1 className="text-3xl font-extrabold text-white tracking-tight">
-                  Welcome to Flashcards
-                </h1>
-                <p className="text-xs text-zinc-400">
-                  Choose how many flashcards to generate from your notes
-                </p>
+        {/* Flashcards View */}
+        <main className="flex-1 overflow-y-auto px-6 md:px-12 py-10 flex flex-col items-center">
+          <div className="max-w-xl w-full space-y-6">
+            {/* Top Memory Score Indicator */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400">
+                  <Brain size={18} />
+                </div>
+                <div>
+                  <div className="font-headline font-bold text-xs text-[var(--color-text)]">
+                    Memory Score: {memoryScore}%
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text-muted)]">
+                    Card {currentIdx + 1} of {cards.length} • Active Recall Mode
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-3">
-                {cardSets.map((set) => {
-                  const isSelected = selectedCount === set.count;
-                  return (
-                    <button
-                      key={set.count}
-                      type="button"
-                      onClick={() => setSelectedCount(set.count)}
-                      className={`p-4 rounded-2xl border text-center transition-all relative ${
-                        isSelected
-                          ? 'bg-[#3D2C6A]/30 border-purple-500 text-purple-200 shadow-lg shadow-purple-600/10'
-                          : 'bg-[#181822] border-[#262638] text-zinc-400 hover:bg-[#20202E]'
-                      }`}
-                    >
-                      {set.isDefault && (
-                        <Sparkles size={11} className="text-purple-400 absolute top-2.5 right-2.5" />
-                      )}
-                      <div className="text-xl font-bold text-white">{set.count}</div>
-                      <div className="text-[11px] text-zinc-400 mt-1">{set.label}</div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-300 block">
-                  Special Instructions (Optional)
-                </label>
-                <textarea
-                  rows={4}
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  placeholder="Describe what you want your flashcards to focus on, or leave blank to cover the full notes..."
-                  className="w-full p-4 rounded-2xl bg-[#16161E] border border-[#262638] text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-purple-500 resize-none"
-                />
-              </div>
-
-              <button
-                onClick={handleGenerate}
-                className="w-full py-3.5 rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition-all active:scale-[0.98]"
-              >
-                Generate {selectedCount} Flashcards
-              </button>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                Spaced Repetition
+              </span>
             </div>
-          ) : (
-            <div className="w-full space-y-6">
-              <div className="flex items-center justify-between text-xs text-zinc-400">
-                <span>Card {currentIdx + 1} of {generatedCards.length}</span>
-                <button
-                  onClick={() => setIsGenerated(false)}
-                  className="text-purple-400 hover:underline"
-                >
-                  Configure set
-                </button>
-              </div>
 
+            {/* 3D Flashcard Flip Container */}
+            <div
+              onClick={() => setIsFlipped(!isFlipped)}
+              className="w-full h-80 rounded-3xl cursor-pointer perspective-1000 relative group transition-transform active:scale-[0.99]"
+            >
               <div
-                onClick={() => setIsFlipped(!isFlipped)}
-                className="w-full h-80 rounded-3xl p-8 bg-[#181824] border border-[#2C2C40] hover:border-purple-500/50 cursor-pointer flex flex-col justify-between shadow-2xl transition-all"
+                className={`w-full h-full rounded-3xl p-8 border transition-all duration-500 shadow-2xl flex flex-col justify-between ${
+                  isFlipped
+                    ? 'bg-purple-950/20 border-purple-500/40 shadow-purple-500/10'
+                    : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-purple-500/40'
+                }`}
               >
-                <div className="flex items-center justify-between text-[11px] text-zinc-500 uppercase font-bold tracking-wider">
-                  <span>{isFlipped ? 'Answer' : 'Question'}</span>
-                  <span className="flex items-center gap-1 text-purple-400 lowercase font-normal">
+                {/* Card Header */}
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
+                    {currentCard.category || 'Core Concept'}
+                  </span>
+                  <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1 font-medium">
                     <RotateCw size={12} />
-                    <span>flip</span>
+                    <span>{isFlipped ? 'Answer' : 'Tap to flip'}</span>
                   </span>
                 </div>
 
-                <div className="my-auto text-center px-4 text-base md:text-lg font-medium text-white leading-relaxed">
-                  {isFlipped ? generatedCards[currentIdx].back : generatedCards[currentIdx].front}
+                {/* Card Content */}
+                <div className="my-auto text-center px-4">
+                  {isFlipped ? (
+                    <div className="space-y-3 animate-in fade-in duration-200">
+                      <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                        Key Answer & Explanation
+                      </div>
+                      <p className="font-headline text-base md:text-lg text-[var(--color-text)] leading-relaxed">
+                        {currentCard.back}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                        Concept Question
+                      </div>
+                      <h2 className="font-headline font-bold text-xl md:text-2xl text-[var(--color-text)] leading-snug">
+                        {currentCard.front}
+                      </h2>
+                    </div>
+                  )}
                 </div>
 
-                <div className="text-center text-[10px] text-zinc-500">
-                  Click anywhere to reveal
+                {/* Card Footer */}
+                <div className="text-center text-[11px] text-[var(--color-text-muted)]">
+                  {isFlipped ? 'Rate your recall below' : 'Click anywhere on card to reveal explanation'}
                 </div>
               </div>
+            </div>
 
-              <div className="flex items-center justify-between pt-2">
+            {/* Spaced Repetition Rating Buttons */}
+            {isFlipped ? (
+              <div className="grid grid-cols-3 gap-3 animate-in fade-in duration-200">
                 <button
-                  disabled={currentIdx === 0}
-                  onClick={() => {
-                    setIsFlipped(false);
-                    setCurrentIdx((i) => Math.max(0, i - 1));
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#181824] border border-[#272738] text-xs text-zinc-300 disabled:opacity-40"
+                  onClick={() => handleRateCard('hard')}
+                  className="py-3 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold text-xs transition-all flex flex-col items-center gap-1"
                 >
-                  <ChevronLeft size={14} />
+                  <span>Hard</span>
+                  <span className="text-[10px] text-rose-400/80 font-normal">Review soon</span>
+                </button>
+
+                <button
+                  onClick={() => handleRateCard('good')}
+                  className="py-3 px-4 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 font-bold text-xs transition-all flex flex-col items-center gap-1"
+                >
+                  <span>Good</span>
+                  <span className="text-[10px] text-purple-400/80 font-normal">Normal delay</span>
+                </button>
+
+                <button
+                  onClick={() => handleRateCard('easy')}
+                  className="py-3 px-4 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-xs transition-all flex flex-col items-center gap-1"
+                >
+                  <span>Easy</span>
+                  <span className="text-[10px] text-emerald-400/80 font-normal">Mastered (+2%)</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-2">
+                <button
+                  onClick={handlePrev}
+                  className="flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+                >
+                  <ChevronLeft size={16} />
                   <span>Previous</span>
                 </button>
 
                 <button
-                  onClick={() => {
-                    setIsFlipped(false);
-                    setCurrentIdx((i) => (i < generatedCards.length - 1 ? i + 1 : 0));
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-semibold shadow-md shadow-purple-600/30"
+                  onClick={handleNext}
+                  className="flex items-center gap-1 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/25 transition-all"
                 >
                   <span>Next Card</span>
-                  <ChevronRight size={14} />
+                  <ChevronRight size={16} />
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
 
+      {/* Floating Ask Emma AI Button */}
       <button
         onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
-        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[#181824] border border-[#2D2D44] shadow-xl text-xs font-bold text-white flex items-center gap-2 hover:bg-[#222234] hover:scale-105 active:scale-95 transition-all z-40"
+        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40"
       >
-        <img src="/emma-expressions/teaching.png" alt="Mascot" className="w-5 h-5 rounded-full object-cover" />
+        <TurboMascot size="xs" expression="teaching" />
         <span>Ask Emma AI</span>
       </button>
     </div>
   );
 };
+export default FlashcardsGeneratorView;

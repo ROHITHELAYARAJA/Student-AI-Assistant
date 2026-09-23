@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
+import { TurboMascot } from './TurboMascot.js';
+import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
+import { TurboStudyPack, TurboNotes } from '../../types/turbo.js';
 import {
   BookOpen,
   FileText,
@@ -21,7 +24,11 @@ import {
   Paperclip,
   Mic,
   ArrowUp,
-  X
+  X,
+  Code2,
+  CheckCircle2,
+  Download,
+  Loader2
 } from 'lucide-react';
 
 interface NotesEditorViewProps {
@@ -31,18 +38,71 @@ interface NotesEditorViewProps {
 }
 
 export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
-  noteId = 'faang-sde',
-  topicTitle = 'Roadmap: Resume to FAANG/MAANG SDE',
+  noteId = 'current',
+  topicTitle = 'How to learn Java',
   onOpenUpgrade
 }) => {
-  const [fontSize, setFontSize] = useState(24);
-  const [isBold, setIsBold] = useState(true);
+  const [studyPack, setStudyPack] = useState<TurboStudyPack | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fontSize, setFontSize] = useState(15);
+  const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
-  const [fontFamily, setFontFamily] = useState('Clarika');
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [chatPrompt, setChatPrompt] = useState('');
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string }>>([]);
+
+  useEffect(() => {
+    const existing = getStudyPack(noteId) || getStudyPack(topicTitle);
+    if (existing) {
+      setStudyPack(existing);
+    } else {
+      setIsLoading(true);
+      fetchStudyPack(topicTitle)
+        .then((pack) => setStudyPack(pack))
+        .catch((err) => console.error('Failed to load study pack:', err))
+        .finally(() => setIsLoading(false));
+    }
+  }, [noteId, topicTitle]);
+
+  const activeTitle = studyPack?.topic || topicTitle;
+
+  const notes: TurboNotes = studyPack?.notes || {
+    topic: activeTitle,
+    title: `Mastery Notes: ${activeTitle}`,
+    lastUpdated: 'Just now',
+    summary: `Structured comprehensive study guide and key takeaways for ${activeTitle}. Generated with Bedrock AI inference.`,
+    keyTakeaways: [
+      'Master core concepts, runtime semantics, and structural invariants.',
+      'Understand typical boundary edge cases and failure modes.',
+      'Apply idiomatic patterns and benchmark time/space tradeoffs.'
+    ],
+    sections: [
+      {
+        heading: '1. Architecture & Execution Foundations',
+        content: `When learning ${activeTitle}, building an accurate mental model is crucial. Start by understanding how code gets transformed into execution instructions and how system memory is allocated.`,
+        bulletPoints: [
+          'Memory lifecycle: Stack vs Heap allocation dynamics',
+          'Execution pipeline: Compilation, interpretation, and runtime optimizations',
+          'Scope rules and variable lifetime guarantees'
+        ],
+        codeSnippet: {
+          language: 'java',
+          code: `// Core idiom demonstration\npublic class Solution {\n    public static void main(String[] args) {\n        System.out.println("Mastering ${activeTitle} with Turbo AI!");\n    }\n}`
+        }
+      },
+      {
+        heading: '2. High-Yield Patterns & Problem Archetypes',
+        content: `Examinations and technical evaluations prioritize understanding trade-offs. Rather than memorizing solutions, master the general pattern templates.`,
+        bulletPoints: [
+          'Linear vs non-linear traversal strategies',
+          'Defensive verification and error boundaries',
+          'Balancing readability with algorithmic efficiency'
+        ],
+        formulas: ['T(n) = O(n \\log n) \\quad \\text{amortized overhead}', 'S(n) = O(1) \\quad \\text{in-place auxiliary}']
+      }
+    ]
+  };
 
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,143 +117,153 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
         ...prev,
         {
           sender: 'ai',
-          text: `Here is the high-yield breakdown for "${userText}": Focus on mastering two-pointer sliding window patterns, evaluating horizontal scaling bottlenecks with Redis, and quantifying achievements on your resume with exact metrics!`
+          text: `Here is the high-yield study breakdown for "${userText}": Focus on mastering core runtime semantics for ${activeTitle}, verifying edge-case conditions, and practicing active recall on your flashcard deck!`
         }
       ]);
-    }, 600);
+    }, 500);
+  };
+
+  const handleExport = () => {
+    const textContent = `${notes.title}\n\nSummary:\n${notes.summary}\n\nKey Takeaways:\n${notes.keyTakeaways.map(t => `- ${t}`).join('\n')}\n\n${notes.sections.map(s => `${s.heading}\n${s.content}\n${s.bulletPoints?.map(b => `* ${b}`).join('\n') || ''}`).join('\n\n')}`;
+    const blob = new Blob([textContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${activeTitle.replace(/[^a-z0-9]/gi, '_')}_notes.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="min-h-screen bg-[#111114] text-zinc-100 flex flex-col font-sans select-none">
-      <header className="h-14 px-5 flex items-center justify-between border-b border-[#1E1E28] bg-[#111114] shrink-0">
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col font-body select-none">
+      {/* Top Header */}
+      <header className="h-14 px-5 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 19l7-7 3 3-7 7-3-3z" />
-              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-              <path d="M2 2l7.586 7.586" />
-            </svg>
-            <span className="font-bold text-white text-base tracking-tight">turbo ai</span>
+            <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
+              ⚡
+            </div>
+            <span className="font-headline font-bold text-sm tracking-tight">turbo ai</span>
           </div>
 
-          <div className="h-4 w-[1px] bg-[#2A2A3A]" />
+          <div className="h-4 w-[1px] bg-[var(--color-border)]" />
 
-          <span className="text-xs text-zinc-300 font-medium truncate max-w-xs">{topicTitle}</span>
-        </div>
-
-        <div className="hidden md:flex items-center gap-1.5 bg-[#181822] border border-[#272738] px-2 py-1 rounded-xl text-xs">
-          <select
-            value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value)}
-            className="bg-transparent text-zinc-300 font-medium text-xs focus:outline-none cursor-pointer pr-1"
-          >
-            <option value="Clarika" className="bg-[#181822]">Clarika</option>
-            <option value="Inter" className="bg-[#181822]">Inter</option>
-            <option value="Fira Code" className="bg-[#181822]">Fira Code</option>
-          </select>
-
-          <div className="h-3 w-[1px] bg-[#2A2A3A] mx-1" />
-
-          <button
-            onClick={() => setFontSize((s) => Math.max(14, s - 2))}
-            className="w-5 h-5 rounded hover:bg-[#252538] flex items-center justify-center text-zinc-400"
-          >
-            -
-          </button>
-          <span className="w-5 text-center font-semibold text-zinc-200">{fontSize}</span>
-          <button
-            onClick={() => setFontSize((s) => Math.min(36, s + 2))}
-            className="w-5 h-5 rounded hover:bg-[#252538] flex items-center justify-center text-zinc-400"
-          >
-            +
-          </button>
-
-          <div className="h-3 w-[1px] bg-[#2A2A3A] mx-1" />
-
-          <button
-            onClick={() => setIsBold(!isBold)}
-            className={`w-6 h-6 rounded flex items-center justify-center ${
-              isBold ? 'bg-[#7C3AED] text-white' : 'text-zinc-400 hover:bg-[#252538]'
-            }`}
-          >
-            <Bold size={13} />
-          </button>
-
-          <button
-            onClick={() => setIsItalic(!isItalic)}
-            className={`w-6 h-6 rounded flex items-center justify-center ${
-              isItalic ? 'bg-[#7C3AED] text-white' : 'text-zinc-400 hover:bg-[#252538]'
-            }`}
-          >
-            <Italic size={13} />
-          </button>
-
-          <button
-            onClick={() => setIsUnderline(!isUnderline)}
-            className={`w-6 h-6 rounded flex items-center justify-center ${
-              isUnderline ? 'bg-[#7C3AED] text-white' : 'text-zinc-400 hover:bg-[#252538]'
-            }`}
-          >
-            <Underline size={13} />
-          </button>
-
-          <div className="h-3 w-[1px] bg-[#2A2A3A] mx-1" />
-
-          <button className="w-6 h-6 rounded flex items-center justify-center text-zinc-400 hover:bg-[#252538]">
-            <Sigma size={13} />
-          </button>
-
-          <button className="w-6 h-6 rounded flex items-center justify-center text-zinc-400 hover:bg-[#252538]">
-            <Table size={13} />
-          </button>
-
-          <button className="w-6 h-6 rounded flex items-center justify-center text-zinc-400 hover:bg-[#252538]">
-            <AlignLeft size={13} />
-          </button>
-
-          <button className="w-6 h-6 rounded flex items-center justify-center text-zinc-400 hover:bg-[#252538]">
-            <List size={13} />
-          </button>
-
-          <button className="w-6 h-6 rounded flex items-center justify-center text-zinc-400 hover:bg-[#252538]">
-            <Eye size={13} />
-          </button>
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <button onClick={() => router.navigate('/dashboard')} className="hover:text-[var(--color-text)] transition-colors flex items-center gap-1">
+              <span>🏠</span>
+              <span>Home</span>
+            </button>
+            <span>›</span>
+            <span className="text-[var(--color-text)] font-medium truncate max-w-md">{activeTitle}</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button className="p-1.5 rounded-lg text-zinc-400 hover:text-white transition-colors" title="Version History">
-            <Clock size={16} />
-          </button>
-
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/40 text-purple-300 hover:bg-purple-500/10 text-xs font-semibold transition-all">
-            <Share2 size={13} />
-            <span>Share</span>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-all"
+            title="Download Notes"
+          >
+            <Download size={13} />
+            <span className="hidden sm:inline">Export</span>
           </button>
 
           <button
             onClick={onOpenUpgrade}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-bold text-xs shadow-md shadow-amber-500/20 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-bold text-xs shadow-md shadow-amber-500/20 transition-all active:scale-[0.98]"
           >
             <Sparkles size={13} className="fill-black" />
             <span>Upgrade</span>
           </button>
-
-          <button
-            onClick={() => router.navigate('/signup')}
-            className="w-8 h-8 rounded-full bg-[#582CD6] text-white font-bold text-xs flex items-center justify-center ring-2 ring-[#2F2450]"
-          >
-            E
-          </button>
         </div>
       </header>
 
+      {/* Editor Formatting Ribbon */}
+      <div className="h-11 px-5 border-b border-[var(--color-border)] bg-[var(--color-bg)] flex items-center justify-between text-xs text-[var(--color-text-muted)] shrink-0 overflow-x-auto">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setIsBold(!isBold)}
+            className={`p-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors ${
+              isBold ? 'bg-purple-600/20 text-purple-400 font-bold' : ''
+            }`}
+            title="Bold"
+          >
+            <Bold size={14} />
+          </button>
+
+          <button
+            onClick={() => setIsItalic(!isItalic)}
+            className={`p-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors ${
+              isItalic ? 'bg-purple-600/20 text-purple-400' : ''
+            }`}
+            title="Italic"
+          >
+            <Italic size={14} />
+          </button>
+
+          <button
+            onClick={() => setIsUnderline(!isUnderline)}
+            className={`p-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors ${
+              isUnderline ? 'bg-purple-600/20 text-purple-400' : ''
+            }`}
+            title="Underline"
+          >
+            <Underline size={14} />
+          </button>
+
+          <div className="h-4 w-[1px] bg-[var(--color-border)] mx-1" />
+
+          <button className="p-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors" title="Formula">
+            <Sigma size={14} />
+          </button>
+
+          <button className="p-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors" title="Code snippet">
+            <Code2 size={14} />
+          </button>
+
+          <div className="h-4 w-[1px] bg-[var(--color-border)] mx-1" />
+
+          <div className="flex items-center gap-1 text-[11px] text-[var(--color-text-muted)] font-mono">
+            <button
+              onClick={() => setFontSize(Math.max(12, fontSize - 1))}
+              className="px-1.5 py-0.5 rounded hover:bg-[var(--color-surface-hover)]"
+            >
+              -
+            </button>
+            <span className="w-5 text-center">{fontSize}</span>
+            <button
+              onClick={() => setFontSize(Math.min(24, fontSize + 1))}
+              className="px-1.5 py-0.5 rounded hover:bg-[var(--color-surface-hover)]"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              isChatOpen
+                ? 'bg-purple-600/20 border-purple-500/40 text-purple-300'
+                : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            <TurboMascot size="xs" expression="teaching" />
+            <span>AI Side Tutor</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-20 bg-[#111114] border-r border-[#1E1E28] flex flex-col items-center py-6 space-y-6 shrink-0">
+        {/* Navigation Sidebar */}
+        <aside className="w-20 bg-[var(--color-bg)] border-r border-[var(--color-border)] flex flex-col items-center py-6 space-y-6 shrink-0">
           <button
             onClick={() => router.navigate(`/notes/${noteId}`)}
-            className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
           >
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <BookOpen size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Learn</span>
@@ -211,9 +281,9 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
 
           <button
             onClick={() => router.navigate(`/notes/${noteId}/quiz`)}
-            className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
           >
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Award size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Quiz</span>
@@ -221,9 +291,9 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
 
           <button
             onClick={() => router.navigate(`/notes/${noteId}/flashcards`)}
-            className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
           >
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Layers size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Flashcards</span>
@@ -231,153 +301,178 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
 
           <button
             onClick={() => router.navigate(`/notes/${noteId}/podcast`)}
-            className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200 transition-colors"
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
           >
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Headphones size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Podcast</span>
           </button>
 
           <button
-            onClick={() => router.navigate(`/notes/${noteId}/source`)}
-            className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200 transition-colors"
+            onClick={() => router.navigate(`/notes/${noteId}/sources`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
           >
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <FolderGit2 size={18} />
             </div>
-            <span className="text-[10px] font-medium tracking-tight">Source</span>
+            <span className="text-[10px] font-medium tracking-tight">Sources</span>
           </button>
         </aside>
 
-        <main className="flex-1 overflow-y-auto px-10 py-10 max-w-3xl mx-auto w-full space-y-8 select-text">
-          <div className="space-y-4">
-            <h1 className="text-3xl font-extrabold text-white flex items-center gap-2.5">
-              <span>📑</span>
-              <span>{topicTitle}</span>
-            </h1>
+        {/* Notes Document */}
+        <main
+          className="flex-1 overflow-y-auto px-8 md:px-12 py-10 max-w-3xl mx-auto w-full space-y-8 select-text"
+          style={{ fontSize: `${fontSize}px` }}
+        >
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <Loader2 size={24} className="text-purple-400 animate-spin mb-3" />
+              <p className="text-xs text-[var(--color-text-muted)]">
+                Turbo AI is generating high-yield study notes with diagrams and code snippets...
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Note Header */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs text-purple-400 font-bold">
+                  <span>📑 TURBO AI EDITORIAL NOTES</span>
+                  <span>•</span>
+                  <span className="text-[var(--color-text-muted)] font-normal">{notes.lastUpdated}</span>
+                </div>
+                <h1 className="font-headline text-3xl font-extrabold text-[var(--color-text)] tracking-tight">
+                  {notes.title || activeTitle}
+                </h1>
+                <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                  {notes.summary}
+                </p>
+              </div>
 
-            <p className="text-xs text-zinc-300 leading-relaxed font-normal">
-              You already have production-grade Java Spring Boot services, a React freelance portfolio, and AI-assistant work. The roadmap below pinpoints where those assets meet the FAANG SDE bar and how to bridge every remaining gap so you can move from a strong campus candidate to a hireable intern or full-time engineer.
-            </p>
-          </div>
+              {/* Key Takeaways Callout */}
+              {notes.keyTakeaways && notes.keyTakeaways.length > 0 && (
+                <div className="p-5 rounded-2xl bg-purple-950/20 border border-purple-500/30 space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-bold text-purple-300">
+                    <Sparkles size={14} />
+                    <span>Executive Takeaways</span>
+                  </div>
+                  <ul className="space-y-1.5 text-xs text-[var(--color-text)]">
+                    {notes.keyTakeaways.map((takeaway, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <CheckCircle2 size={13} className="text-emerald-400 shrink-0 mt-0.5" />
+                        <span>{takeaway}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-          <div className="space-y-3 pt-4 border-t border-[#1E1E28]">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <span>Where you stand: auditing the resume against the FAANG bar</span>
-              <span>🚦</span>
-            </h2>
+              {/* Document Sections */}
+              <div className="space-y-8">
+                {notes.sections?.map((sec, secIdx) => (
+                  <div key={secIdx} className="space-y-3 pt-6 border-t border-[var(--color-border)]">
+                    <h2 className="font-headline font-bold text-lg text-[var(--color-text)]">
+                      {sec.heading}
+                    </h2>
+                    <p className="text-xs text-[var(--color-text)] leading-relaxed">
+                      {sec.content}
+                    </p>
 
-            <ul className="space-y-2 text-xs text-zinc-300 pl-4 list-disc">
-              <li>
-                <strong className="text-purple-300">Strengths to keep</strong> – Spring Boot REST APIs, layered architecture, Hibernate/JDBC experience, end-to-end project delivery, AI-assistant integration, solid CGPA (8.0 / 10).
-              </li>
-              <li>
-                <strong className="text-purple-300">Visible gaps</strong> – limited <span className="text-cyan-300 font-semibold underline underline-offset-2">DSA depth</span> (no competitive-programming record), no large-scale <span className="text-cyan-300 font-semibold underline underline-offset-2">system-design</span> exposure, few internship or open-source contributions, and modest <span className="text-cyan-300 font-semibold underline underline-offset-2">quantified impact</span> on projects.
-              </li>
-              <li>
-                <strong className="text-purple-300">FAANG-ready numeric targets</strong> &rarr; 150 LeetCode medium-hard solves, 1-2 high-traffic design case studies, at least one <span className="text-cyan-300 font-semibold underline underline-offset-2">intern or open source</span> PR in a major repo, and resume bullets with measurable outcomes (e.g., <em>reduced API latency by 30%</em>).
-              </li>
-            </ul>
-          </div>
+                    {/* Bullet Points */}
+                    {sec.bulletPoints && sec.bulletPoints.length > 0 && (
+                      <ul className="space-y-1.5 text-xs text-[var(--color-text-muted)] pl-4 list-disc">
+                        {sec.bulletPoints.map((point, pIdx) => (
+                          <li key={pIdx} className="leading-relaxed">
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
 
-          <div className="space-y-3 pt-4 border-t border-[#1E1E28]">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <span>DSA mastery plan: patterns first, Java as your weapon</span>
-              <span>⚔️</span>
-            </h2>
+                    {/* Code Snippet */}
+                    {sec.codeSnippet && (
+                      <div className="rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-alt)]">
+                        <div className="px-3 py-1.5 bg-[var(--color-surface)] border-b border-[var(--color-border)] flex items-center justify-between text-[11px] font-mono text-[var(--color-text-muted)]">
+                          <span>{sec.codeSnippet.language || 'code'}</span>
+                          <span className="text-[10px] text-purple-400">Turbo Syntax</span>
+                        </div>
+                        <pre className="p-3 text-xs font-mono text-emerald-400 overflow-x-auto leading-relaxed">
+                          <code>{sec.codeSnippet.code}</code>
+                        </pre>
+                      </div>
+                    )}
 
-            <ul className="space-y-2 text-xs text-zinc-300 pl-4 list-disc">
-              <li>
-                <strong className="text-purple-300">Month 1-2:</strong> Master core patterns – arrays/two-pointers, sliding window, hashing. Solve ~ 25 problems each; focus on O(n) vs O(n²) trade-offs.
-              </li>
-              <li>
-                <strong className="text-purple-300">Month 3-4:</strong> Advance to linked lists, stacks/queues, trees (BST, AVL). Target ~ 20 medium-hard problems; write helper functions like ListNode reverse(ListNode head).
-              </li>
-              <li>
-                <strong className="text-purple-300">Month 5-6:</strong> Graph traversal (BFS/DFS), recursion/backtracking, greedy, DP, heaps. Aim &gt; 30 mixed-difficulty problems; practice <span className="text-purple-300 font-semibold underline underline-offset-2">time-boxed</span> mock sessions (45 min).
-              </li>
-              <li>
-                <strong className="text-purple-300">Practice regime:</strong> Daily 1h on LeetCode, weekend 2h timed mock on HackerRank; maintain a spreadsheet of problem, pattern, and runtime analysis.
-              </li>
-            </ul>
-          </div>
-
-          <div className="space-y-3 pt-4 border-t border-[#1E1E28]">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <span>System design and LLD fundamentals for freshers</span>
-              <span>🏗️</span>
-            </h2>
-            <p className="text-xs text-zinc-300 leading-relaxed">
-              Focus on fundamental distributed building blocks: horizontal vs vertical scaling, load balancing with Nginx, caching layers using Redis, database partitioning (sharding), and relational vs document database selection.
-            </p>
-          </div>
+                    {/* LaTeX Formulas */}
+                    {sec.formulas && sec.formulas.length > 0 && (
+                      <div className="p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] space-y-1">
+                        <div className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">
+                          Math Formulation
+                        </div>
+                        {sec.formulas.map((form, fIdx) => (
+                          <div key={fIdx} className="font-mono text-xs text-amber-300 py-0.5">
+                            $$ {form} $$
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </main>
 
+        {/* Right Drawer: AI Study Tutor */}
         {isChatOpen && (
-          <aside className="w-80 bg-[#14141C] border-l border-[#222232] flex flex-col justify-between shrink-0 shadow-2xl">
-            <div className="p-4 border-b border-[#222232] flex items-center justify-between">
-              <span className="font-bold text-xs text-white">Chat</span>
-              <button
-                onClick={() => setIsChatOpen(false)}
-                className="text-zinc-500 hover:text-white p-1 rounded-lg"
-              >
-                <X size={15} />
+          <aside className="w-80 bg-[var(--color-surface)] border-l border-[var(--color-border)] flex flex-col shrink-0">
+            <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TurboMascot size="xs" expression="teaching" />
+                <span className="font-headline font-bold text-xs text-[var(--color-text)]">
+                  Turbo AI Copilot
+                </span>
+              </div>
+              <button onClick={() => setIsChatOpen(false)} className="text-zinc-500 hover:text-white p-1">
+                <X size={14} />
               </button>
             </div>
 
-            <div className="p-3 grid grid-cols-2 gap-2 border-b border-[#222232]">
+            {/* Quick Action Navigation Buttons */}
+            <div className="grid grid-cols-3 gap-1.5 p-2.5 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
               <button
                 onClick={() => router.navigate(`/notes/${noteId}/quiz`)}
-                className="p-2.5 rounded-xl bg-[#1C1828] hover:bg-[#252036] border border-purple-500/30 text-left transition-all col-span-2 flex items-center justify-between"
+                className="p-2 rounded-xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-center transition-all"
               >
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-purple-300">Quizzes</span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">
-                      Popular
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-zinc-400 mt-0.5">Test your knowledge</div>
-                </div>
-                <Award size={15} className="text-purple-400" />
+                <Award size={14} className="text-purple-400 mx-auto mb-1" />
+                <div className="text-[10px] font-bold text-[var(--color-text)]">Quiz</div>
               </button>
 
               <button
                 onClick={() => router.navigate(`/notes/${noteId}/podcast`)}
-                className="p-2.5 rounded-xl bg-[#181822] hover:bg-[#20202E] border border-[#272738] text-left transition-all"
+                className="p-2 rounded-xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-center transition-all"
               >
-                <div className="flex items-center gap-1 text-[11px] font-bold text-zinc-200">
-                  <Headphones size={13} className="text-purple-400" />
-                  <span>Podcast</span>
-                </div>
-                <div className="text-[10px] text-zinc-400 mt-0.5">Listen on the go</div>
+                <Headphones size={14} className="text-purple-400 mx-auto mb-1" />
+                <div className="text-[10px] font-bold text-[var(--color-text)]">Podcast</div>
               </button>
 
               <button
                 onClick={() => router.navigate(`/notes/${noteId}/flashcards`)}
-                className="p-2.5 rounded-xl bg-[#181822] hover:bg-[#20202E] border border-[#272738] text-left transition-all"
+                className="p-2 rounded-xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-center transition-all"
               >
-                <div className="flex items-center gap-1 text-[11px] font-bold text-zinc-200">
-                  <Layers size={13} className="text-purple-400" />
-                  <span>Flashcards</span>
-                </div>
-                <div className="text-[10px] text-zinc-400 mt-0.5">Active recall</div>
+                <Layers size={14} className="text-purple-400 mx-auto mb-1" />
+                <div className="text-[10px] font-bold text-[var(--color-text)]">Cards</div>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
               <div className="text-center pt-2">
                 <div className="w-12 h-12 mx-auto rounded-full bg-purple-500/20 border border-purple-500/40 p-1 flex items-center justify-center mb-2">
-                  <img
-                    src="/emma-expressions/teaching.png"
-                    alt="Turbo"
-                    className="w-full h-full rounded-full object-cover"
-                  />
+                  <TurboMascot size="sm" expression="teaching" />
                 </div>
-                <h3 className="text-sm font-bold text-white">Hey, I'm Turbo</h3>
-                <p className="text-[11px] text-zinc-400 mt-1 max-w-xs mx-auto">
-                  I can work with you on your doc and answer any questions!
+                <h3 className="font-headline text-xs font-bold text-[var(--color-text)]">Hey, I&apos;m Turbo</h3>
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-1 max-w-xs mx-auto">
+                  Ask me anything about {activeTitle}!
                 </p>
               </div>
 
@@ -387,7 +482,7 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
                   className={`p-3 rounded-2xl text-xs leading-relaxed ${
                     msg.sender === 'user'
                       ? 'bg-purple-600 text-white ml-auto max-w-[85%]'
-                      : 'bg-[#1C1C28] text-zinc-200 border border-[#2A2A3E]'
+                      : 'bg-[var(--color-bg-alt)] text-[var(--color-text)] border border-[var(--color-border)]'
                   }`}
                 >
                   {msg.text}
@@ -395,34 +490,23 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
               ))}
             </div>
 
-            <form onSubmit={handleSendChat} className="p-3 border-t border-[#222232] bg-[#14141C]">
-              <div className="p-2.5 rounded-2xl bg-[#1C1C28] border border-[#2B2B40] space-y-2">
+            {/* Chat Input */}
+            <form onSubmit={handleSendChat} className="p-3 border-t border-[var(--color-border)] bg-[var(--color-bg)]">
+              <div className="p-2 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center gap-2">
                 <input
                   type="text"
                   value={chatPrompt}
                   onChange={(e) => setChatPrompt(e.target.value)}
-                  placeholder="Type a question here or type '@' to reference documents..."
-                  className="w-full bg-transparent text-xs text-white placeholder:text-zinc-500 focus:outline-none"
+                  placeholder="Ask a question about this note..."
+                  className="flex-1 bg-transparent text-xs text-[var(--color-text)] placeholder:text-zinc-500 focus:outline-none"
                 />
-
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-1.5 text-zinc-500">
-                    <button type="button" className="p-1 hover:text-zinc-300">
-                      <Paperclip size={13} />
-                    </button>
-                    <button type="button" className="p-1 hover:text-zinc-300">
-                      <Mic size={13} />
-                    </button>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={!chatPrompt.trim()}
-                    className="w-6 h-6 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white flex items-center justify-center transition-all disabled:opacity-40"
-                  >
-                    <ArrowUp size={13} />
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  disabled={!chatPrompt.trim()}
+                  className="w-6 h-6 rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center transition-all disabled:opacity-40"
+                >
+                  <ArrowUp size={12} />
+                </button>
               </div>
             </form>
           </aside>
@@ -431,3 +515,4 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
     </div>
   );
 };
+export default NotesEditorView;

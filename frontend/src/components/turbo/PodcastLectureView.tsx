@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
+import { TurboMascot } from './TurboMascot.js';
+import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
+import { TurboStudyPack, TurboPodcastSegment } from '../../types/turbo.js';
 import {
   Sparkles,
   BookOpen,
@@ -11,7 +14,10 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Volume2
+  Volume2,
+  Mic,
+  Radio,
+  Loader2
 } from 'lucide-react';
 
 interface PodcastLectureViewProps {
@@ -22,38 +28,110 @@ interface PodcastLectureViewProps {
 }
 
 export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
-  noteId = 'faang-sde',
-  topicTitle = 'Roadmap: Resume to FAANG/MAANG SDE',
+  noteId = 'current',
+  topicTitle = 'How to learn Java',
   onOpenUpgrade,
   onOpenEmma
 }) => {
+  const [studyPack, setStudyPack] = useState<TurboStudyPack | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [activeSpeaker, setActiveSpeaker] = useState(0);
+  const [activeSegmentIdx, setActiveSegmentIdx] = useState(0);
 
-  const script = [
+  useEffect(() => {
+    const existing = getStudyPack(noteId) || getStudyPack(topicTitle);
+    if (existing) {
+      setStudyPack(existing);
+    } else {
+      setIsLoading(true);
+      fetchStudyPack(topicTitle)
+        .then((pack) => setStudyPack(pack))
+        .catch((err) => console.error('Failed to load study pack:', err))
+        .finally(() => setIsLoading(false));
+    }
+  }, [noteId, topicTitle]);
+
+  const activeTitle = studyPack?.topic || topicTitle;
+
+  const segments: TurboPodcastSegment[] = studyPack?.podcast?.segments || [
     {
       speaker: 'Emma (Host)',
-      text: 'Welcome to Turbo AI Audio Sessions! Today we are dissecting the exact transition roadmap from college projects to FAANG SDE standards. Alex, ready to dig in?'
+      line: `Welcome to Turbo AI Audio Sessions! Today we are doing a high-yield deep dive into ${activeTitle}. Alex, are you ready to unpack this?`
     },
     {
       speaker: 'Alex (Student)',
-      text: 'Hey Emma! Excited for this. A lot of students have Spring Boot and React projects, but still struggle to pass screening rounds. What is the biggest missing link?'
+      line: `Hey Emma! Definitely. Honestly, starting out with ${activeTitle} can feel overwhelming with all the syntax rules and documentation. Where should a beginner focus first?`
     },
     {
       speaker: 'Emma (Host)',
-      text: 'It comes down to two words: Quantified Impact. Instead of writing "built a REST service", you need to demonstrate "reduced API p99 latency by 35% through Redis caching and index tuning".'
+      line: `Always start with the core execution model! When you understand how memory is allocated on the stack versus the heap, everything else clicks into place.`
     },
     {
       speaker: 'Alex (Student)',
-      text: 'That is huge! And what about LeetCode? How many questions are really needed?'
+      line: `That makes a ton of sense. And what about exam questions or technical interviews? What are the biggest trap questions?`
     },
     {
       speaker: 'Emma (Host)',
-      text: 'Quality beats raw quantity! Master the core patterns first—two pointers, sliding window, topological sort, and dynamic programming—around 150 well-understood problems.'
+      line: `Edge cases! Test writers love testing off-by-one errors, null reference behavior, and thread-safety invariants under high concurrency.`
+    },
+    {
+      speaker: 'Alex (Student)',
+      line: `Awesome tip. So review the roadmap checkpoints and flashcards before taking the practice quiz.`
+    },
+    {
+      speaker: 'Emma (Host)',
+      line: `Exactly! Keep practicing active recall and you will ace your upcoming tests. Let's get learning!`
     }
   ];
 
-  // Speech playback support
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const playSegment = (idx: number) => {
+    if (idx >= segments.length) {
+      setIsPlaying(false);
+      setActiveSegmentIdx(0);
+      return;
+    }
+
+    setActiveSegmentIdx(idx);
+
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const seg = segments[idx];
+      const utterance = new SpeechSynthesisUtterance(seg.line);
+
+      // Distinguish voices slightly
+      if (seg.speaker.includes('Emma')) {
+        utterance.pitch = 1.15;
+        utterance.rate = 1.05;
+      } else {
+        utterance.pitch = 0.95;
+        utterance.rate = 1.0;
+      }
+
+      utterance.onend = () => {
+        if (idx + 1 < segments.length) {
+          playSegment(idx + 1);
+        } else {
+          setIsPlaying(false);
+          setActiveSegmentIdx(0);
+        }
+      };
+
+      utterance.onerror = () => {
+        setIsPlaying(false);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   const handleTogglePlay = () => {
     if (isPlaying) {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -62,60 +140,39 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
       setIsPlaying(false);
     } else {
       setIsPlaying(true);
-      playSegment(activeSpeaker);
+      playSegment(activeSegmentIdx);
     }
   };
 
-  const playSegment = (index: number) => {
-    if (index >= script.length) {
-      setIsPlaying(false);
-      setActiveSpeaker(0);
-      return;
-    }
-    setActiveSpeaker(index);
+  const handleRestart = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const item = script[index];
-      const utter = new SpeechSynthesisUtterance(item.text);
-      utter.rate = 1.05;
-      utter.pitch = item.speaker.includes('Emma') ? 1.15 : 0.95;
-      utter.onend = () => {
-        if (index + 1 < script.length) {
-          playSegment(index + 1);
-        } else {
-          setIsPlaying(false);
-          setActiveSpeaker(0);
-        }
-      };
-      utter.onerror = () => setIsPlaying(false);
-      window.speechSynthesis.speak(utter);
     }
+    setIsPlaying(false);
+    setActiveSegmentIdx(0);
   };
 
   return (
-    <div className="min-h-screen bg-[#111114] text-zinc-100 flex flex-col font-sans select-none">
-      <header className="h-14 px-6 flex items-center justify-between border-b border-[#1E1E28] bg-[#111114] shrink-0">
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col font-body select-none">
+      {/* Top Header */}
+      <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 19l7-7 3 3-7 7-3-3z" />
-              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-              <path d="M2 2l7.586 7.586" />
-            </svg>
-            <span className="font-bold text-white text-base tracking-tight">turbo ai</span>
+            <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
+              ⚡
+            </div>
+            <span className="font-headline font-bold text-sm tracking-tight">turbo ai</span>
           </div>
 
-          <div className="h-4 w-[1px] bg-[#2A2A3A]" />
+          <div className="h-4 w-[1px] bg-[var(--color-border)]" />
 
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <button onClick={() => router.navigate('/dashboard')} className="hover:text-white transition-colors flex items-center gap-1">
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <button onClick={() => router.navigate('/dashboard')} className="hover:text-[var(--color-text)] transition-colors flex items-center gap-1">
               <span>🏠</span>
               <span>Home</span>
             </button>
             <span>›</span>
-            <button onClick={() => router.navigate(`/notes/${noteId}`)} className="text-zinc-200 font-medium truncate max-w-md hover:underline">
-              {topicTitle}
-            </button>
+            <span className="text-[var(--color-text)] font-medium truncate max-w-md">{activeTitle}</span>
           </div>
         </div>
 
@@ -127,126 +184,200 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
             <Sparkles size={13} className="fill-black" />
             <span>Upgrade</span>
           </button>
-
-          <button
-            onClick={() => router.navigate('/signup')}
-            className="w-8 h-8 rounded-full bg-[#582CD6] text-white font-bold text-xs flex items-center justify-center ring-2 ring-[#2F2450]"
-          >
-            E
-          </button>
         </div>
       </header>
 
+      {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-20 bg-[#111114] border-r border-[#1E1E28] flex flex-col items-center py-6 space-y-6 shrink-0">
-          <button onClick={() => router.navigate(`/notes/${noteId}`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+        {/* Navigation Sidebar */}
+        <aside className="w-20 bg-[var(--color-bg)] border-r border-[var(--color-border)] flex flex-col items-center py-6 space-y-6 shrink-0">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <BookOpen size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Learn</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/editor`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/editor`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <FileText size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Notes</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/quiz`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/quiz`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Award size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Quiz</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/flashcards`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/flashcards`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Layers size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Flashcards</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/podcast`)} className="flex flex-col items-center gap-1.5 text-purple-400 group">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/podcast`)}
+            className="flex flex-col items-center gap-1.5 text-purple-400 group"
+          >
             <div className="w-10 h-10 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center">
               <Headphones size={18} />
             </div>
             <span className="text-[10px] font-bold tracking-tight">Podcast</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/source`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/sources`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <FolderGit2 size={18} />
             </div>
-            <span className="text-[10px] font-medium tracking-tight">Source</span>
+            <span className="text-[10px] font-medium tracking-tight">Sources</span>
           </button>
         </aside>
 
-        <main className="flex-1 overflow-y-auto px-8 py-10 max-w-2xl mx-auto w-full space-y-6">
-          <div className="p-6 rounded-3xl bg-[#161622] border border-[#27273C] flex items-center justify-between shadow-2xl">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
-                <Headphones size={28} className="text-purple-400" />
+        {/* Podcast Player View */}
+        <main className="flex-1 overflow-y-auto px-6 md:px-12 py-10 flex flex-col items-center">
+          <div className="max-w-2xl w-full space-y-6">
+            {/* Player Banner */}
+            <div className="p-6 md:p-8 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl relative overflow-hidden space-y-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-xs text-purple-400 font-bold mb-1.5">
+                    <Radio size={14} className={isPlaying ? 'text-rose-400 animate-pulse' : 'text-purple-400'} />
+                    <span>TURBO AI AUDIO PODCAST • DUAL-VOICE</span>
+                  </div>
+                  <h1 className="font-headline text-2xl font-extrabold text-[var(--color-text)] tracking-tight">
+                    {studyPack?.podcast?.title || `Deep Dive: ${activeTitle}`}
+                  </h1>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1.5 leading-relaxed max-w-lg">
+                    {studyPack?.podcast?.overview || `Emma and Alex dissect core principles, interview pitfalls, and practical study takeaways for ${activeTitle}.`}
+                  </p>
+                </div>
+                <TurboMascot size="md" expression={isPlaying ? 'celebrating' : 'reading'} />
               </div>
-              <div>
-                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                  Audio Lecture • 4 Mins
-                </span>
-                <h1 className="text-lg font-bold text-white mt-1.5">
-                  Turbo Audio Breakdown: Resume to FAANG SDE
-                </h1>
+
+              {/* Animated Waveform Simulation */}
+              <div className="flex items-center justify-center gap-1.5 h-10 py-2">
+                {[40, 70, 30, 90, 60, 100, 45, 80, 50, 95, 35, 75, 55, 85, 40].map((h, i) => (
+                  <div
+                    key={i}
+                    className={`w-1.5 rounded-full transition-all duration-200 ${
+                      isPlaying
+                        ? 'bg-gradient-to-t from-purple-600 to-indigo-400 animate-pulse'
+                        : 'bg-[var(--color-border)]'
+                    }`}
+                    style={{
+                      height: isPlaying ? `${Math.max(20, (h * (i % 2 === 0 ? 1 : 0.7)))}%` : '20%'
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Audio Controls */}
+              <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border)]">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleTogglePlay}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition-all active:scale-95"
+                  >
+                    {isPlaying ? <Pause size={14} /> : <Play size={14} className="fill-white" />}
+                    <span>{isPlaying ? 'Pause Episode' : 'Play Audio Session'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleRestart}
+                    className="p-2.5 rounded-full border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] text-zinc-400 hover:text-[var(--color-text)] transition-colors"
+                    title="Restart from beginning"
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                  <Volume2 size={15} className="text-purple-400" />
+                  <span>Segment {activeSegmentIdx + 1} of {segments.length}</span>
+                </div>
               </div>
             </div>
 
-            <button
-              onClick={handleTogglePlay}
-              className="p-3.5 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white shadow-lg shadow-purple-600/30 transition-all active:scale-[0.96]"
-            >
-              {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
-            </button>
-          </div>
+            {/* Transcript Flow */}
+            <div className="space-y-3">
+              <h2 className="font-headline font-bold text-sm text-[var(--color-text)] px-1">
+                Episode Transcript
+              </h2>
 
-          <div className="space-y-3">
-            <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Episode Script & Audio Nodes</h2>
-            {script.map((seg, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  setActiveSpeaker(idx);
-                  if (isPlaying) {
-                    playSegment(idx);
-                  }
-                }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                  activeSpeaker === idx
-                    ? 'bg-[#1C1828] border-purple-500/60 shadow-md shadow-purple-500/5'
-                    : 'bg-[#151520] border-[#222232] hover:bg-[#1A1A26]'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className={`text-xs font-bold ${seg.speaker.includes('Emma') ? 'text-purple-300' : 'text-cyan-300'}`}>
-                    {seg.speaker}
-                  </span>
-                  {activeSpeaker === idx && isPlaying && (
-                    <span className="flex items-center gap-1 text-[10px] text-purple-400 bg-purple-500/10 px-1.5 rounded animate-pulse">
-                      Playing
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-zinc-200 leading-relaxed font-normal">{seg.text}</p>
+              <div className="space-y-3">
+                {segments.map((seg, idx) => {
+                  const isCurrent = activeSegmentIdx === idx;
+                  const isEmma = seg.speaker.includes('Emma');
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => playSegment(idx)}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                        isCurrent
+                          ? 'bg-purple-950/20 border-purple-500 shadow-md ring-1 ring-purple-500/30'
+                          : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-subtle)]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <TurboMascot size="xs" expression={isEmma ? 'teaching' : 'thinking'} />
+                          <span
+                            className={`font-headline font-bold text-xs ${
+                              isEmma ? 'text-purple-400' : 'text-indigo-400'
+                            }`}
+                          >
+                            {seg.speaker}
+                          </span>
+                        </div>
+
+                        {isCurrent && isPlaying && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 animate-pulse">
+                            Speaking
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs md:text-sm text-[var(--color-text)] leading-relaxed pl-7">
+                        {seg.line}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            </div>
           </div>
         </main>
       </div>
 
+      {/* Floating Ask Emma AI Button */}
       <button
         onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
-        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[#181824] border border-[#2D2D44] shadow-xl text-xs font-bold text-white flex items-center gap-2 hover:bg-[#222234] hover:scale-105 active:scale-95 transition-all z-40"
+        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40"
       >
-        <img src="/emma-expressions/teaching.png" alt="Mascot" className="w-5 h-5 rounded-full object-cover" />
+        <TurboMascot size="xs" expression="teaching" />
         <span>Ask Emma AI</span>
       </button>
     </div>
   );
 };
+export default PodcastLectureView;

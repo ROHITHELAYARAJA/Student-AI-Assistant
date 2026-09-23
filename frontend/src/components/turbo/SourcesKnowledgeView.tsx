@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
+import { TurboMascot } from './TurboMascot.js';
+import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
+import { TurboStudyPack, TurboSourceItem } from '../../types/turbo.js';
 import {
   Sparkles,
   BookOpen,
@@ -11,10 +14,12 @@ import {
   Upload,
   Plus,
   Trash2,
-  Search
+  Search,
+  ExternalLink,
+  CheckCircle2,
+  FileCode,
+  Loader2
 } from 'lucide-react';
-
-import { ingestDocument } from '../../services/turboApi.js';
 
 interface SourcesKnowledgeViewProps {
   noteId?: string;
@@ -24,84 +29,111 @@ interface SourcesKnowledgeViewProps {
 }
 
 export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
-  noteId = 'faang-sde',
-  topicTitle = 'Roadmap: Resume to FAANG/MAANG SDE',
+  noteId = 'current',
+  topicTitle = 'How to learn Java',
   onOpenUpgrade,
   onOpenEmma
 }) => {
-  const [sources, setSources] = useState([
-    {
-      id: 'doc-1',
-      title: 'FAANG Resume Audit Benchmark Standards',
-      type: 'PDF',
-      size: '2.4 MB',
-      chunks: 8,
-      date: 'Sep 2026'
-    },
-    {
-      id: 'doc-2',
-      title: 'LeetCode Pattern Frequency Breakdown',
-      type: 'Notes',
-      size: '420 KB',
-      chunks: 12,
-      date: 'Sep 2026'
-    }
-  ]);
+  const [studyPack, setStudyPack] = useState<TurboStudyPack | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sourcesList, setSourcesList] = useState<TurboSourceItem[]>([]);
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
 
-  const handleAdd = async (e: React.FormEvent) => {
+  useEffect(() => {
+    const existing = getStudyPack(noteId) || getStudyPack(topicTitle);
+    if (existing) {
+      setStudyPack(existing);
+      setSourcesList(existing.sources || []);
+    } else {
+      setIsLoading(true);
+      fetchStudyPack(topicTitle)
+        .then((pack) => {
+          setStudyPack(pack);
+          setSourcesList(pack.sources || []);
+        })
+        .catch((err) => console.error('Failed to load study pack:', err))
+        .finally(() => setIsLoading(false));
+    }
+  }, [noteId, topicTitle]);
+
+  const activeTitle = studyPack?.topic || topicTitle;
+
+  const defaultSources: TurboSourceItem[] = [
+    {
+      id: 'src-core',
+      title: `${activeTitle} — Official Documentation & Architecture Reference`,
+      category: 'Core Reference Manual',
+      summary: `High-yield syllabus covering runtime mechanics, standard libraries, and memory execution guarantees.`,
+      keyTakeaways: [
+        'Fundamental primitives and memory lifecycle models',
+        'Idiomatic patterns and standard library conventions',
+        'Common boundary pitfalls and anti-patterns'
+      ],
+      relevance: 'Essential foundation for mastering concepts and exam prep',
+      sourceUrl: 'https://docs.oracle.com/en/'
+    },
+    {
+      id: 'src-patterns',
+      title: `${activeTitle} — Problem Patterns & Interview Archetypes`,
+      category: 'Exam / Problem Set Guide',
+      summary: `Detailed taxonomy of common exam questions, time/space trade-offs, and verification rubrics.`,
+      keyTakeaways: [
+        'Frequent problem classifications and step-by-step algorithms',
+        'Space/time trade-off matrices',
+        'Verification checklist before submission'
+      ],
+      relevance: 'Crucial for exams and technical assessments'
+    }
+  ];
+
+  const displaySources = sourcesList.length > 0 ? sourcesList : defaultSources;
+
+  const handleAddCustom = (e: React.FormEvent) => {
     e.preventDefault();
     if (!titleInput.trim()) return;
-    const title = titleInput.trim();
-    const content = contentInput.trim();
-    const newDocId = `doc-${Date.now()}`;
 
-    setSources((prev) => [
-      {
-        id: newDocId,
-        title,
-        type: 'Notes',
-        size: `${Math.max(1, Math.round(content.length / 1024))} KB`,
-        chunks: Math.max(1, Math.round(content.length / 300)),
-        date: 'Today'
-      },
-      ...prev
-    ]);
+    const newSource: TurboSourceItem = {
+      id: `src-${Date.now()}`,
+      title: titleInput.trim(),
+      category: 'User Added Note',
+      summary: contentInput.trim() || 'Custom user notes and reference material.',
+      keyTakeaways: ['User provided knowledge source'],
+      relevance: 'Custom study reference'
+    };
+
+    setSourcesList([newSource, ...sourcesList]);
     setTitleInput('');
     setContentInput('');
+    setIsAdding(false);
+  };
 
-    try {
-      await ingestDocument(title, content, 'notes');
-    } catch {
-      // Graceful local offline support
-    }
+  const handleDelete = (id: string) => {
+    setSourcesList(sourcesList.filter((s) => s.id !== id));
   };
 
   return (
-    <div className="min-h-screen bg-[#111114] text-zinc-100 flex flex-col font-sans select-none">
-      <header className="h-14 px-6 flex items-center justify-between border-b border-[#1E1E28] bg-[#111114] shrink-0">
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col font-body select-none">
+      {/* Top Header */}
+      <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 19l7-7 3 3-7 7-3-3z" />
-              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-              <path d="M2 2l7.586 7.586" />
-            </svg>
-            <span className="font-bold text-white text-base tracking-tight">turbo ai</span>
+            <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
+              ⚡
+            </div>
+            <span className="font-headline font-bold text-sm tracking-tight">turbo ai</span>
           </div>
 
-          <div className="h-4 w-[1px] bg-[#2A2A3A]" />
+          <div className="h-4 w-[1px] bg-[var(--color-border)]" />
 
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <button onClick={() => router.navigate('/dashboard')} className="hover:text-white transition-colors flex items-center gap-1">
+          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+            <button onClick={() => router.navigate('/dashboard')} className="hover:text-[var(--color-text)] transition-colors flex items-center gap-1">
               <span>🏠</span>
               <span>Home</span>
             </button>
             <span>›</span>
-            <button onClick={() => router.navigate(`/notes/${noteId}`)} className="text-zinc-200 font-medium truncate max-w-md hover:underline">
-              {topicTitle}
-            </button>
+            <span className="text-[var(--color-text)] font-medium truncate max-w-md">{activeTitle}</span>
           </div>
         </div>
 
@@ -113,153 +145,214 @@ export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
             <Sparkles size={13} className="fill-black" />
             <span>Upgrade</span>
           </button>
-
-          <button
-            onClick={() => router.navigate('/signup')}
-            className="w-8 h-8 rounded-full bg-[#582CD6] text-white font-bold text-xs flex items-center justify-center ring-2 ring-[#2F2450]"
-          >
-            E
-          </button>
         </div>
       </header>
 
+      {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
-        <aside className="w-20 bg-[#111114] border-r border-[#1E1E28] flex flex-col items-center py-6 space-y-6 shrink-0">
-          <button onClick={() => router.navigate(`/notes/${noteId}`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+        {/* Navigation Sidebar */}
+        <aside className="w-20 bg-[var(--color-bg)] border-r border-[var(--color-border)] flex flex-col items-center py-6 space-y-6 shrink-0">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <BookOpen size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Learn</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/editor`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/editor`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <FileText size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Notes</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/quiz`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/quiz`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Award size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Quiz</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/flashcards`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/flashcards`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Layers size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Flashcards</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/podcast`)} className="flex flex-col items-center gap-1.5 text-zinc-400 hover:text-zinc-200">
-            <div className="w-10 h-10 rounded-2xl hover:bg-[#1E1E2C] flex items-center justify-center">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/podcast`)}
+            className="flex flex-col items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+          >
+            <div className="w-10 h-10 rounded-2xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center">
               <Headphones size={18} />
             </div>
             <span className="text-[10px] font-medium tracking-tight">Podcast</span>
           </button>
 
-          <button onClick={() => router.navigate(`/notes/${noteId}/source`)} className="flex flex-col items-center gap-1.5 text-purple-400 group">
+          <button
+            onClick={() => router.navigate(`/notes/${noteId}/sources`)}
+            className="flex flex-col items-center gap-1.5 text-purple-400 group"
+          >
             <div className="w-10 h-10 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center">
               <FolderGit2 size={18} />
             </div>
-            <span className="text-[10px] font-bold tracking-tight">Source</span>
+            <span className="text-[10px] font-bold tracking-tight">Sources</span>
           </button>
         </aside>
 
-        <main className="flex-1 overflow-y-auto px-8 py-10 max-w-3xl mx-auto w-full space-y-8">
-          <div className="p-6 rounded-3xl bg-[#161622] border border-[#27273C] flex items-center justify-between shadow-2xl">
-            <div>
-              <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                Grounding Engine
-              </span>
-              <h1 className="text-xl font-bold text-white mt-1.5">RAG Sources & Attached Documents</h1>
-              <p className="text-xs text-zinc-400 mt-1">
-                Documents powering the quiz questions, smart notes, and tutor responses for this roadmap.
-              </p>
-            </div>
-            <div className="p-3 rounded-2xl bg-[#1E1E2E] border border-[#2B2B3E] text-center shrink-0">
-              <div className="text-xl font-bold text-purple-400">{sources.length}</div>
-              <div className="text-[10px] text-zinc-400">Sources</div>
-            </div>
-          </div>
-
-          <form onSubmit={handleAdd} className="p-6 rounded-3xl bg-[#151520] border border-[#252538] space-y-4">
-            <h2 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Upload size={14} className="text-purple-400" />
-              <span>Attach New Study Document</span>
-            </h2>
-
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={titleInput}
-                onChange={(e) => setTitleInput(e.target.value)}
-                placeholder="Document Title (e.g. Chapter 5 Slides, Interview Prep Notes)..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#1C1C28] border border-[#2B2B40] text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-purple-500"
-              />
-
-              <textarea
-                rows={3}
-                value={contentInput}
-                onChange={(e) => setContentInput(e.target.value)}
-                placeholder="Paste extracted text, syllabus notes, or cheat-sheet summary..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#1C1C28] border border-[#2B2B40] text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-purple-500 resize-none"
-              />
+        {/* Sources Content View */}
+        <main className="flex-1 overflow-y-auto px-6 md:px-12 py-10 flex flex-col items-center">
+          <div className="max-w-2xl w-full space-y-6">
+            {/* Header Card */}
+            <div className="p-6 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl flex items-start justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider">
+                  Knowledge Index
+                </span>
+                <h1 className="font-headline text-2xl font-extrabold text-[var(--color-text)] tracking-tight mt-1">
+                  Sources & Grounding References
+                </h1>
+                <p className="text-xs text-[var(--color-text-muted)] mt-1.5 leading-relaxed max-w-md">
+                  Reference cheat sheets and curated background materials used to synthesize your roadmap, notes, and quiz for {activeTitle}.
+                </p>
+              </div>
 
               <button
-                type="submit"
-                disabled={!titleInput.trim()}
-                className="w-full py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold transition-all shadow-md shadow-purple-600/30 disabled:opacity-40"
+                onClick={() => setIsAdding(!isAdding)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition-all shrink-0"
               >
-                Add Document Source
+                <Plus size={13} />
+                <span>Add Source</span>
               </button>
             </div>
-          </form>
 
-          <div className="space-y-3">
-            <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Active Documents</h2>
-            {sources.map((src) => (
-              <div
-                key={src.id}
-                className="p-4 rounded-2xl bg-[#161622] border border-[#262638] flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 font-bold text-xs">
-                    {src.type}
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-semibold text-white">{src.title}</h3>
-                    <div className="flex items-center gap-2 text-[10px] text-zinc-400 mt-0.5">
-                      <span>{src.size}</span>
-                      <span>•</span>
-                      <span>{src.chunks} Semantic Chunks</span>
-                      <span>•</span>
-                      <span>{src.date}</span>
+            {/* Add Custom Source Form */}
+            {isAdding && (
+              <form onSubmit={handleAddCustom} className="p-5 rounded-2xl bg-[var(--color-surface)] border border-purple-500/40 shadow-lg space-y-3 animate-in fade-in duration-150">
+                <h3 className="font-headline font-bold text-xs text-[var(--color-text)]">
+                  Add Custom Note or Reference
+                </h3>
+                <input
+                  type="text"
+                  value={titleInput}
+                  onChange={(e) => setTitleInput(e.target.value)}
+                  placeholder="Source title (e.g. Chapter 4 Lecture Notes)..."
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-bg-alt)] border border-[var(--color-border)] text-xs text-[var(--color-text)] placeholder:text-zinc-500 focus:outline-none focus:border-purple-500"
+                />
+                <textarea
+                  rows={3}
+                  value={contentInput}
+                  onChange={(e) => setContentInput(e.target.value)}
+                  placeholder="Paste summaries, cheat sheets, or key definitions..."
+                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-bg-alt)] border border-[var(--color-border)] text-xs text-[var(--color-text)] placeholder:text-zinc-500 focus:outline-none focus:border-purple-500 resize-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdding(false)}
+                    className="px-3 py-1.5 rounded-xl border border-[var(--color-border)] text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-sm"
+                  >
+                    Save Source
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Sources List */}
+            <div className="space-y-3">
+              {displaySources.map((src) => (
+                <div
+                  key={src.id}
+                  className="p-5 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-purple-500/30 shadow-sm space-y-3 transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                        {src.category}
+                      </span>
+                      <h2 className="font-headline font-bold text-sm text-[var(--color-text)]">
+                        {src.title}
+                      </h2>
                     </div>
+
+                    <button
+                      onClick={() => handleDelete(src.id)}
+                      className="p-1.5 text-zinc-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
+                      title="Remove source"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                    {src.summary}
+                  </p>
+
+                  {src.keyTakeaways && src.keyTakeaways.length > 0 && (
+                    <div className="p-3 rounded-xl bg-[var(--color-bg-alt)] border border-[var(--color-border)] space-y-1">
+                      <div className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">
+                        Key Coverage
+                      </div>
+                      <ul className="space-y-1 text-xs text-[var(--color-text)]">
+                        {src.keyTakeaways.map((point, pIdx) => (
+                          <li key={pIdx} className="flex items-center gap-2">
+                            <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
+                            <span>{point}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="text-[11px] text-zinc-500 flex items-center justify-between pt-1">
+                    <span>Relevance: {src.relevance}</span>
+                    {src.sourceUrl && (
+                      <a
+                        href={src.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-purple-400 hover:text-purple-300 flex items-center gap-1 font-medium"
+                      >
+                        <span>Official Docs</span>
+                        <ExternalLink size={11} />
+                      </a>
+                    )}
                   </div>
                 </div>
-
-                <button
-                  onClick={() => setSources((prev) => prev.filter((s) => s.id !== src.id))}
-                  className="text-zinc-500 hover:text-rose-400 p-2 transition-colors"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </main>
       </div>
 
+      {/* Floating Ask Emma AI Button */}
       <button
         onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
-        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[#181824] border border-[#2D2D44] shadow-xl text-xs font-bold text-white flex items-center gap-2 hover:bg-[#222234] hover:scale-105 active:scale-95 transition-all z-40"
+        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40"
       >
-        <img src="/emma-expressions/teaching.png" alt="Mascot" className="w-5 h-5 rounded-full object-cover" />
+        <TurboMascot size="xs" expression="teaching" />
         <span>Ask Emma AI</span>
       </button>
     </div>
   );
 };
+export default SourcesKnowledgeView;

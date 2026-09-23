@@ -9,6 +9,7 @@ import { FlashcardsGeneratorView } from './components/turbo/FlashcardsGeneratorV
 import { PodcastLectureView } from './components/turbo/PodcastLectureView.js';
 import { SourcesKnowledgeView } from './components/turbo/SourcesKnowledgeView.js';
 import { EmmaTutorDrawer } from './components/turbo/EmmaTutorDrawer.js';
+import { getStudyPack } from './services/turboApi.js';
 import { Sparkles, X, Check } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -19,19 +20,25 @@ export const App: React.FC = () => {
       try {
         return JSON.parse(saved);
       } catch {
-        return { name: 'Sarthak Dhawan', email: 'sarthak@example.com' };
+        return { name: 'Student', email: 'student@example.com' };
       }
     }
-    return { name: 'Sarthak Dhawan', email: 'sarthak@example.com' };
+    return { name: 'Student', email: 'student@example.com' };
   });
 
-  const [activeTopic, setActiveTopic] = useState('Roadmap: Resume to FAANG/MAANG SDE');
+  const [activeTopic, setActiveTopic] = useState('How to learn Java');
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [isEmmaOpen, setIsEmmaOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = router.subscribe((state) => {
       setRouteState(state);
+      if (state.noteId) {
+        const pack = getStudyPack(state.noteId);
+        if (pack) {
+          setActiveTopic(pack.topic);
+        }
+      }
       window.scrollTo(0, 0);
     });
     return () => unsubscribe();
@@ -44,11 +51,10 @@ export const App: React.FC = () => {
 
   const handleStartNewLesson = (prompt: string) => {
     setActiveTopic(prompt);
-    router.navigate('/notes/new-lesson');
   };
 
   return (
-    <div className="min-h-screen bg-[#111114] text-zinc-100 font-sans antialiased select-none relative">
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] font-body antialiased select-none relative transition-colors duration-200">
       {routeState.routeName === 'signup' && (
         <AuthView initialMode="signup" onAuthSuccess={handleAuthSuccess} />
       )}
