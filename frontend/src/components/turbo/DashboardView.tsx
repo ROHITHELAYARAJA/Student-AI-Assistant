@@ -396,10 +396,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => router.navigate('/dashboard')}
         >
-          {/* Blast AI Fire Star Logo */}
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#FF5E00] to-[#FFAA00] flex items-center justify-center text-white shadow-md shadow-orange-500/30 group-hover:scale-105 transition-transform">
-            <Flame size={18} className="fill-white text-transparent" />
-          </div>
+          {/* Blast AI Official Flame Emblem Logo */}
+          <img
+            src="/blast-logo.png"
+            alt="Blast AI Logo"
+            className="w-8 h-8 rounded-xl object-contain shadow-md shadow-orange-500/30 group-hover:scale-105 transition-transform bg-[#181824] p-1 border border-orange-500/20"
+          />
           <span className="font-headline font-bold text-lg tracking-tight flex items-center gap-1">
             <span>blast</span>
             <span className="text-[#FF5E00]">ai</span>

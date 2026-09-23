@@ -52,11 +52,11 @@ export const TurboSidebar: React.FC<TurboSidebarProps> = ({
         <div className="flex items-center gap-3">
           <div className="relative">
             <img
-              src="/blast-mascot.png"
+              src="/blast-logo.png"
               alt="Blast AI Logo"
-              className="w-10 h-10 rounded-full object-cover ring-2 ring-orange-500/50 shadow-lg shadow-orange-500/20"
+              className="w-10 h-10 rounded-xl object-contain ring-2 ring-orange-500/40 shadow-lg shadow-orange-500/20 bg-[#161622] p-1 border border-orange-500/20"
             />
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#0F0F14]" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#0F0F14]" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
