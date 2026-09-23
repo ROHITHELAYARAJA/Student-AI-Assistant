@@ -5,7 +5,7 @@ import {
   RotateCcw,
   Globe
 } from 'lucide-react';
-import { EmmaAvatar } from '../ui/EmmaAvatar.js';
+import { BlastAvatar } from '../ui/BlastAvatar.js';
 
 interface HeaderProps {
   notesCount: number;
@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <EmmaAvatar
+        <BlastAvatar
           useOfficialLogo={true}
           size={38}
           showStatus={true}
@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
                 fontWeight: 700
               }}
             >
-              Emma
+              Blast
             </span>
             <span
               style={{

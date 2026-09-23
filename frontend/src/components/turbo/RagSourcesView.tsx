@@ -207,8 +207,8 @@ export const RagSourcesView: React.FC<RagSourcesViewProps> = ({
           </div>
 
           <div className="text-[11px] text-zinc-500 flex items-center gap-1.5">
-            <Sparkles size={12} className="text-purple-400" />
-            <span>Retrieved passages are automatically injected into Emma's prompts.</span>
+            <Sparkles size={12} className="text-orange-400" />
+            <span>Retrieved passages are automatically injected into Blast's prompts.</span>
           </div>
         </div>
       </div>

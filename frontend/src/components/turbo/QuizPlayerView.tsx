@@ -27,14 +27,17 @@ interface QuizPlayerViewProps {
   topicTitle?: string;
   onOpenUpgrade?: () => void;
   onOpenEmma?: () => void;
+  onOpenBlast?: () => void;
 }
 
 export const QuizPlayerView: React.FC<QuizPlayerViewProps> = ({
   noteId = 'current',
   topicTitle = 'How to learn Java',
   onOpenUpgrade,
-  onOpenEmma
+  onOpenEmma,
+  onOpenBlast
 }) => {
+  const openBlastHandler = onOpenBlast || onOpenEmma;
   const [studyPack, setStudyPack] = useState<TurboStudyPack | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -390,9 +393,9 @@ export const QuizPlayerView: React.FC<QuizPlayerViewProps> = ({
         </main>
       </div>
 
-      {/* Floating Ask Emma AI Button */}
+      {/* Floating Ask Blast AI Button */}
       <button
-        onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
+        onClick={openBlastHandler || (() => router.navigate(`/notes/${noteId}/editor`))}
         className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40"
       >
         <BlastMascot size="xs" state="speaking" />

@@ -17,7 +17,8 @@ interface RoadmapViewProps {
   roadmap: TurboRoadmap | null;
   isLoading: boolean;
   onStartLesson: () => void;
-  onOpenEmmaWithPrompt: (prompt: string) => void;
+  onOpenEmmaWithPrompt?: (prompt: string) => void;
+  onOpenBlastWithPrompt?: (prompt: string) => void;
   onToggleMilestone: (stageId: string, milestoneId: string) => void;
 }
 
@@ -26,16 +27,18 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
   isLoading,
   onStartLesson,
   onOpenEmmaWithPrompt,
+  onOpenBlastWithPrompt,
   onToggleMilestone
 }) => {
+  const askHandler = onOpenBlastWithPrompt || onOpenEmmaWithPrompt || (() => {});
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(null);
 
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-        <div className="w-12 h-12 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin mb-4" />
+        <div className="w-12 h-12 rounded-full border-2 border-orange-500/20 border-t-orange-500 animate-spin mb-4" />
         <h3 className="text-white font-semibold text-sm">Generating Personalized Roadmap...</h3>
-        <p className="text-zinc-400 text-xs mt-1">Emma is analyzing your study topics and structuring your milestone path.</p>
+        <p className="text-zinc-400 text-xs mt-1">Blast is analyzing your study topics and structuring your milestone path.</p>
       </div>
     );
   }
@@ -232,12 +235,12 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() =>
-                              onOpenEmmaWithPrompt(
-                                `Hi Emma! Can you explain the key concepts and exam strategies for the milestone "${milestone.title}" in our ${roadmap.topic} study plan?`
+                              askHandler(
+                                `Hi Blast! Can you explain the key concepts and exam strategies for the milestone "${milestone.title}" in our ${roadmap.topic} study plan?`
                               )
                             }
-                            className="p-1.5 rounded-lg bg-[#1F1F30] hover:bg-purple-600/30 text-purple-300 border border-purple-500/20 text-xs transition-colors"
-                            title="Ask Emma about this milestone"
+                            className="p-1.5 rounded-lg bg-[#1F1F30] hover:bg-orange-600/30 text-orange-300 border border-orange-500/20 text-xs transition-colors"
+                            title="Ask Blast about this milestone"
                           >
                             <Sparkles size={13} />
                           </button>

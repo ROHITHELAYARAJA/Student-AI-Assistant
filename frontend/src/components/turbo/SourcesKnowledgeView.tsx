@@ -26,14 +26,17 @@ interface SourcesKnowledgeViewProps {
   topicTitle?: string;
   onOpenUpgrade?: () => void;
   onOpenEmma?: () => void;
+  onOpenBlast?: () => void;
 }
 
 export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
   noteId = 'current',
   topicTitle = 'How to learn Java',
   onOpenUpgrade,
-  onOpenEmma
+  onOpenEmma,
+  onOpenBlast
 }) => {
+  const openBlastHandler = onOpenBlast || onOpenEmma;
   const [studyPack, setStudyPack] = useState<TurboStudyPack | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sourcesList, setSourcesList] = useState<TurboSourceItem[]>([]);
@@ -348,7 +351,7 @@ export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
 
       {/* Floating Ask Blast AI Button */}
       <button
-        onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
+        onClick={openBlastHandler || (() => router.navigate(`/notes/${noteId}/editor`))}
         className="fixed right-6 bottom-8 py-2 px-4 rounded-full bg-[var(--color-surface)] border border-orange-500/30 shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40 group"
       >
         <BlastMascot size="xs" state="idle" />

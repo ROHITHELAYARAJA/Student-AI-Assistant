@@ -78,41 +78,8 @@ export async function processStudyRequest(request: StudyRequest): Promise<Struct
   }
 
   if (!structuredResponse) {
-    const groqKey = process.env.GROQ_KEY || process.env.GROQ_API_KEY;
-    if (groqKey) {
-      try {
-        const jsonSystemPrompt = buildStrictJsonPrompt(opMeta.id, opMeta.outputComponent, extractedTopic, rawInput, request.programmingLanguage);
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${groqKey}`
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [{ role: 'user', content: jsonSystemPrompt }],
-            temperature: 0.2
-          })
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const responseText = json?.choices?.[0]?.message?.content || '';
-          if (responseText) {
-            const parsed = tryParseJsonToStructured(responseText, opMeta.id, opMeta.outputComponent, extractedTopic);
-            if (parsed) {
-              structuredResponse = parsed;
-              modelUsed = 'Groq LLaMA-3.3 70B';
-            }
-          }
-        }
-      } catch (e) {
-      }
-    }
-  }
-
-  if (!structuredResponse) {
     structuredResponse = generateDynamicTopicSolution(extractedTopic, rawInput, opMeta.id, opMeta.outputComponent, request.programmingLanguage || 'TypeScript');
-    modelUsed = bedrockToken ? 'Emma Neural Synthesis (Bedrock Authenticated)' : 'Emma Neural Synthesis Engine';
+    modelUsed = bedrockToken ? 'Blast Neural Synthesis (AWS Bedrock)' : 'Blast Neural Synthesis Engine';
   }
 
   structuredResponse.metadata = {
@@ -141,7 +108,7 @@ function buildStrictJsonPrompt(
   content: string,
   lang?: string
 ): string {
-  return `You are Emma, an expert academic and software engineering AI tutor.
+  return `You are Blast, an expert academic and software engineering AI tutor.
 Topic: "${topic}"
 Operation: "${opId}"
 Component: "${componentType}"
@@ -259,7 +226,7 @@ function generateDynamicTopicSolution(
           }
         ]
       },
-      metadata: { model: 'Emma Synthesis', processingTimeMs: 0, timestamp: '' }
+      metadata: { model: 'Blast Synthesis', processingTimeMs: 0, timestamp: '' }
     };
   }
 
@@ -310,7 +277,7 @@ function generateDynamicTopicSolution(
           }
         ]
       },
-      metadata: { model: 'Emma Synthesis', processingTimeMs: 0, timestamp: '' }
+      metadata: { model: 'Blast Synthesis', processingTimeMs: 0, timestamp: '' }
     };
   }
 
@@ -339,7 +306,7 @@ function generateDynamicTopicSolution(
           ]
         }
       },
-      metadata: { model: 'Emma Synthesis', processingTimeMs: 0, timestamp: '' }
+      metadata: { model: 'Blast Synthesis', processingTimeMs: 0, timestamp: '' }
     };
   }
 
@@ -362,7 +329,7 @@ function generateDynamicTopicSolution(
           verdict: `Adopt the modern approach for production environments where scalability and maintainability are critical requirements.`
         }
       },
-      metadata: { model: 'Emma Synthesis', processingTimeMs: 0, timestamp: '' }
+      metadata: { model: 'Blast Synthesis', processingTimeMs: 0, timestamp: '' }
     };
   }
 
@@ -384,7 +351,7 @@ function generateDynamicTopicSolution(
           { day: 7, title: 'Final Flashcard Recall', duration: '1 hour', tasks: ['Rapid-fire review of all key points', 'Summary cheat-sheet creation'], tips: 'Aim for 100% active recall accuracy.' }
         ]
       },
-      metadata: { model: 'Emma Synthesis', processingTimeMs: 0, timestamp: '' }
+      metadata: { model: 'Blast Synthesis', processingTimeMs: 0, timestamp: '' }
     };
   }
 
@@ -409,7 +376,7 @@ function generateDynamicTopicSolution(
           }
         ]
       },
-      metadata: { model: 'Emma Synthesis', processingTimeMs: 0, timestamp: '' }
+      metadata: { model: 'Blast Synthesis', processingTimeMs: 0, timestamp: '' }
     };
   }
 
@@ -452,7 +419,7 @@ function generateDynamicTopicSolution(
           ]
         }
       },
-      metadata: { model: 'Emma Synthesis', processingTimeMs: 0, timestamp: '' }
+      metadata: { model: 'Blast Synthesis', processingTimeMs: 0, timestamp: '' }
     };
   }
 
@@ -490,6 +457,6 @@ function generateDynamicTopicSolution(
         }
       ]
     },
-    metadata: { model: 'Emma Synthesis', processingTimeMs: 0, timestamp: '' }
+    metadata: { model: 'Blast Synthesis', processingTimeMs: 0, timestamp: '' }
   };
 }

@@ -1,21 +1,21 @@
-# ⚡ Turbo AI — Master Study Platform
+# ⚡ Blast AI — Master Study Platform
 
-> **Modern AI-Powered Study & Learning Web Application inspired by [Turbo AI](https://www.turbo.ai/)**  
-> Complete with interactive roadmap tracks, live audio lecture podcasts, spaced-repetition flashcards, intelligent quizzes, RAG knowledge indexing, and Emma AI Tutor.
+> **Modern AI-Powered Study & Learning Web Application powered by AWS Bedrock**  
+> Complete with interactive roadmap tracks, live audio lecture podcasts, spaced-repetition flashcards, intelligent quizzes, RAG knowledge indexing, and Blast AI Tutor.
 
 ---
 
 ## 🧭 System Overview
 
-Turbo AI is a full-stack, standalone web application that transforms lecture notes, syllabi, PDFs, and YouTube transcripts into dynamic, interactive study materials.
+Blast AI is a full-stack, standalone web application that transforms lecture notes, syllabi, PDFs, and YouTube transcripts into dynamic, interactive study materials.
 
 ```
 ┌────────────────────────────────────────────────────────┐
 │               Frontend: React 18 + Vite                │
-│    Turbo Dark UI • Client Router • Web Speech Audio    │
+│    Blast Dark UI • Client Router • Web Speech Audio    │
 ├──────────────────────────┬─────────────────────────────┤
-│   Study Hub Modules      │   Emma AI Study Copilot     │
-│   • Learn Roadmaps       │   • 8-Expression Avatar     │
+│   Study Hub Modules      │   Blast AI Study Copilot    │
+│   • Learn Roadmaps       │   • Multi-State Mascot      │
 │   • Rich Notes Editor    │   • Context-Aware Chat      │
 │   • Interactive Quiz     │   • Instant Prompt Actions  │
 │   • 3D Flashcards Deck   │                             │
@@ -26,9 +26,9 @@ Turbo AI is a full-stack, standalone web application that transforms lecture not
                            ▼
 ┌────────────────────────────────────────────────────────┐
 │            Backend: Node.js + TypeScript               │
-│    Express REST API • Semantic RAG • Bedrock AI        │
+│    Express REST API • Semantic RAG • AWS Bedrock AI    │
 ├────────────────────────────────────────────────────────┤
-│  • AWS Bedrock Bearer Token Runtime (Claude 3 Haiku)   │
+│  • AWS Bedrock Converse API (Claude 3, LLaMA 3, Nova)   │
 │  • Local In-Memory BM25/Cosine Semantic RAG Engine    │
 │  • High-Yield Academic Fallback Synthesis Engine       │
 └────────────────────────────────────────────────────────┘
@@ -64,16 +64,16 @@ Turbo AI is a full-stack, standalone web application that transforms lecture not
 - Keyboard shortcuts and navigation.
 
 ### 6. 🎧 Audio Podcast Lecture Stream (`/notes/:id/podcast`)
-- Dual-speaker dialogue format: Emma (Host) & Alex (Student).
+- Dual-speaker dialogue format: Blast (Host) & Alex (Student).
 - **Web Speech Synthesis Audio Engine**: Play/pause voice playback, dynamic speaker switching, and synchronised audio node highlights.
 
 ### 7. 📚 Knowledge Sources & RAG Indexing (`/notes/:id/source`)
 - Ingest PDFs, slides, and notes into semantic chunk embeddings.
 - Full vector retrieval engine for grounded, hallucination-free AI answers.
 
-### 8. 👩‍🏫 Global Emma AI Copilot
+### 8. 👩‍🏫 Global Blast AI Copilot
 - Available on every screen via the floating mascot button.
-- Dynamic 8-state emotional reactions (Teaching, Thinking, Celebrating, Coding, Reading, Loving, Sleeping, Waving).
+- Dynamic reactions and context-aware study tutoring.
 
 ---
 

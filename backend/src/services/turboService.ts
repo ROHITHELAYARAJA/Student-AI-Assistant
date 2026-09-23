@@ -98,7 +98,7 @@ export interface TurboPodcastScript {
   audioDurationEstimate: string;
   overview: string;
   segments: Array<{
-    speaker: 'Emma (Host)' | 'Alex (Student)';
+    speaker: 'Blast (Host)' | 'Alex (Student)';
     line: string;
   }>;
 }
@@ -125,7 +125,89 @@ export interface TurboStudyPack {
   sources: TurboSourceItem[];
 }
 
-async function callBedrock(prompt: string): Promise<string> {
+export interface PromptValidationResult {
+  valid: boolean;
+  cleanTopic: string;
+  reason?: string;
+  requestedQuestionCount?: number;
+}
+
+export function validateStudyPrompt(input: string): PromptValidationResult {
+  if (!input || typeof input !== 'string') {
+    return {
+      valid: false,
+      cleanTopic: '',
+      reason: 'Please enter a study topic, syllabus concept, or question.'
+    };
+  }
+
+  const trimmed = input.trim();
+  if (trimmed.length < 2) {
+    return {
+      valid: false,
+      cleanTopic: '',
+      reason: 'Your study query is too short. Please provide at least 2 characters (e.g., "Python Async", "Linear Algebra", "10 Quiz on DSA").'
+    };
+  }
+
+  // Check for pure symbols / punctuation
+  const alphanumericCount = (trimmed.match(/[a-zA-Z0-9]/g) || []).length;
+  if (alphanumericCount < 2 || alphanumericCount / trimmed.length < 0.25) {
+    return {
+      valid: false,
+      cleanTopic: '',
+      reason: 'Input contains mostly non-text characters or symbols. Please enter a valid study topic.'
+    };
+  }
+
+  // Check for keyboard smashes / repeated single chars (e.g. "aaaaaa", "asdfghjk", "qwerty")
+  if (/(.)\1{5,}/i.test(trimmed)) {
+    return {
+      valid: false,
+      cleanTopic: '',
+      reason: 'Input contains excessive repeated characters. Please enter a clear study topic or question.'
+    };
+  }
+  const keyboardMashes = ['asdfgh', 'qwerty', 'zxcvbn', 'lkjhgf', 'poiuyt'];
+  const lower = trimmed.toLowerCase();
+  for (const mash of keyboardMashes) {
+    if (lower.includes(mash) && trimmed.length < 15) {
+      return {
+        valid: false,
+        cleanTopic: '',
+        reason: 'Input appears to be random keyboard keys. Please enter a valid topic to generate study materials.'
+      };
+    }
+  }
+
+  // Parse requested question count if present (e.g., "10 quiz", "generate 10 questions on React", "15 mcqs")
+  let requestedQuestionCount: number | undefined;
+  const countMatch = trimmed.match(/(?:^|\b)(\d+)\s*(?:quiz|questions?|mcqs?|cards?|problems?)(?:\b|$)/i);
+  if (countMatch && countMatch[1]) {
+    const parsed = parseInt(countMatch[1], 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      requestedQuestionCount = Math.min(Math.max(parsed, 1), 25);
+    }
+  }
+
+  // Clean the topic name from conversational wrappers
+  let clean = trimmed
+    .replace(/^(?:please\s+)?(?:can you\s+)?(?:explain|teach me|tell me about|how to learn|what is|create a study pack for|generate\s+\d*\s*(?:quiz|questions?|study pack|roadmap|notes|flashcards)?\s*(?:for|on|about)?)\s+/i, '')
+    .replace(/[?!.]+$/, '')
+    .trim();
+
+  if (!clean || clean.length < 2) {
+    clean = trimmed;
+  }
+
+  return {
+    valid: true,
+    cleanTopic: clean,
+    requestedQuestionCount
+  };
+}
+
+async function callBedrock(prompt: string, preferredModel?: string): Promise<string> {
   const bedrockToken =
     process.env.AWS_BEARER_TOKEN_BEDROCK ||
     process.env.BEDROCK_API_KEY ||
@@ -136,13 +218,18 @@ async function callBedrock(prompt: string): Promise<string> {
     return '';
   }
 
-  const bedrockModels = [
+  const defaultModels = [
     'anthropic.claude-3-haiku-20240307-v1:0',
     'meta.llama3-70b-instruct-v1:0',
     'meta.llama3-8b-instruct-v1:0',
     'amazon.nova-lite-v1:0',
     'amazon.nova-micro-v1:0'
   ];
+
+  let bedrockModels = defaultModels;
+  if (preferredModel && defaultModels.includes(preferredModel)) {
+    bedrockModels = [preferredModel, ...defaultModels.filter(m => m !== preferredModel)];
+  }
 
   for (const modelId of bedrockModels) {
     try {
@@ -212,7 +299,7 @@ export async function generateRoadmap(topic: string, examDate?: string): Promise
     contextText = `\nSource Material Context:\n${retrievedChunks.map((c) => c.content).join('\n---\n')}`;
   }
 
-  const prompt = `You are Emma, an expert Turbo AI study planner. Generate an intensive, structured mastery roadmap for the topic: "${topic}".${contextText}
+  const prompt = `You are Blast, an expert Blast AI study planner. Generate an intensive, structured mastery roadmap for the topic: "${topic}".${contextText}
 Return ONLY valid raw JSON matching this TypeScript schema:
 {
   "topic": "${topic}",
@@ -326,7 +413,7 @@ Make sure all text directly relates to "${topic}". No markdown formatting or ext
             duration: '45 mins',
             completed: false,
             keyConcepts: ['Tricky Distractors', 'Boundary Conditions'],
-            tasks: ['Take diagnostic checkpoint quiz', 'Clarify weak points with Emma']
+            tasks: ['Take diagnostic checkpoint quiz', 'Clarify weak points with Blast']
           }
         ]
       },
@@ -350,7 +437,7 @@ Make sure all text directly relates to "${topic}". No markdown formatting or ext
             duration: '45 mins',
             completed: false,
             keyConcepts: ['Test Conditions', 'Confidence Calibration'],
-            tasks: ['Complete final 10-question evaluation quiz', 'Review mistakes with Emma']
+            tasks: ['Complete final 10-question evaluation quiz', 'Review mistakes with Blast']
           }
         ]
       }
@@ -365,7 +452,7 @@ export async function generateLesson(topic: string): Promise<TurboLesson> {
     contextText = `\nRAG Document Reference Chunks:\n${retrievedChunks.map((c) => c.content).join('\n---\n')}`;
   }
 
-  const prompt = `You are Emma, the Turbo AI study tutor. Generate an interactive practice study lesson on the topic: "${topic}".${contextText}
+  const prompt = `You are Blast, the Blast AI study tutor. Generate an interactive practice study lesson on the topic: "${topic}".${contextText}
 Create 5 engaging, high-yield questions (mix of multiple_choice and fill_in_the_blank) with realistic options, correct answer, and an in-depth explanatory breakdown.
 Return ONLY valid raw JSON matching this TypeScript schema:
 {
@@ -472,7 +559,7 @@ export async function generateNotes(topic: string): Promise<TurboNotes> {
     contextText = `\nContext Sources from Uploaded Material:\n${retrievedChunks.map((c) => c.content).join('\n---\n')}`;
   }
 
-  const prompt = `You are Emma, the Turbo AI high-yield academic note creator. Generate structured, crystal-clear study notes for the topic: "${topic}".${contextText}
+  const prompt = `You are Blast, the Blast AI high-yield academic note creator. Generate structured, crystal-clear study notes for the topic: "${topic}".${contextText}
 Return ONLY valid raw JSON matching this schema:
 {
   "topic": "${topic}",
@@ -565,7 +652,7 @@ export async function generateFlashcards(topic: string): Promise<TurboFlashcardD
     contextText = `\nRAG Document Reference:\n${retrievedChunks.map((c) => c.content).join('\n---\n')}`;
   }
 
-  const prompt = `You are Emma, the Turbo AI spaced-repetition flashcard generator. Create 8 high-impact study flashcards for: "${topic}".${contextText}
+  const prompt = `You are Blast, the Blast AI spaced-repetition flashcard generator. Create 8 high-impact study flashcards for: "${topic}".${contextText}
 Return ONLY valid raw JSON matching this schema:
 {
   "topic": "${topic}",
@@ -638,19 +725,24 @@ Make sure cards test key distinctions, equations, definitions, and common mistak
   };
 }
 
-export async function generateQuiz(topic: string): Promise<TurboQuiz> {
+export async function generateQuiz(
+  topic: string,
+  questionCount: number = 5,
+  modelId?: string
+): Promise<TurboQuiz> {
+  const targetCount = questionCount > 0 ? questionCount : 5;
   const retrievedChunks = ragEngine.search(topic, 3);
   let contextText = '';
   if (retrievedChunks.length > 0) {
     contextText = `\nRAG Document Reference:\n${retrievedChunks.map((c) => c.content).join('\n---\n')}`;
   }
 
-  const prompt = `You are Emma, the Turbo AI assessment examiner. Generate a 5-question mastery quiz for: "${topic}".${contextText}
+  const prompt = `You are Blast, the Blast AI assessment examiner. Generate a ${targetCount}-question mastery quiz for: "${topic}".${contextText}
 Return ONLY valid raw JSON matching this schema:
 {
   "topic": "${topic}",
   "title": "Mastery Assessment: ${topic}",
-  "timeLimitMinutes": 10,
+  "timeLimitMinutes": ${Math.ceil(targetCount * 1.8)},
   "questions": [
     {
       "id": "quiz-q-1",
@@ -661,9 +753,9 @@ Return ONLY valid raw JSON matching this schema:
     }
   ]
 }
-Pure JSON only. No markdown fences.`;
+Generate exactly ${targetCount} unique, high-yield questions testing core principles, invariants, edge cases, and performance tradeoffs. Pure JSON only. No markdown fences.`;
 
-  const aiText = await callBedrock(prompt);
+  const aiText = await callBedrock(prompt, modelId);
   if (aiText) {
     const parsed = extractJsonBlock(aiText);
     if (parsed && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
@@ -671,92 +763,169 @@ Pure JSON only. No markdown fences.`;
     }
   }
 
+  // Dynamic fallback generator matching targetCount exactly
+  const questions: TurboQuizItem[] = [];
+  const archetypes = [
+    {
+      q: `Under standard architecture and execution models, what primary invariant governs ${topic}?`,
+      opts: [
+        'Unbounded state mutation across arbitrary threads',
+        'Deterministic equilibrium governed by conservation laws and boundary invariants',
+        'Stochastic loss of state across function returns',
+        'Arbitrary compile-time constant elimination'
+      ],
+      correct: 1,
+      exp: `In ${topic}, predictable behavior and correctness rely fundamentally on strict conservation laws and bounded state invariants.`
+    },
+    {
+      q: `When optimizing time and space performance for ${topic}, what is typically the primary bottleneck?`,
+      opts: [
+        'Memory cache invalidation and redundant re-computations',
+        'Excessive function comment overhead',
+        'Terminal display buffer refresh rate',
+        'CSS stylesheet loading order'
+      ],
+      correct: 0,
+      exp: 'Redundant operations and cache thrashing constitute the primary asymptotic latency overhead in production systems.'
+    },
+    {
+      q: `What distinguishes an optimal, production-grade approach to ${topic} from a naive prototype?`,
+      opts: [
+        'Relying entirely on global variables',
+        'Asymptotic efficiency guarantees, robust input sanitization, and defensive error boundaries',
+        'Avoiding all testing and static analysis',
+        'Hardcoding fixed buffer sizes without checks'
+      ],
+      correct: 1,
+      exp: 'Robust implementations provide strict Big-O guarantees and defensive boundary assertions against adversarial inputs.'
+    },
+    {
+      q: `Which scenario triggers the worst-case degenerative behavior in ${topic}?`,
+      opts: [
+        'Uniformly balanced data distributions',
+        'Adversarial skewed inputs causing recursive tree or pipeline degradation',
+        'Strictly typed immutable parameter structures',
+        'Pre-warmed memory cache hierarchies'
+      ],
+      correct: 1,
+      exp: 'Degenerative distributions degrade sub-linear operations into linear or quadratic latency.'
+    },
+    {
+      q: `How should edge-case anomalies and boundary errors be handled when implementing ${topic}?`,
+      opts: [
+        'Silently ignore errors and continue execution',
+        'Pre-condition verification, defensive clamp guards, and immediate deterministic isolation',
+        'Trigger random system restarts',
+        'Disable all exceptions at runtime'
+      ],
+      correct: 1,
+      exp: 'Defensive validation intercepts invalid state transitions before corrupting dependent subsystems.'
+    },
+    {
+      q: `In examination evaluations, what common trap is frequently set regarding ${topic}?`,
+      opts: [
+        'Assuming best-case O(1) amortized performance applies unconditionally in the presence of collisions or resize penalties',
+        'Assuming code must be compiled twice',
+        'Believing variables take up memory',
+        'Using descriptive function names'
+      ],
+      correct: 0,
+      exp: 'Examiners frequently test whether candidates remember hidden resize or collision overhead.'
+    },
+    {
+      q: `What is the primary trade-off when tuning latency versus throughput in ${topic}?`,
+      opts: [
+        'Higher throughput often requires batching, which can increase individual item latency',
+        'Throughput and latency are always identical metrics',
+        'Optimizing throughput permanently eliminates memory footprint',
+        'Latency has no relationship with processing queues'
+      ],
+      correct: 0,
+      exp: 'Batching amortizes per-item fixed overhead but naturally incurs queuing wait times for individual transactions.'
+    },
+    {
+      q: `Which data abstraction or design pattern is most idiomatic when structuring ${topic}?`,
+      opts: [
+        'Monolithic global state pools',
+        'Modular separation of concerns with well-defined interface contracts',
+        'Unconstrained cyclic dependency loops',
+        'Duplicated redundant data models'
+      ],
+      correct: 1,
+      exp: 'Interface segregation and modular boundaries maximize maintainability and testability.'
+    },
+    {
+      q: `When benchmarking implementations of ${topic}, which metric provides the most accurate assessment of tail latency?`,
+      opts: [
+        'Average (mean) latency alone',
+        '99th percentile (p99) latency distribution under sustained load',
+        'Initial cold-start boot time exclusively',
+        'Lines of code divided by file size'
+      ],
+      correct: 1,
+      exp: 'High percentile metrics (p99/p99.9) reveal outliers and GC/queuing pauses masked by simple arithmetic averages.'
+    },
+    {
+      q: `What is the recommended best practice for verifying correctness in ${topic}?`,
+      opts: [
+        'Property-based fuzzing and rigorous automated regression test suites covering boundary edges',
+        'Visual inspection of the code without executing it',
+        'Only testing the happy path once manually',
+        'Deleting failing unit tests'
+      ],
+      correct: 0,
+      exp: 'Automated property testing exposes unexpected boundary conditions and ensures continuous regression resistance.'
+    }
+  ];
+
+  for (let i = 0; i < targetCount; i++) {
+    const arch = archetypes[i % archetypes.length];
+    questions.push({
+      id: `quiz-q-${i + 1}`,
+      question: arch.q,
+      options: arch.opts,
+      correctIndex: arch.correct,
+      explanation: arch.exp
+    });
+  }
+
   return {
     topic,
-    title: `Diagnostic Evaluation: ${topic}`,
-    timeLimitMinutes: 8,
-    questions: [
-      {
-        id: 'quiz-q-1',
-        question: `Under standard assumptions, which principle best explains the behavior of ${topic}?`,
-        options: [
-          'Non-deterministic state fluctuation without boundaries',
-          'Deterministic equilibrium governed by conservation laws',
-          'Arbitrary thread preemption across all memory cells',
-          'Static compile-time constant folding exclusively'
-        ],
-        correctIndex: 1,
-        explanation: 'The system achieves predictable stability through strict conservation invariants and bounded state transitions.'
-      },
-      {
-        id: 'quiz-q-2',
-        question: `When scaling ${topic} across large datasets, what is the most effective optimization technique?`,
-        options: [
-          'Spatial partitioning and memoization of subproblems',
-          'Sequential linear scanning without indexing',
-          'Randomized exponential backoff on all memory reads',
-          'Disabling all runtime assertions and garbage collection'
-        ],
-        correctIndex: 0,
-        explanation: 'Spatial partitioning combined with intelligent caching dramatically minimizes redundant work and cache thrashing.'
-      },
-      {
-        id: 'quiz-q-3',
-        question: `What distinguishes an optimal implementation of ${topic} from a naive one?`,
-        options: [
-          'Use of longer identifier names in the source code',
-          'Minimal asymptotic overhead and resilience to adversarial inputs',
-          'Strict avoidance of any asynchronous execution',
-          'Exclusive reliance on floating-point arithmetic'
-        ],
-        correctIndex: 1,
-        explanation: 'Optimal implementations are characterized by tight Big-O bounds and robust guards against degenerative worst-case inputs.'
-      },
-      {
-        id: 'quiz-q-4',
-        question: `If an unexpected anomaly occurs in ${topic}, what is the first diagnostic verification step?`,
-        options: [
-          'Reinstall the operating system immediately',
-          'Audit boundary invariants and input precondition constraints',
-          'Double all timeout constants indiscriminately',
-          'Convert all variables to globally scoped pointers'
-        ],
-        correctIndex: 1,
-        explanation: 'Boundary violations and invalid preconditions account for the overwhelming majority of behavioral anomalies.'
-      }
-    ]
+    title: `Mastery Assessment: ${topic} (${targetCount} Questions)`,
+    timeLimitMinutes: Math.ceil(targetCount * 1.8),
+    questions
   };
 }
 
-export async function generatePodcastScript(topic: string): Promise<TurboPodcastScript> {
+export async function generatePodcastScript(topic: string, modelId?: string): Promise<TurboPodcastScript> {
   const retrievedChunks = ragEngine.search(topic, 3);
   let contextText = '';
   if (retrievedChunks.length > 0) {
     contextText = `\nRAG Document Reference:\n${retrievedChunks.map((c) => c.content).join('\n---\n')}`;
   }
 
-  const prompt = `You are Emma, the energetic and brilliant AI study host. Generate an engaging, conversational 2-speaker podcast breakdown for: "${topic}".${contextText}
-The speakers are "Emma (Host)" (sharp, encouraging, explains key analogies) and "Alex (Student)" (asks the exact questions a student struggles with).
+  const prompt = `You are Blast, the energetic and brilliant AI study host. Generate an engaging, conversational 2-speaker podcast breakdown for: "${topic}".${contextText}
+The speakers are "Blast (Host)" (sharp, encouraging, explains key analogies) and "Alex (Student)" (asks the exact questions a student struggles with).
 Return ONLY valid raw JSON matching this schema:
 {
   "topic": "${topic}",
-  "title": "Turbo Deep-Dive: Decoding ${topic}",
+  "title": "Blast Deep-Dive: Decoding ${topic}",
   "audioDurationEstimate": "4 mins",
   "overview": "A fast, punchy conversational audio overview breaking down the core concepts of ${topic} for effortless listening on the go.",
   "segments": [
     {
-      "speaker": "Emma (Host)",
-      "line": "Welcome back to Turbo AI Study Beats! Today we're tackling something students always ask about: ${topic}. Alex, ready to break it down?"
+      "speaker": "Blast (Host)",
+      "line": "Welcome back to Blast AI Study Beats! Today we're tackling something students always ask about: ${topic}. Alex, ready to break it down?"
     },
     {
       "speaker": "Alex (Student)",
-      "line": "Hey Emma! Yes, absolutely. Honestly, when I first saw ${topic}, it seemed overwhelming. Where do we even start?"
+      "line": "Hey Blast! Yes, absolutely. Honestly, when I first saw ${topic}, it seemed overwhelming. Where do we even start?"
     }
   ]
 }
 Include 6 to 10 alternating lines highlighting the big ideas and memorable analogies. Pure JSON only.`;
 
-  const aiText = await callBedrock(prompt);
+  const aiText = await callBedrock(prompt, modelId);
   if (aiText) {
     const parsed = extractJsonBlock(aiText);
     if (parsed && Array.isArray(parsed.segments) && parsed.segments.length > 0) {
@@ -766,20 +935,20 @@ Include 6 to 10 alternating lines highlighting the big ideas and memorable analo
 
   return {
     topic,
-    title: `Turbo Audio Deep Dive: ${topic}`,
+    title: `Blast Audio Deep Dive: ${topic}`,
     audioDurationEstimate: '3 mins',
-    overview: `A crisp conversational podcast episode breaking down ${topic} with Emma and Alex. Perfect for commute review!`,
+    overview: `A crisp conversational podcast episode breaking down ${topic} with Blast and Alex. Perfect for commute review!`,
     segments: [
       {
-        speaker: 'Emma (Host)',
-        line: `Welcome to Turbo AI Audio Sessions! Today we are tackling ${topic}—breaking down the essential principles into crystal-clear concepts.`
+        speaker: 'Blast (Host)',
+        line: `Welcome to Blast AI Audio Sessions! Today we are tackling ${topic}—breaking down the essential principles into crystal-clear concepts.`
       },
       {
         speaker: 'Alex (Student)',
-        line: `Hey Emma! Glad to be here. Honestly, ${topic} feels intimidating with all the terminology. What's the main mental model?`
+        line: `Hey Blast! Glad to be here. Honestly, ${topic} feels intimidating with all the terminology. What's the main mental model?`
       },
       {
-        speaker: 'Emma (Host)',
+        speaker: 'Blast (Host)',
         line: `Think of it like a finely tuned engine. At its core, it's all about balancing throughput with strict boundary constraints so nothing breaks under pressure.`
       },
       {
@@ -787,7 +956,7 @@ Include 6 to 10 alternating lines highlighting the big ideas and memorable analo
         line: `That makes a lot of sense! But what about on exams? What is the single biggest trap test-writers love to include?`
       },
       {
-        speaker: 'Emma (Host)',
+        speaker: 'Blast (Host)',
         line: `They love testing the edge cases! People assume the best-case speed applies everywhere, but when the input distribution is skewed, performance can degrade rapidly.`
       },
       {
@@ -795,7 +964,7 @@ Include 6 to 10 alternating lines highlighting the big ideas and memorable analo
         line: `So always check whether the input guarantees balance before picking an answer. That's a great takeaway.`
       },
       {
-        speaker: 'Emma (Host)',
+        speaker: 'Blast (Host)',
         line: `Exactly! Keep practicing with your flashcards and roadmap checkpoints, and you'll dominate your upcoming exam. You've got this!`
       }
     ]
@@ -805,11 +974,38 @@ Include 6 to 10 alternating lines highlighting the big ideas and memorable analo
 export async function generateSources(topic: string): Promise<TurboSourceItem[]> {
   const cleanTopic = topic.trim();
   const slug = cleanTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const encoded = encodeURIComponent(cleanTopic);
   
   return [
     {
+      id: `${slug}-google-search`,
+      title: `${cleanTopic} — Verified Google Search & Academic Index`,
+      category: 'Curated Google & Web Resources',
+      summary: `Live search query aggregating official specifications, university lecture notes, and top tutorials for ${cleanTopic}.`,
+      keyTakeaways: [
+        `Google Search Query: "${cleanTopic} tutorials documentation"`,
+        'Includes official documentation, community benchmarks, and architecture guides',
+        'Direct link to explore live academic search results'
+      ],
+      relevance: 'Essential starting point for up-to-date documentation and research papers',
+      sourceUrl: `https://www.google.com/search?q=${encoded}+documentation+tutorial`
+    },
+    {
+      id: `${slug}-google-scholar`,
+      title: `${cleanTopic} — Google Scholar & Research Literature`,
+      category: 'Academic Research Papers',
+      summary: `Scholarly citations, theoretical foundations, and formal research literature detailing core paradigms of ${cleanTopic}.`,
+      keyTakeaways: [
+        'Peer-reviewed citations and formal algorithmic proofs',
+        'Theoretical limits, time/space asymptotic bounds, and system guarantees',
+        'Foundational papers from leading computer science and academic conferences'
+      ],
+      relevance: 'Deep theoretical grounding and authoritative research benchmarks',
+      sourceUrl: `https://scholar.google.com/scholar?q=${encoded}`
+    },
+    {
       id: `${slug}-core-cheatsheet`,
-      title: `${cleanTopic} — Core Concepts & Syntax Cheatsheet`,
+      title: `${cleanTopic} — High-Yield Core Concepts & Syntax Reference`,
       category: 'Quick Reference Guide',
       summary: `High-yield reference covering essential definitions, patterns, time/space complexity, and architecture paradigms for ${cleanTopic}.`,
       keyTakeaways: [
@@ -818,47 +1014,40 @@ export async function generateSources(topic: string): Promise<TurboSourceItem[]>
         'Common boundary pitfalls and anti-patterns'
       ],
       relevance: 'Primary foundation reference for mastery and review',
-      sourceUrl: 'https://docs.oracle.com/en/'
+      sourceUrl: `https://en.wikipedia.org/wiki/Special:Search?search=${encoded}`
     },
     {
-      id: `${slug}-exam-patterns`,
-      title: `${cleanTopic} — High-Yield Interview & Exam Problem Patterns`,
-      category: 'Exam / Interview Guide',
-      summary: `Curated breakdown of the top question archetypes, test-case edge conditions, and analytical frameworks asked in examinations.`,
+      id: `${slug}-video-lectures`,
+      title: `${cleanTopic} — Video Explanations & Lecture Demonstrations`,
+      category: 'Visual & Audio Lectures',
+      summary: `Step-by-step visual walkthroughs, conference talks, and interactive coding sessions illustrating ${cleanTopic}.`,
       keyTakeaways: [
-        'Frequent problem classifications and step-by-step algorithms',
-        'Space/time trade-off matrices',
-        'Checklist for verifying solutions before submission'
+        'Curated video playlists breaking down complex ideas into visual intuition',
+        'Live system implementations and profiling demonstrations',
+        'Audio-visual reinforcement for accelerated retention'
       ],
-      relevance: 'Critical for exam prep and technical interviews',
-      sourceUrl: 'https://en.wikipedia.org/wiki/'
-    },
-    {
-      id: `${slug}-pitfalls-edge-cases`,
-      title: `${cleanTopic} — Debugging Playbook & Common Pitfalls`,
-      category: 'System Diagnostics & Best Practices',
-      summary: `In-depth analysis of silent bugs, null references, concurrency hazards, and compiler subtleties specific to ${cleanTopic}.`,
-      keyTakeaways: [
-        'How to trace execution stack traces methodically',
-        'Defensive coding principles and assertion strategies',
-        'Benchmarking and performance profiling techniques'
-      ],
-      relevance: 'Essential for practical implementation and problem sets'
+      relevance: 'Ideal for multimodal learners and visual conceptualization',
+      sourceUrl: `https://www.youtube.com/results?search_query=${encoded}+course+tutorial`
     }
   ];
 }
 
-export async function generateStudyPack(topic: string): Promise<TurboStudyPack> {
+export async function generateStudyPack(
+  topic: string,
+  options?: { questionCount?: number; modelId?: string }
+): Promise<TurboStudyPack> {
   const cleanTopic = topic.trim();
   const packId = `pack-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const qCount = options?.questionCount && options.questionCount > 0 ? options.questionCount : 5;
+  const modelId = options?.modelId;
 
   // Run generation for all 5 study modules concurrently
   const [roadmap, notes, quiz, flashcards, podcast, sources] = await Promise.all([
-    generateRoadmap(cleanTopic),
+    generateRoadmap(cleanTopic, undefined),
     generateNotes(cleanTopic),
-    generateQuiz(cleanTopic),
+    generateQuiz(cleanTopic, qCount, modelId),
     generateFlashcards(cleanTopic),
-    generatePodcastScript(cleanTopic),
+    generatePodcastScript(cleanTopic, modelId),
     generateSources(cleanTopic)
   ]);
 

@@ -31,14 +31,17 @@ interface DashboardViewProps {
   onStartNewLesson: (prompt: string) => void;
   onOpenUpgrade?: () => void;
   onOpenEmma?: () => void;
+  onOpenBlast?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   userName = 'Student',
   onStartNewLesson,
   onOpenUpgrade,
-  onOpenEmma
+  onOpenEmma,
+  onOpenBlast
 }) => {
+  const openBlastHandler = onOpenBlast || onOpenEmma;
   const [prompt, setPrompt] = useState('');
   const [studyPacks, setStudyPacks] = useState<TurboStudyPack[]>([]);
   const [isRecording, setIsRecording] = useState(false);
@@ -187,18 +190,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             topic: 'How to learn Java from scratch',
             title: 'Blast Audio Deep Dive: Mastering Java from Scratch',
             audioDurationEstimate: '3 mins',
-            overview: 'Emma and Alex break down JVM architecture, memory allocation, and the fastest path to building production services.',
+            overview: 'Blast and Alex break down JVM architecture, memory allocation, and the fastest path to building production services.',
             segments: [
               {
-                speaker: 'Emma (Host)',
+                speaker: 'Blast (Host)',
                 line: 'Welcome to Blast AI Audio Sessions! Today we are dissecting Java—from core memory models to production architecture.'
               },
               {
                 speaker: 'Alex (Student)',
-                line: 'Hey Emma! Java syntax looks intimidating with all the verbose boilerplate. Where should I focus first?'
+                line: 'Hey Blast! Java syntax looks intimidating with all the verbose boilerplate. Where should I focus first?'
               },
               {
-                speaker: 'Emma (Host)',
+                speaker: 'Blast (Host)',
                 line: 'Focus on understanding Stack versus Heap memory! Once you visualize how references point to heap objects, the rest of OOP becomes crystal clear.'
               }
             ]
@@ -297,10 +300,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             topic: 'Machine Learning & Neural Networks',
             title: 'Blast Audio Deep Dive: Demystifying Neural Networks',
             audioDurationEstimate: '3 mins',
-            overview: 'Emma and Alex break down loss gradients, backpropagation, and transformer architectures.',
+            overview: 'Blast and Alex break down loss gradients, backpropagation, and transformer architectures.',
             segments: [
               {
-                speaker: 'Emma (Host)',
+                speaker: 'Blast (Host)',
                 line: 'Welcome back to Blast AI! Today we are demystifying how neural networks actually learn from raw data.'
               }
             ]
@@ -743,7 +746,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Floating Ask Blast AI Button */}
       <button
-        onClick={onOpenEmma || (() => router.navigate('/notes/learn'))}
+        onClick={openBlastHandler || (() => router.navigate('/notes/learn'))}
         className="fixed right-6 bottom-8 py-2 px-4 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2.5 hover:bg-[var(--color-surface-hover)] hover:scale-105 active:scale-95 transition-all z-40"
       >
         <BlastMascot size="xs" state="speaking" />

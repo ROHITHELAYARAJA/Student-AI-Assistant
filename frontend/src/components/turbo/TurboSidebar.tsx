@@ -22,8 +22,10 @@ interface TurboSidebarProps {
   streakCount: number;
   examDate?: string;
   onOpenCreate: () => void;
-  onToggleEmma: () => void;
-  isEmmaOpen: boolean;
+  onToggleEmma?: () => void;
+  isEmmaOpen?: boolean;
+  onToggleBlast?: () => void;
+  isBlastOpen?: boolean;
 }
 
 export const TurboSidebar: React.FC<TurboSidebarProps> = ({
@@ -34,8 +36,12 @@ export const TurboSidebar: React.FC<TurboSidebarProps> = ({
   examDate = 'In 2 Weeks',
   onOpenCreate,
   onToggleEmma,
-  isEmmaOpen
+  isEmmaOpen = false,
+  onToggleBlast,
+  isBlastOpen
 }) => {
+  const toggleHandler = onToggleBlast || onToggleEmma || (() => {});
+  const openState = isBlastOpen !== undefined ? isBlastOpen : isEmmaOpen;
   const navItems: Array<{ id: TurboTab; label: string; icon: React.ReactNode; badge?: string }> = [
     { id: 'learn', label: 'Learn & Practice', icon: <BookOpen size={18} />, badge: 'Active' },
     { id: 'roadmap', label: 'Study Roadmap', icon: <Map size={18} /> },
@@ -139,9 +145,9 @@ export const TurboSidebar: React.FC<TurboSidebarProps> = ({
         </div>
 
         <button
-          onClick={onToggleEmma}
+          onClick={toggleHandler}
           className={`w-full py-2 px-3 rounded-xl border flex items-center justify-between text-xs transition-all ${
-            isEmmaOpen
+            openState
               ? 'bg-orange-600/25 border-orange-500/60 text-orange-200'
               : 'bg-[#181826] border-[#2E2E42] text-zinc-300 hover:bg-[#1E1E30]'
           }`}

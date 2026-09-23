@@ -13,8 +13,10 @@ interface TurboTopBarProps {
   onOpenTopicModal: () => void;
   onRefreshData: () => void;
   isLoading: boolean;
-  onToggleEmma: () => void;
-  isEmmaOpen: boolean;
+  onToggleEmma?: () => void;
+  isEmmaOpen?: boolean;
+  onToggleBlast?: () => void;
+  isBlastOpen?: boolean;
   ragDocCount: number;
 }
 
@@ -24,9 +26,13 @@ export const TurboTopBar: React.FC<TurboTopBarProps> = ({
   onRefreshData,
   isLoading,
   onToggleEmma,
-  isEmmaOpen,
+  isEmmaOpen = false,
+  onToggleBlast,
+  isBlastOpen,
   ragDocCount
 }) => {
+  const toggleHandler = onToggleBlast || onToggleEmma || (() => {});
+  const openState = isBlastOpen !== undefined ? isBlastOpen : isEmmaOpen;
   return (
     <header className="h-14 bg-[#0F0F14]/90 backdrop-blur-md border-b border-[#22222E] px-6 flex items-center justify-between z-20 shrink-0">
       <div className="flex items-center gap-3">
@@ -73,11 +79,11 @@ export const TurboTopBar: React.FC<TurboTopBarProps> = ({
         </button>
 
         <button
-          onClick={onToggleEmma}
+          onClick={toggleHandler}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-            isEmmaOpen
-              ? 'bg-purple-600 text-white border-purple-500 shadow-lg shadow-purple-600/30'
-              : 'bg-[#181826] hover:bg-[#222236] border-[#303046] text-purple-300'
+            openState
+              ? 'bg-orange-600 text-white border-orange-500 shadow-lg shadow-orange-600/30'
+              : 'bg-[#181826] hover:bg-[#222236] border-[#303046] text-orange-300'
           }`}
         >
           <MessageSquare size={13} />

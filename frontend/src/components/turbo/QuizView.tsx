@@ -14,7 +14,8 @@ import {
 interface QuizViewProps {
   quiz: TurboQuiz | null;
   isLoading: boolean;
-  onOpenEmmaWithPrompt: (prompt: string) => void;
+  onOpenEmmaWithPrompt?: (prompt: string) => void;
+  onOpenBlastWithPrompt?: (prompt: string) => void;
   onRetakeQuiz: () => void;
 }
 
@@ -22,8 +23,10 @@ export const QuizView: React.FC<QuizViewProps> = ({
   quiz,
   isLoading,
   onOpenEmmaWithPrompt,
+  onOpenBlastWithPrompt,
   onRetakeQuiz
 }) => {
+  const askHandler = onOpenBlastWithPrompt || onOpenEmmaWithPrompt || (() => {});
   const [currentIdx, setCurrentIdx] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -31,9 +34,9 @@ export const QuizView: React.FC<QuizViewProps> = ({
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-        <div className="w-12 h-12 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin mb-4" />
+        <div className="w-12 h-12 rounded-full border-2 border-orange-500/20 border-t-orange-500 animate-spin mb-4" />
         <h3 className="text-white font-semibold text-sm">Building Assessment Quiz...</h3>
-        <p className="text-zinc-400 text-xs mt-1">Emma is assembling exam-level questions to evaluate your mastery.</p>
+        <p className="text-zinc-400 text-xs mt-1">Blast is assembling exam-level questions to evaluate your mastery.</p>
       </div>
     );
   }
@@ -130,14 +133,14 @@ export const QuizView: React.FC<QuizViewProps> = ({
             </button>
             <button
               onClick={() =>
-                onOpenEmmaWithPrompt(
-                  `Hi Emma, I just finished the quiz on ${quiz.topic} with a score of ${percent}%. Can you review where students usually make mistakes in this topic and help me improve?`
+                askHandler(
+                  `Hi Blast, I just finished the quiz on ${quiz.topic} with a score of ${percent}%. Can you review where students usually make mistakes in this topic and help me improve?`
                 )
               }
-              className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-purple-600/30 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-orange-600/30 transition-all"
             >
               <Sparkles size={14} />
-              <span>Review with Emma</span>
+              <span>Review with Blast</span>
             </button>
           </div>
         </div>

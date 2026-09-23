@@ -13,14 +13,17 @@ import {
 interface FlashcardsViewProps {
   deck: TurboFlashcardDeck | null;
   isLoading: boolean;
-  onOpenEmmaWithPrompt: (prompt: string) => void;
+  onOpenEmmaWithPrompt?: (prompt: string) => void;
+  onOpenBlastWithPrompt?: (prompt: string) => void;
 }
 
 export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   deck,
   isLoading,
-  onOpenEmmaWithPrompt
+  onOpenEmmaWithPrompt,
+  onOpenBlastWithPrompt
 }) => {
+  const askHandler = onOpenBlastWithPrompt || onOpenEmmaWithPrompt || (() => {});
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [masteredIds, setMasteredIds] = useState<Set<string>>(new Set());
@@ -28,9 +31,9 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-        <div className="w-12 h-12 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin mb-4" />
+        <div className="w-12 h-12 rounded-full border-2 border-orange-500/20 border-t-orange-500 animate-spin mb-4" />
         <h3 className="text-white font-semibold text-sm">Generating Spaced Repetition Flashcards...</h3>
-        <p className="text-zinc-400 text-xs mt-1">Emma is isolating atomic memory concepts for rapid recall.</p>
+        <p className="text-zinc-400 text-xs mt-1">Blast is isolating atomic memory concepts for rapid recall.</p>
       </div>
     );
   }
@@ -142,14 +145,14 @@ export const FlashcardsView: React.FC<FlashcardsViewProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onOpenEmmaWithPrompt(
-                  `Hi Emma, could you explain the concept on this flashcard more thoroughly? Concept: "${currentCard.front}"`
+                askHandler(
+                  `Hi Blast, could you explain the concept on this flashcard more thoroughly? Concept: "${currentCard.front}"`
                 );
               }}
-              className="text-purple-400 hover:text-purple-300 flex items-center gap-1"
+              className="text-orange-400 hover:text-orange-300 flex items-center gap-1"
             >
               <Sparkles size={12} />
-              <span>Explain with Emma</span>
+              <span>Explain with Blast</span>
             </button>
           </div>
         </div>

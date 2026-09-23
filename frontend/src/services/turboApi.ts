@@ -60,14 +60,22 @@ export async function fetchFlashcards(topic: string): Promise<TurboFlashcardDeck
   return res.json();
 }
 
-export async function fetchQuiz(topic: string): Promise<TurboQuiz> {
+export async function fetchQuiz(
+  topic: string,
+  options?: { questionCount?: number; modelId?: string }
+): Promise<TurboQuiz> {
   const res = await fetch(`${API_BASE_URL}/api/turbo/generate-quiz`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ topic })
+    body: JSON.stringify({
+      topic,
+      questionCount: options?.questionCount,
+      modelId: options?.modelId
+    })
   });
   if (!res.ok) {
-    throw new Error('Failed to generate assessment quiz');
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.message || 'Failed to generate assessment quiz');
   }
   return res.json();
 }
@@ -133,14 +141,22 @@ export async function deleteDocument(id: string): Promise<boolean> {
   return data.success;
 }
 
-export async function fetchStudyPack(topic: string): Promise<TurboStudyPack> {
+export async function fetchStudyPack(
+  topic: string,
+  options?: { questionCount?: number; modelId?: string }
+): Promise<TurboStudyPack> {
   const res = await fetch(`${API_BASE_URL}/api/turbo/generate-study-pack`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ topic })
+    body: JSON.stringify({
+      topic,
+      questionCount: options?.questionCount,
+      modelId: options?.modelId
+    })
   });
   if (!res.ok) {
-    throw new Error('Failed to generate full study pack');
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.message || 'Failed to generate full study pack');
   }
   const pack: TurboStudyPack = await res.json();
   saveStudyPack(pack);

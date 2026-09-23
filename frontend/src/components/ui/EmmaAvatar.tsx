@@ -1,9 +1,9 @@
 import React from 'react';
-import { EmmaExpression } from '../../types/study.js';
+import { BlastExpression } from '../../types/study.js';
 import { BlastMascot, MascotState } from '../turbo/BlastMascot.js';
 
-interface EmmaAvatarProps {
-  expression?: EmmaExpression;
+interface BlastAvatarProps {
+  expression?: BlastExpression;
   size?: number;
   showStatus?: boolean;
   isOnline?: boolean;
@@ -11,6 +11,8 @@ interface EmmaAvatarProps {
   useOfficialLogo?: boolean;
   style?: React.CSSProperties;
 }
+
+export type EmmaAvatarProps = BlastAvatarProps;
 
 const mapExpressionToState = (expr: string): MascotState => {
   switch (expr) {
@@ -25,7 +27,7 @@ const mapExpressionToState = (expr: string): MascotState => {
   }
 };
 
-export const EmmaAvatar: React.FC<EmmaAvatarProps> = ({
+export const BlastAvatar: React.FC<BlastAvatarProps> = ({
   expression = 'reading',
   size = 36,
   showStatus = false,
@@ -79,4 +81,6 @@ export const EmmaAvatar: React.FC<EmmaAvatarProps> = ({
     </div>
   );
 };
-export default EmmaAvatar;
+
+export const EmmaAvatar = BlastAvatar;
+export default BlastAvatar;

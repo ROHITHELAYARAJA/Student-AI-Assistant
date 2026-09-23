@@ -205,8 +205,8 @@ export const DynamicOutputRenderer: React.FC<DynamicOutputRendererProps> = ({
             <span>
               {(response.metadata.processingTimeMs / 1000).toFixed(1)}s •{' '}
               {response.metadata.model.includes('Bedrock') || response.metadata.model.includes('Claude')
-                ? 'Claude 3.5'
-                : 'Emma Core'}
+                ? 'AWS Bedrock'
+                : 'Blast Core'}
             </span>
           </div>
         </div>

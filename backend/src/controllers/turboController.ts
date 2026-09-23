@@ -8,13 +8,25 @@ import {
   generateQuiz,
   generatePodcastScript,
   generateStudyPack,
-  generateSources
+  generateSources,
+  validateStudyPrompt
 } from '../services/turboService.js';
 
 export async function handleGenerateStudyPack(req: Request, res: Response): Promise<void> {
   try {
-    const topic = (req.body.topic || req.body.content || 'How to learn Java').trim();
-    const studyPack = await generateStudyPack(topic);
+    const rawInput = req.body.topic || req.body.content || '';
+    const validation = validateStudyPrompt(rawInput);
+    if (!validation.valid) {
+      res.status(400).json({
+        error: 'INVALID_STUDY_PROMPT',
+        message: validation.reason
+      });
+      return;
+    }
+
+    const questionCount = req.body.questionCount || validation.requestedQuestionCount || 5;
+    const modelId = req.body.modelId || req.body.model;
+    const studyPack = await generateStudyPack(validation.cleanTopic, { questionCount, modelId });
     res.json(studyPack);
   } catch (error: any) {
     res.status(500).json({ error: 'STUDY_PACK_GENERATION_FAILED', message: error?.message });
@@ -23,9 +35,18 @@ export async function handleGenerateStudyPack(req: Request, res: Response): Prom
 
 export async function handleGenerateRoadmap(req: Request, res: Response): Promise<void> {
   try {
-    const topic = (req.body.topic || req.body.content || 'Computer Science Algorithms').trim();
+    const rawInput = req.body.topic || req.body.content || '';
+    const validation = validateStudyPrompt(rawInput);
+    if (!validation.valid) {
+      res.status(400).json({
+        error: 'INVALID_STUDY_PROMPT',
+        message: validation.reason
+      });
+      return;
+    }
+
     const examDate = req.body.examDate;
-    const roadmap = await generateRoadmap(topic, examDate);
+    const roadmap = await generateRoadmap(validation.cleanTopic, examDate);
     res.json(roadmap);
   } catch (error: any) {
     res.status(500).json({ error: 'ROADMAP_GENERATION_FAILED', message: error?.message });
@@ -34,8 +55,17 @@ export async function handleGenerateRoadmap(req: Request, res: Response): Promis
 
 export async function handleGenerateLesson(req: Request, res: Response): Promise<void> {
   try {
-    const topic = (req.body.topic || req.body.content || 'Data Structures').trim();
-    const lesson = await generateLesson(topic);
+    const rawInput = req.body.topic || req.body.content || '';
+    const validation = validateStudyPrompt(rawInput);
+    if (!validation.valid) {
+      res.status(400).json({
+        error: 'INVALID_STUDY_PROMPT',
+        message: validation.reason
+      });
+      return;
+    }
+
+    const lesson = await generateLesson(validation.cleanTopic);
     res.json(lesson);
   } catch (error: any) {
     res.status(500).json({ error: 'LESSON_GENERATION_FAILED', message: error?.message });
@@ -44,8 +74,17 @@ export async function handleGenerateLesson(req: Request, res: Response): Promise
 
 export async function handleGenerateNotes(req: Request, res: Response): Promise<void> {
   try {
-    const topic = (req.body.topic || req.body.content || 'Operating Systems').trim();
-    const notes = await generateNotes(topic);
+    const rawInput = req.body.topic || req.body.content || '';
+    const validation = validateStudyPrompt(rawInput);
+    if (!validation.valid) {
+      res.status(400).json({
+        error: 'INVALID_STUDY_PROMPT',
+        message: validation.reason
+      });
+      return;
+    }
+
+    const notes = await generateNotes(validation.cleanTopic);
     res.json(notes);
   } catch (error: any) {
     res.status(500).json({ error: 'NOTES_GENERATION_FAILED', message: error?.message });
@@ -54,8 +93,17 @@ export async function handleGenerateNotes(req: Request, res: Response): Promise<
 
 export async function handleGenerateFlashcards(req: Request, res: Response): Promise<void> {
   try {
-    const topic = (req.body.topic || req.body.content || 'System Design').trim();
-    const deck = await generateFlashcards(topic);
+    const rawInput = req.body.topic || req.body.content || '';
+    const validation = validateStudyPrompt(rawInput);
+    if (!validation.valid) {
+      res.status(400).json({
+        error: 'INVALID_STUDY_PROMPT',
+        message: validation.reason
+      });
+      return;
+    }
+
+    const deck = await generateFlashcards(validation.cleanTopic);
     res.json(deck);
   } catch (error: any) {
     res.status(500).json({ error: 'FLASHCARDS_GENERATION_FAILED', message: error?.message });
@@ -64,8 +112,19 @@ export async function handleGenerateFlashcards(req: Request, res: Response): Pro
 
 export async function handleGenerateQuiz(req: Request, res: Response): Promise<void> {
   try {
-    const topic = (req.body.topic || req.body.content || 'Database Management').trim();
-    const quiz = await generateQuiz(topic);
+    const rawInput = req.body.topic || req.body.content || '';
+    const validation = validateStudyPrompt(rawInput);
+    if (!validation.valid) {
+      res.status(400).json({
+        error: 'INVALID_STUDY_PROMPT',
+        message: validation.reason
+      });
+      return;
+    }
+
+    const questionCount = req.body.questionCount || validation.requestedQuestionCount || 5;
+    const modelId = req.body.modelId || req.body.model;
+    const quiz = await generateQuiz(validation.cleanTopic, questionCount, modelId);
     res.json(quiz);
   } catch (error: any) {
     res.status(500).json({ error: 'QUIZ_GENERATION_FAILED', message: error?.message });
@@ -74,8 +133,18 @@ export async function handleGenerateQuiz(req: Request, res: Response): Promise<v
 
 export async function handleGeneratePodcast(req: Request, res: Response): Promise<void> {
   try {
-    const topic = (req.body.topic || req.body.content || 'Artificial Intelligence').trim();
-    const podcast = await generatePodcastScript(topic);
+    const rawInput = req.body.topic || req.body.content || '';
+    const validation = validateStudyPrompt(rawInput);
+    if (!validation.valid) {
+      res.status(400).json({
+        error: 'INVALID_STUDY_PROMPT',
+        message: validation.reason
+      });
+      return;
+    }
+
+    const modelId = req.body.modelId || req.body.model;
+    const podcast = await generatePodcastScript(validation.cleanTopic, modelId);
     res.json(podcast);
   } catch (error: any) {
     res.status(500).json({ error: 'PODCAST_GENERATION_FAILED', message: error?.message });

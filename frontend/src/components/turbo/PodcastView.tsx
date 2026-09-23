@@ -15,14 +15,17 @@ import { BlastMascot } from './BlastMascot.js';
 interface PodcastViewProps {
   podcast: TurboPodcastScript | null;
   isLoading: boolean;
-  onOpenEmmaWithPrompt: (prompt: string) => void;
+  onOpenEmmaWithPrompt?: (prompt: string) => void;
+  onOpenBlastWithPrompt?: (prompt: string) => void;
 }
 
 export const PodcastView: React.FC<PodcastViewProps> = ({
   podcast,
   isLoading,
-  onOpenEmmaWithPrompt
+  onOpenEmmaWithPrompt,
+  onOpenBlastWithPrompt
 }) => {
+  const askHandler = onOpenBlastWithPrompt || onOpenEmmaWithPrompt || (() => {});
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentLineIdx, setCurrentLineIdx] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -49,7 +52,7 @@ export const PodcastView: React.FC<PodcastViewProps> = ({
     utterance.rate = playbackSpeed;
 
     const voices = synthRef.current.getVoices();
-    if (segment.speaker.includes('Emma')) {
+    if (segment.speaker.includes('Blast') || segment.speaker.includes('Emma')) {
       const femaleVoice = voices.find((v) => v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Google UK English Female') || v.name.includes('Zira'));
       if (femaleVoice) utterance.voice = femaleVoice;
       utterance.pitch = 1.1;
@@ -98,7 +101,7 @@ export const PodcastView: React.FC<PodcastViewProps> = ({
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
         <div className="w-12 h-12 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin mb-4" />
         <h3 className="text-white font-semibold text-sm">Producing AI Audio Lecture...</h3>
-        <p className="text-zinc-400 text-xs mt-1">Emma and Alex are writing the conversational study breakdown script.</p>
+        <p className="text-zinc-400 text-xs mt-1">Blast and Alex are writing the conversational study breakdown script.</p>
       </div>
     );
   }
@@ -208,7 +211,7 @@ export const PodcastView: React.FC<PodcastViewProps> = ({
         <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Synchronized Transcript</h2>
         {podcast.segments.map((seg, idx) => {
           const isCurrent = currentLineIdx === idx;
-          const isEmma = seg.speaker.includes('Emma');
+          const isBlast = seg.speaker.includes('Blast') || seg.speaker.includes('Emma');
 
           return (
             <div
@@ -219,12 +222,12 @@ export const PodcastView: React.FC<PodcastViewProps> = ({
               }}
               className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                 isCurrent
-                  ? 'bg-purple-950/20 border-purple-500/50 shadow-md shadow-purple-500/5'
+                  ? 'bg-orange-950/20 border-orange-500/50 shadow-md shadow-orange-500/5'
                   : 'bg-[#13131C] border-[#222232] hover:border-[#303046]'
               }`}
             >
               <div className="flex items-center gap-2.5 mb-1.5">
-                {isEmma ? (
+                {isBlast ? (
                   <BlastMascot size="xs" state={isCurrent && isPlaying ? 'speaking' : 'idle'} />
                 ) : (
                   <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
@@ -233,7 +236,7 @@ export const PodcastView: React.FC<PodcastViewProps> = ({
                 )}
                 <span
                   className={`text-xs font-bold ${
-                    isEmma ? 'text-purple-300' : 'text-indigo-300'
+                    isBlast ? 'text-orange-300' : 'text-indigo-300'
                   }`}
                 >
                   {seg.speaker}

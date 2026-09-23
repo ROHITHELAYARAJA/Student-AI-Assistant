@@ -13,22 +13,25 @@ import {
 interface NotesViewProps {
   notes: TurboNotes | null;
   isLoading: boolean;
-  onOpenEmmaWithPrompt: (prompt: string) => void;
+  onOpenEmmaWithPrompt?: (prompt: string) => void;
+  onOpenBlastWithPrompt?: (prompt: string) => void;
 }
 
 export const NotesView: React.FC<NotesViewProps> = ({
   notes,
   isLoading,
-  onOpenEmmaWithPrompt
+  onOpenEmmaWithPrompt,
+  onOpenBlastWithPrompt
 }) => {
+  const askHandler = onOpenBlastWithPrompt || onOpenEmmaWithPrompt || (() => {});
   const [copied, setCopied] = useState(false);
 
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-        <div className="w-12 h-12 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin mb-4" />
+        <div className="w-12 h-12 rounded-full border-2 border-orange-500/20 border-t-orange-500 animate-spin mb-4" />
         <h3 className="text-white font-semibold text-sm">Generating High-Yield Notes...</h3>
-        <p className="text-zinc-400 text-xs mt-1">Emma is extracting key principles, formulas, and high-probability exam concepts.</p>
+        <p className="text-zinc-400 text-xs mt-1">Blast is extracting key principles, formulas, and high-probability exam concepts.</p>
       </div>
     );
   }
@@ -145,14 +148,14 @@ export const NotesView: React.FC<NotesViewProps> = ({
 
               <button
                 onClick={() =>
-                  onOpenEmmaWithPrompt(
-                    `Hi Emma, in the notes for ${notes.topic}, could you explain more deeply this section: "${section.heading}"?`
+                  askHandler(
+                    `Hi Blast, in the notes for ${notes.topic}, could you explain more deeply this section: "${section.heading}"?`
                   )
                 }
-                className="text-[11px] text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                className="text-[11px] text-orange-400 hover:text-orange-300 flex items-center gap-1"
               >
                 <Sparkles size={12} />
-                <span>Ask Emma about this</span>
+                <span>Ask Blast about this</span>
               </button>
             </div>
 

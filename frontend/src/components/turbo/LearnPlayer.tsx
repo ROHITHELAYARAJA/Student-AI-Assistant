@@ -36,9 +36,9 @@ export const LearnPlayer: React.FC<LearnPlayerProps> = ({
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-        <div className="w-12 h-12 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin mb-4" />
+        <div className="w-12 h-12 rounded-full border-2 border-orange-500/20 border-t-orange-500 animate-spin mb-4" />
         <h3 className="text-white font-semibold text-sm">Generating Active Learning Lesson...</h3>
-        <p className="text-zinc-400 text-xs mt-1">Emma is building interactive questions with instant explanations.</p>
+        <p className="text-zinc-400 text-xs mt-1">Blast is building interactive questions with instant explanations.</p>
       </div>
     );
   }
@@ -302,15 +302,15 @@ export const LearnPlayer: React.FC<LearnPlayerProps> = ({
                     isCorrect
                   )
                 }
-                className="flex items-center gap-2 text-xs text-purple-400 hover:text-purple-300 font-medium py-1 px-2 rounded-lg hover:bg-purple-500/10 transition-colors"
+                className="flex items-center gap-2 text-xs text-orange-400 hover:text-orange-300 font-medium py-1 px-2 rounded-lg hover:bg-orange-500/10 transition-colors"
               >
                 <Sparkles size={14} />
-                <span>Ask Emma to Explain in Chat</span>
+                <span>Ask Blast to Explain in Chat</span>
               </button>
 
               <button
                 onClick={handleNext}
-                className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-purple-600/30 transition-all"
+                className="px-6 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-medium text-xs flex items-center gap-2 shadow-lg shadow-orange-600/30 transition-all"
               >
                 <span>Continue</span>
                 <ArrowRight size={14} />
@@ -321,7 +321,7 @@ export const LearnPlayer: React.FC<LearnPlayerProps> = ({
       </div>
 
       <div className="text-center text-[11px] text-zinc-400">
-        Turbo AI Active Practice • Mastered with Bedrock AI
+        Blast AI Active Practice • Powered by AWS Bedrock AI
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ import { QuizPlayerView } from './components/turbo/QuizPlayerView.js';
 import { FlashcardsGeneratorView } from './components/turbo/FlashcardsGeneratorView.js';
 import { PodcastLectureView } from './components/turbo/PodcastLectureView.js';
 import { SourcesKnowledgeView } from './components/turbo/SourcesKnowledgeView.js';
-import { EmmaTutorDrawer } from './components/turbo/EmmaTutorDrawer.js';
+import { BlastTutorDrawer } from './components/turbo/BlastTutorDrawer.js';
 import { getStudyPack } from './services/turboApi.js';
 import { Sparkles, X, Check } from 'lucide-react';
 
@@ -28,7 +28,7 @@ export const App: React.FC = () => {
 
   const [activeTopic, setActiveTopic] = useState('How to learn Java');
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const [isEmmaOpen, setIsEmmaOpen] = useState(false);
+  const [isBlastOpen, setIsBlastOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = router.subscribe((state) => {
@@ -68,7 +68,8 @@ export const App: React.FC = () => {
           userName={currentUser?.name || 'Sarthak'}
           onStartNewLesson={handleStartNewLesson}
           onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-          onOpenEmma={() => setIsEmmaOpen(true)}
+          onOpenEmma={() => setIsBlastOpen(true)}
+          onOpenBlast={() => setIsBlastOpen(true)}
         />
       )}
 
@@ -77,7 +78,8 @@ export const App: React.FC = () => {
           noteId={routeState.noteId}
           topicTitle={activeTopic}
           onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-          onOpenEmma={() => setIsEmmaOpen(true)}
+          onOpenEmma={() => setIsBlastOpen(true)}
+          onOpenBlast={() => setIsBlastOpen(true)}
         />
       )}
 
@@ -94,7 +96,8 @@ export const App: React.FC = () => {
           noteId={routeState.noteId}
           topicTitle={activeTopic}
           onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-          onOpenEmma={() => setIsEmmaOpen(true)}
+          onOpenEmma={() => setIsBlastOpen(true)}
+          onOpenBlast={() => setIsBlastOpen(true)}
         />
       )}
 
@@ -103,7 +106,8 @@ export const App: React.FC = () => {
           noteId={routeState.noteId}
           topicTitle={activeTopic}
           onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-          onOpenEmma={() => setIsEmmaOpen(true)}
+          onOpenEmma={() => setIsBlastOpen(true)}
+          onOpenBlast={() => setIsBlastOpen(true)}
         />
       )}
 
@@ -112,7 +116,8 @@ export const App: React.FC = () => {
           noteId={routeState.noteId}
           topicTitle={activeTopic}
           onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-          onOpenEmma={() => setIsEmmaOpen(true)}
+          onOpenEmma={() => setIsBlastOpen(true)}
+          onOpenBlast={() => setIsBlastOpen(true)}
         />
       )}
 
@@ -121,13 +126,14 @@ export const App: React.FC = () => {
           noteId={routeState.noteId}
           topicTitle={activeTopic}
           onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
-          onOpenEmma={() => setIsEmmaOpen(true)}
+          onOpenEmma={() => setIsBlastOpen(true)}
+          onOpenBlast={() => setIsBlastOpen(true)}
         />
       )}
 
-      <EmmaTutorDrawer
-        isOpen={isEmmaOpen}
-        onClose={() => setIsEmmaOpen(false)}
+      <BlastTutorDrawer
+        isOpen={isBlastOpen}
+        onClose={() => setIsBlastOpen(false)}
         activeTopic={activeTopic}
       />
 

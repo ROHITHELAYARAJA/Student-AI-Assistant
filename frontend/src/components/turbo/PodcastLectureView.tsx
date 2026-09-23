@@ -25,14 +25,17 @@ interface PodcastLectureViewProps {
   topicTitle?: string;
   onOpenUpgrade?: () => void;
   onOpenEmma?: () => void;
+  onOpenBlast?: () => void;
 }
 
 export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
   noteId = 'current',
   topicTitle = 'How to learn Java',
   onOpenUpgrade,
-  onOpenEmma
+  onOpenEmma,
+  onOpenBlast
 }) => {
+  const openBlastHandler = onOpenBlast || onOpenEmma;
   const [studyPack, setStudyPack] = useState<TurboStudyPack | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -107,7 +110,7 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
       const utterance = new SpeechSynthesisUtterance(seg.line);
 
       // Distinguish voices slightly
-      if (seg.speaker.includes('Emma')) {
+      if (seg.speaker.includes('Blast') || seg.speaker.includes('Emma')) {
         utterance.pitch = 1.15;
         utterance.rate = 1.05;
       } else {
@@ -328,7 +331,7 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
               <div className="space-y-3">
                 {segments.map((seg, idx) => {
                   const isCurrent = activeSegmentIdx === idx;
-                  const isEmma = seg.speaker.includes('Emma');
+                  const isBlast = seg.speaker.includes('Blast') || seg.speaker.includes('Emma');
 
                   return (
                     <div
@@ -336,7 +339,7 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
                       onClick={() => playSegment(idx)}
                       className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                         isCurrent
-                          ? 'bg-purple-950/20 border-purple-500 shadow-md ring-1 ring-purple-500/30'
+                          ? 'bg-orange-950/20 border-orange-500 shadow-md ring-1 ring-orange-500/30'
                           : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:border-[var(--color-border-subtle)]'
                       }`}
                     >
@@ -345,7 +348,7 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
                           <BlastMascot size="xs" state={isCurrent && isPlaying ? 'speaking' : 'idle'} />
                           <span
                             className={`font-headline font-bold text-xs ${
-                              isEmma ? 'text-orange-400' : 'text-amber-300'
+                              isBlast ? 'text-orange-400' : 'text-amber-300'
                             }`}
                           >
                             {seg.speaker}
@@ -373,7 +376,7 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
 
       {/* Floating Ask Blast AI Button */}
       <button
-        onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
+        onClick={openBlastHandler || (() => router.navigate(`/notes/${noteId}/editor`))}
         className="fixed right-6 bottom-8 py-2 px-4 rounded-full bg-[var(--color-surface)] border border-orange-500/30 shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40 group"
       >
         <BlastMascot size="xs" state="idle" />

@@ -69,7 +69,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
 
   const handleSendPrompt = async (text: string) => {
     if (!text.trim()) {
-      setErrorMessage('Please type a study question or prompt for Emma.');
+      setErrorMessage('Please type a study question or prompt for Blast.');
       return;
     }
 
@@ -290,3 +290,6 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
     </aside>
   );
 };
+
+export const BlastTutorDrawer = EmmaTutorDrawer;
+export default EmmaTutorDrawer;

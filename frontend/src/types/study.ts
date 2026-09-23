@@ -150,7 +150,7 @@ export interface HistoryItem {
 
 export type InputMode = 'text' | 'voice' | 'file';
 
-export type EmmaExpression =
+export type BlastExpression =
   | 'reading'
   | 'thinking'
   | 'teaching'
@@ -160,13 +160,15 @@ export type EmmaExpression =
   | 'sleeping'
   | 'waving';
 
+export type EmmaExpression = BlastExpression;
+
 export interface ChatMessage {
   id: string;
-  sender: 'user' | 'emma';
+  sender: 'user' | 'blast' | 'emma';
   timestamp: string;
   text?: string;
   operation?: string;
   operationName?: string;
-  expression?: EmmaExpression;
+  expression?: BlastExpression;
   response?: StructuredAiResponse;
 }

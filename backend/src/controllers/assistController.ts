@@ -19,7 +19,7 @@ export async function handleAssist(req: Request, res: Response): Promise<void> {
     if (trimmedContent.length < 2) {
       res.status(400).json({
         error: 'INPUT_TOO_SHORT',
-        message: 'Input is too short. Please provide at least 2 characters for Emma to analyze.'
+        message: 'Input is too short. Please provide at least 2 characters for Blast to analyze.'
       });
       return;
     }

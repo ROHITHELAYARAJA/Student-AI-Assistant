@@ -2,7 +2,7 @@
 
 ## Summary of Completed Work
 
-The **Student-AI-Assistant** project has been rebuilt from the ground up into a high-performance, aesthetically pleasing modern web application inspired by **Turbo AI** (https://www.turbo.ai/) with a dedicated Node.js/TypeScript backend, AWS Bedrock Bearer Token integration for Claude models, dynamic interactive study views (Roadmap, Smart Notes, Quizzes, Flashcards, Audio Podcasts, and RAG Sources), and the global Emma AI copilot.
+The **Student-AI-Assistant** project has been rebuilt from the ground up into a high-performance, aesthetically pleasing modern web application inspired by **Turbo AI** (https://www.turbo.ai/) with a dedicated Node.js/TypeScript backend, AWS Bedrock Bearer Token integration for Claude models, dynamic interactive study views (Roadmap, Smart Notes, Quizzes, Flashcards, Audio Podcasts, and RAG Sources), and the global Blast AI copilot.
 
 ---
 
