@@ -14,6 +14,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { BlastMascot } from './BlastMascot.js';
+import { GlowingFireLogo } from './GlowingFireLogo.js';
 
 interface TurboSidebarProps {
   currentTab: TurboTab;
@@ -56,12 +57,8 @@ export const TurboSidebar: React.FC<TurboSidebarProps> = ({
     <aside className="w-64 bg-[#0F0F14] border-r border-[#22222E] flex flex-col h-screen select-none shrink-0 z-30">
       <div className="p-4 border-b border-[#22222E] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <img
-              src="/blast-logo.png"
-              alt="Blast AI Logo"
-              className="w-10 h-10 rounded-xl object-contain ring-2 ring-orange-500/40 shadow-lg shadow-orange-500/20 bg-[#161622] p-1 border border-orange-500/20"
-            />
+          <div className="relative flex items-center justify-center p-1 rounded-xl bg-[#161622] border border-orange-500/20 shadow-lg shadow-orange-500/20">
+            <GlowingFireLogo size={34} showGlow={true} />
             <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#0F0F14]" />
           </div>
           <div>
