@@ -10,6 +10,7 @@ import {
   User,
   Clock
 } from 'lucide-react';
+import { TurboMascot } from './TurboMascot.js';
 
 interface PodcastViewProps {
   podcast: TurboPodcastScript | null;
@@ -123,12 +124,8 @@ export const PodcastView: React.FC<PodcastViewProps> = ({
       <div className="p-6 rounded-3xl bg-gradient-to-br from-[#161626] to-[#0E0E18] border border-[#28283C] shadow-2xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
-              <img
-                src="/emma-expressions/reading.png"
-                alt="Emma Podcast Host"
-                className="w-12 h-12 rounded-full object-cover"
-              />
+            <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0 p-1">
+              <TurboMascot size="md" expression="reading" />
             </div>
 
             <div>
@@ -228,11 +225,7 @@ export const PodcastView: React.FC<PodcastViewProps> = ({
             >
               <div className="flex items-center gap-2.5 mb-1.5">
                 {isEmma ? (
-                  <img
-                    src="/emma-expressions/teaching.png"
-                    alt="Emma"
-                    className="w-5 h-5 rounded-full object-cover ring-1 ring-purple-500/40"
-                  />
+                  <TurboMascot size="xs" expression="teaching" />
                 ) : (
                   <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
                     <User size={12} />

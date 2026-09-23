@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Award
 } from 'lucide-react';
+import { TurboMascot } from './TurboMascot.js';
 
 interface RoadmapViewProps {
   roadmap: TurboRoadmap | null;
@@ -116,11 +117,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({
 
         <div className="mt-5 pt-4 border-t border-[#26263A] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img
-              src="/emma-expressions/teaching.png"
-              alt="Emma"
-              className="w-7 h-7 rounded-full object-cover ring-1 ring-purple-500/40"
-            />
+            <TurboMascot size="xs" expression="teaching" />
             <span className="text-xs text-zinc-300">
               Emma's tip: Complete checkpoints consecutively to activate high-retention spaced repetition!
             </span>
