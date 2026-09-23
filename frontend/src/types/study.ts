@@ -118,6 +118,15 @@ export interface StructuredAiResponse {
   };
 }
 
+export interface StudyRequest {
+  content: string;
+  operation: string;
+  researchGoal?: string;
+  programmingLanguage?: string;
+  subject?: string;
+  studyTopic?: string;
+}
+
 export interface NoteItem {
   id: string;
   title: string;

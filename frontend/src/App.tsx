@@ -1,0 +1,446 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { ParticleBackground } from './components/ui/ParticleBackground.js';
+import { Header } from './components/layout/Header.js';
+import { DesignTokensBanner } from './components/ui/DesignTokensBanner.js';
+import { CategoryNav } from './components/layout/CategoryNav.js';
+import { ContextSelectors } from './components/operations/ContextSelectors.js';
+import { InputModes } from './components/input/InputModes.js';
+import { FeatureGrid } from './components/operations/FeatureGrid.js';
+import { DynamicOutputRenderer } from './components/ai-output/DynamicOutputRenderer.js';
+import { NotesDrawer } from './components/layout/NotesDrawer.js';
+import { Toast } from './components/ui/Toast.js';
+import {
+  OperationCategory,
+  OperationMeta,
+  StructuredAiResponse,
+  NoteItem,
+  InputMode
+} from './types/study.js';
+import { fetchOperations, requestAiAssistance } from './services/api.js';
+import { Sparkles, ArrowDownCircle, BookMarked, Code2 } from 'lucide-react';
+
+const FALLBACK_OPERATIONS: OperationMeta[] = [
+  { id: 'summarize', name: '2-Sentence Summary', category: 'Core Study', description: 'Summarizes content in 2 clear sentences with key points', outputComponent: 'keypoints', icon: 'FileText' },
+  { id: 'keypoints', name: '10 Key Points', category: 'Core Study', description: 'Extracts exactly 10 exam-ready key points', outputComponent: 'keypoints', icon: 'ListOrdered' },
+  { id: 'notes', name: 'Structured Notes', category: 'Core Study', description: 'Creates structured study notes with headings and sections', outputComponent: 'article', icon: 'BookOpen' },
+  { id: 'define', name: 'Terminology Glossary', category: 'Core Study', description: 'Finds and defines all important terms with examples', outputComponent: 'flashcards', icon: 'Bookmark' },
+  { id: 'examples', name: 'Real-world Examples', category: 'Core Study', description: 'Gives 3 or more real-world examples with explanations', outputComponent: 'article', icon: 'Sparkles' },
+  { id: 'compare', name: 'Deep Comparison', category: 'Core Study', description: 'Compares two topics across 5 dimensions with a verdict', outputComponent: 'matrix', icon: 'Columns' },
+  { id: 'formulas', name: 'Formula Sheet', category: 'Core Study', description: 'Lists all formulas with variables, usage, and solved examples', outputComponent: 'formula', icon: 'Sigma' },
+  { id: 'diagram', name: 'ASCII Diagram', category: 'Core Study', description: 'Explains concepts using structural ASCII diagrams', outputComponent: 'code', icon: 'Layout' },
+  { id: 'timeline', name: 'Chronological Timeline', category: 'Core Study', description: 'Creates a chronological timeline with importance notes', outputComponent: 'timeline', icon: 'Calendar' },
+  { id: 'pros_cons', name: 'Pros & Cons Analysis', category: 'Core Study', description: 'Lists 4 pros and 4 cons with explanations and verdict', outputComponent: 'matrix', icon: 'Scale' },
+  { id: 'why_how', name: 'Why & How Breakdown', category: 'Core Study', description: 'Explains why something exists and how it works step by step', outputComponent: 'article', icon: 'HelpCircle' },
+  { id: 'difficult', name: 'Explain Like I am 10', category: 'Core Study', description: 'Simplifies the concept for immediate comprehension', outputComponent: 'article', icon: 'Smile' },
+  { id: 'realworld', name: 'Industry Applications', category: 'Core Study', description: 'Lists 4 real-world applications across major industries', outputComponent: 'keypoints', icon: 'Briefcase' },
+  { id: 'related', name: 'Related Topics Roadmap', category: 'Core Study', description: 'Suggests 5 related topics in recommended study order', outputComponent: 'timeline', icon: 'GitCommit' },
+  { id: 'flashcards', name: 'Interactive Flashcards', category: 'Core Study', description: 'Creates 10 question-and-answer study cards', outputComponent: 'flashcards', icon: 'Layers' },
+  { id: 'mnemonics', name: 'Memory Tricks', category: 'Core Study', description: 'Creates catchy memory tricks with explanations', outputComponent: 'flashcards', icon: 'Zap' },
+  { id: 'study_plan', name: '7-Day Study Plan', category: 'Core Study', description: 'Builds a 7-day study plan with daily tasks and time', outputComponent: 'timeline', icon: 'CalendarDays' },
+  { id: 'check_understanding', name: 'Self-Check Quiz', category: 'Core Study', description: 'Tests understanding with 3 diagnostic questions', outputComponent: 'quiz', icon: 'CheckSquare' },
+  { id: 'quiz', name: 'Multiple Choice Quiz', category: 'Core Study', description: 'Generates 5 multiple-choice questions with explanations', outputComponent: 'quiz', icon: 'Award' },
+  { id: 'essay_write', name: 'Structured Essay', category: 'Core Study', description: 'Writes a full academic essay with references', outputComponent: 'article', icon: 'PenTool' },
+
+  { id: 'exam_questions', name: 'Exam Question Bank', category: 'Exam Prep', description: 'Generates MCQ, short answer, and long answer exam questions', outputComponent: 'quiz', icon: 'FileQuestion' },
+  { id: 'mistakes', name: 'Common Mistakes Avoidance', category: 'Exam Prep', description: 'Lists 5 common student mistakes with correct approaches', outputComponent: 'keypoints', icon: 'AlertTriangle' },
+  { id: 'tricks', name: 'Time-Saving Exam Shortcuts', category: 'Exam Prep', description: 'Gives 5 shortcuts that save time in competitive exams', outputComponent: 'keypoints', icon: 'FastForward' },
+  { id: 'past_questions', name: 'Past Exam Style Problems', category: 'Exam Prep', description: 'Creates past-exam-style questions with model answers', outputComponent: 'article', icon: 'History' },
+  { id: 'answer_template', name: 'Model Answer Template', category: 'Exam Prep', description: 'Shows the ideal structure for writing high-scoring answers', outputComponent: 'article', icon: 'CheckCircle' },
+  { id: 'score_predictor', name: 'Topic Priority Matrix', category: 'Exam Prep', description: 'Categorizes topics by HIGH, MEDIUM, LOW mark priority', outputComponent: 'keypoints', icon: 'TrendingUp' },
+  { id: 'highlights', name: 'Must-Know Exam Points', category: 'Exam Prep', description: 'Gives 5 must-know and 3 bonus high-yield exam points', outputComponent: 'keypoints', icon: 'Highlighter' },
+  { id: 'quick_summary', name: '1-Minute Quick Revision', category: 'Exam Prep', description: 'Gives a 3-point rapid fire revision summary', outputComponent: 'keypoints', icon: 'Clock' },
+  { id: 'onepager', name: 'One-Page Cheat Sheet', category: 'Exam Prep', description: 'Creates a concise one-page cheat sheet for last-minute revision', outputComponent: 'article', icon: 'FileSpreadsheet' },
+  { id: 'revision', name: 'Complete Revision Guide', category: 'Exam Prep', description: 'Builds a complete revision guide from basic to advanced', outputComponent: 'timeline', icon: 'Repeat' },
+  { id: 'important', name: 'Top 5 Crucial Concepts', category: 'Exam Prep', description: 'Ranks the 5 most important topics with study tips', outputComponent: 'keypoints', icon: 'Star' },
+  { id: 'weightage', name: 'Mark Weightage Analysis', category: 'Exam Prep', description: 'Estimates mark weightage per topic with time advice', outputComponent: 'matrix', icon: 'PieChart' },
+  { id: 'tips_exam', name: '8 Exam Writing Hacks', category: 'Exam Prep', description: 'Gives 8 specific exam writing tips to maximize score', outputComponent: 'keypoints', icon: 'Lightbulb' },
+  { id: 'time_mgmt', name: '3-Hour Exam Time Plan', category: 'Exam Prep', description: 'Creates a structured exam time plan with section breakdown', outputComponent: 'timeline', icon: 'Hourglass' },
+  { id: 'stress', name: 'Exam Stress Relief Protocol', category: 'Exam Prep', description: 'Gives 5 practical techniques to stay calm on exam day', outputComponent: 'article', icon: 'Heart' },
+
+  { id: 'code', name: 'Generate Clean Code', category: 'Coding', description: 'Writes complete working code in the selected language', outputComponent: 'code', icon: 'Code' },
+  { id: 'code_explain', name: 'Line-by-Line Code Walkthrough', category: 'Coding', description: 'Explains code line by line in simple words', outputComponent: 'code', icon: 'Terminal' },
+  { id: 'optimize', name: 'Speed & Memory Optimizer', category: 'Coding', description: 'Rewrites code to be faster with before/after complexity', outputComponent: 'code', icon: 'Gauge' },
+  { id: 'debug', name: 'Bug Hunter & Fixer', category: 'Coding', description: 'Finds all bugs and provides corrected working code', outputComponent: 'code', icon: 'Bug' },
+  { id: 'convert', name: 'Language Porter', category: 'Coding', description: 'Converts code into the selected target language', outputComponent: 'code', icon: 'RefreshCw' },
+  { id: 'complexity', name: 'Big-O Complexity Audit', category: 'Coding', description: 'Analyzes time and space complexity across cases', outputComponent: 'code', icon: 'Activity' },
+  { id: 'test', name: 'Test Case Generator', category: 'Coding', description: 'Generates 8 test cases covering edge cases and inputs', outputComponent: 'code', icon: 'CheckCheck' },
+  { id: 'leetcode', name: 'DSA Optimal Solution', category: 'Coding', description: 'Solves with brute force, optimal approach, and dry run', outputComponent: 'code', icon: 'Target' },
+  { id: 'algorithm', name: 'Algorithm Blueprint', category: 'Coding', description: 'Explains algorithm steps, complexity, and code', outputComponent: 'code', icon: 'Cpu' },
+  { id: 'datastructure', name: 'Data Structure Masterclass', category: 'Coding', description: 'Explains structure, operations, and implementation', outputComponent: 'code', icon: 'Binary' },
+  { id: 'code_compare', name: 'Code Architecture Comparison', category: 'Coding', description: 'Compares two code approaches with recommendations', outputComponent: 'matrix', icon: 'GitCompare' },
+  { id: 'pattern', name: 'Design Pattern Template', category: 'Coding', description: 'Identifies coding pattern and gives reusable template', outputComponent: 'code', icon: 'Boxes' },
+  { id: 'pseudocode', name: 'Pseudocode to Real Code', category: 'Coding', description: 'Writes pseudocode then converts to selected language', outputComponent: 'code', icon: 'FileCode' },
+  { id: 'project_idea', name: '5 Portfolio Project Concepts', category: 'Coding', description: 'Suggests 5 standout portfolio project ideas with stacks', outputComponent: 'keypoints', icon: 'FolderGit2' },
+  { id: 'roadmap', name: 'Tech Learning Roadmap', category: 'Coding', description: 'Creates a beginner to advanced learning roadmap', outputComponent: 'timeline', icon: 'Map' },
+
+  { id: 'interview_q', name: 'Top 10 Interview Questions', category: 'Interview Prep', description: 'Gives 5 technical, 3 conceptual, 2 situational questions', outputComponent: 'quiz', icon: 'Users' },
+  { id: 'coding_pattern', name: '10 Interview Patterns', category: 'Interview Prep', description: 'Covers patterns like Sliding Window and Two Pointers', outputComponent: 'flashcards', icon: 'Workflow' },
+  { id: 'hr_questions', name: '10 HR Behavioral Questions', category: 'Interview Prep', description: 'Gives 10 HR questions with recruiter intent revealed', outputComponent: 'flashcards', icon: 'UserCheck' },
+  { id: 'system_design', name: 'System Design Architecture', category: 'Interview Prep', description: 'Full system design with architecture diagram and trade-offs', outputComponent: 'article', icon: 'Server' },
+  { id: 'resume_tips', name: 'Resume Impact Polisher', category: 'Interview Prep', description: 'Section-by-section tips with strong vs weak bullet points', outputComponent: 'matrix', icon: 'FileCheck' },
+  { id: 'answer_star', name: 'STAR Method Story Builder', category: 'Interview Prep', description: 'Formats your experience into Situation, Task, Action, Result', outputComponent: 'article', icon: 'Star' },
+  { id: 'mock_interview', name: '5-Round Mock Interview', category: 'Interview Prep', description: 'Conducts simulated interview with sample answers & score', outputComponent: 'quiz', icon: 'Headphones' },
+  { id: 'company_prep', name: 'Target Company Dossier', category: 'Interview Prep', description: 'Company overview, tech stack, interview rounds, prep tips', outputComponent: 'article', icon: 'Building' },
+  { id: 'salary_tips', name: 'Offer Negotiation Playbook', category: 'Interview Prep', description: 'Scripts and strategies to negotiate top market compensation', outputComponent: 'article', icon: 'DollarSign' },
+  { id: 'career_path', name: 'Engineering Career Ladder', category: 'Interview Prep', description: 'Entry to Principal level progression and expectations', outputComponent: 'timeline', icon: 'Milestone' },
+
+  { id: 'math_solve', name: 'Step-by-Step Math Solver', category: 'Math and Science', description: 'Solves step by step with formulas and practice problem', outputComponent: 'formula', icon: 'Calculator' },
+  { id: 'math_explain', name: 'Math Concept Deep Dive', category: 'Math and Science', description: 'Explains concept intuition, proof, and practical usage', outputComponent: 'formula', icon: 'Binary' },
+  { id: 'derivatives', name: 'Derivative Calculus Step-by-Step', category: 'Math and Science', description: 'Finds derivative step by step naming differentiation rules', outputComponent: 'formula', icon: 'TrendingDown' },
+  { id: 'integrals', name: 'Definite & Indefinite Integrals', category: 'Math and Science', description: 'Evaluates integrals with integration technique named', outputComponent: 'formula', icon: 'Maximize2' },
+  { id: 'graph', name: 'Function Graph Analysis', category: 'Math and Science', description: 'Explains domain, range, intercepts, asymptotes, and points', outputComponent: 'article', icon: 'LineChart' },
+  { id: 'chemistry', name: 'Chemical Equation Balancer', category: 'Math and Science', description: 'Balances reactions and explains electron mechanisms', outputComponent: 'formula', icon: 'FlaskConical' },
+  { id: 'physics', name: 'Physics Problem Solver', category: 'Math and Science', description: 'Solves step by step with given, formula, units, and concept', outputComponent: 'formula', icon: 'Atom' },
+  { id: 'bio', name: 'Biological Process Map', category: 'Math and Science', description: 'Explains physiological processes step by step', outputComponent: 'article', icon: 'Dna' },
+  { id: 'stats', name: 'Descriptive Statistics Engine', category: 'Math and Science', description: 'Calculates mean, median, mode, variance, and std dev', outputComponent: 'formula', icon: 'BarChart' },
+  { id: 'probability', name: 'Probability Problem Solver', category: 'Math and Science', description: 'Identifies probability distributions and calculates outcomes', outputComponent: 'formula', icon: 'Percent' },
+  { id: 'linear_algebra', name: 'Matrix & Vector Operations', category: 'Math and Science', description: 'Solves matrix operations with transformations explained', outputComponent: 'formula', icon: 'Grid' },
+  { id: 'calculus', name: 'Multivariable Calculus Breakdown', category: 'Math and Science', description: 'Identifies concept and solves with intermediate calculations', outputComponent: 'formula', icon: 'FunctionSquare' },
+  { id: 'geometry', name: 'Geometric Proof & Calculator', category: 'Math and Science', description: 'Solves geometry problems with applicable theorems named', outputComponent: 'formula', icon: 'Shapes' },
+  { id: 'trig', name: 'Trigonometric Identities & Values', category: 'Math and Science', description: 'Simplifies trig expressions using fundamental identities', outputComponent: 'formula', icon: 'Compass' },
+  { id: 'number_theory', name: 'Number Theory & Cryptography', category: 'Math and Science', description: 'Explains modular arithmetic, prime fields, and proofs', outputComponent: 'formula', icon: 'Key' },
+
+  { id: 'summarize_research', name: 'Academic Paper Abstract Breakdown', category: 'Research and AI', description: 'Breaks paper into Objective, Methodology, Findings, Impact', outputComponent: 'article', icon: 'FileText' },
+  { id: 'cite', name: 'Citation Formatter (APA/MLA/IEEE)', category: 'Research and AI', description: 'Generates APA, MLA, IEEE, and Chicago citations', outputComponent: 'article', icon: 'Quote' },
+  { id: 'references', name: 'Literature Review Finder', category: 'Research and AI', description: 'Suggests credible sources, seminal papers, search keywords', outputComponent: 'keypoints', icon: 'Search' },
+  { id: 'verify_citation', name: 'Claim & Source Fact-Check', category: 'Research and AI', description: 'Gives credibility score with potential bias notes', outputComponent: 'matrix', icon: 'ShieldCheck' },
+  { id: 'related_research', name: 'Research Topic Frontier', category: 'Research and AI', description: 'Suggests 5 unexplored research questions and directions', outputComponent: 'keypoints', icon: 'Compass' },
+  { id: 'ai_explain', name: 'AI & LLM Intuition', category: 'Research and AI', description: 'Explains AI models with relatable analogies and architecture', outputComponent: 'article', icon: 'Brain' },
+  { id: 'ml_model', name: 'Machine Learning Algorithm Guide', category: 'Research and AI', description: 'Algorithm breakdown, loss function, and Python pipeline', outputComponent: 'code', icon: 'Cpu' },
+  { id: 'nn_arch', name: 'Neural Network Architecture Blueprint', category: 'Research and AI', description: 'Explains layers, activations, loss function, and backprop', outputComponent: 'article', icon: 'Layers' },
+  { id: 'deep_learning', name: 'Deep Learning Foundation', category: 'Research and AI', description: 'Covers mathematical intuition, training stability, and papers', outputComponent: 'article', icon: 'Orbit' },
+  { id: 'nlp', name: 'NLP & Tokenizer Architecture', category: 'Research and AI', description: 'Covers attention heads, embedding matrices, and metrics', outputComponent: 'code', icon: 'MessageSquare' },
+  { id: 'cv', name: 'Computer Vision & CNN/ViT', category: 'Research and AI', description: 'Covers convolution filters, Vision Transformers, and detection', outputComponent: 'code', icon: 'Camera' },
+  { id: 'data_viz', name: 'Statistical Visualization Chart', category: 'Research and AI', description: 'Recommends chart type with Python Matplotlib/Seaborn code', outputComponent: 'code', icon: 'PieChart' },
+  { id: 'ethics_ai', name: 'AI Ethics, Safety & Alignment', category: 'Research and AI', description: 'Evaluates hallucinations, safety guardrails, and ethics', outputComponent: 'article', icon: 'Shield' },
+  { id: 'ai_trends', name: 'State of AI & Future Trends', category: 'Research and AI', description: 'Highlights breakthroughs from frontier AI research labs', outputComponent: 'timeline', icon: 'TrendingUp' },
+  { id: 'career_ai', name: 'AI / ML Engineer Career Roadmap', category: 'Research and AI', description: 'Skills curriculum, portfolio benchmarks, and salaries', outputComponent: 'timeline', icon: 'Compass' },
+
+  { id: 'translate', name: 'Plain English Simplifier', category: 'Extras', description: 'Translates jargon-dense academic text into plain English', outputComponent: 'article', icon: 'Globe' },
+  { id: 'voice_note', name: 'Voice Note Structurer', category: 'Extras', description: 'Organizes rough brain dump audio transcripts into crisp notes', outputComponent: 'article', icon: 'Mic' },
+  { id: 'ask_ai', name: 'Omni Study Inquiry', category: 'Extras', description: 'Comprehensive response to any complex open-ended query', outputComponent: 'article', icon: 'HelpCircle' },
+  { id: 'debate', name: 'Dialectical Debate Board', category: 'Extras', description: 'Presents 4 strong counter-arguments for each side', outputComponent: 'matrix', icon: 'Swords' },
+  { id: 'story', name: 'Narrative Storytelling Explainer', category: 'Extras', description: 'Teaches abstract concepts through memorable narrative fiction', outputComponent: 'article', icon: 'Book' },
+  { id: 'analogy', name: 'Everyday Life Analogies', category: 'Extras', description: 'Creates 2 tangible analogies with deep relational breakdown', outputComponent: 'flashcards', icon: 'Sparkles' },
+  { id: 'mindmap', name: 'Hierarchical Concept Mindmap', category: 'Extras', description: 'Constructs an interactive conceptual mind map tree', outputComponent: 'mindmap', icon: 'Network' },
+  { id: 'acronym', name: 'Mnemonic Acronym Creator', category: 'Extras', description: 'Generates pronounceable memory acronyms for lists', outputComponent: 'flashcards', icon: 'Smile' },
+  { id: 'recommend', name: 'Curated Resource Recommendations', category: 'Extras', description: 'Hand-picked books, seminal papers, videos, and platforms', outputComponent: 'keypoints', icon: 'ThumbsUp' },
+  { id: 'motivate', name: 'Academic Pep Talk & Focus Protocol', category: 'Extras', description: 'High-energy motivational boost with science-backed study tips', outputComponent: 'keypoints', icon: 'Flame' }
+];
+
+export const App: React.FC = () => {
+  const [operations, setOperations] = useState<OperationMeta[]>(FALLBACK_OPERATIONS);
+  const [selectedCategory, setSelectedCategory] = useState<OperationCategory>('Core Study');
+  const [inputMode, setInputMode] = useState<InputMode>('text');
+  const [content, setContent] = useState('');
+  const [subject, setSubject] = useState('');
+  const [studyTopic, setStudyTopic] = useState('');
+  const [programmingLanguage, setProgrammingLanguage] = useState('TypeScript');
+
+  const [executingOpId, setExecutingOpId] = useState<string | null>(null);
+  const [aiResponse, setAiResponse] = useState<StructuredAiResponse | null>(null);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isBackendOnline, setIsBackendOnline] = useState(false);
+  const [isCompactMode, setIsCompactMode] = useState(false);
+
+  const outputRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const savedNotes = localStorage.getItem('study_assistant_notes');
+    if (savedNotes) {
+      try {
+        setNotes(JSON.parse(savedNotes));
+      } catch (e) {}
+    }
+
+    fetchOperations().then((ops) => {
+      if (ops && ops.length > 0) {
+        setOperations(ops);
+        setIsBackendOnline(true);
+      }
+    });
+
+    fetch('http://localhost:5000/api/health')
+      .then((r) => r.ok && setIsBackendOnline(true))
+      .catch(() => setIsBackendOnline(false));
+  }, []);
+
+  const handleCaptureSelection = () => {
+    const selection = window.getSelection()?.toString();
+    if (selection && selection.trim().length > 0) {
+      setContent(selection.trim());
+      setToastMessage('Captured highlighted webpage text!');
+    } else {
+      setToastMessage('No text highlighted on screen. Highlight any text and click again.');
+    }
+  };
+
+  const handleSaveToNotes = (res: StructuredAiResponse) => {
+    const newNote: NoteItem = {
+      id: `note-${Date.now()}`,
+      title: res.title,
+      content: res.rawMarkdown,
+      category: res.operation,
+      createdAt: new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      componentType: res.componentType
+    };
+
+    const updated = [newNote, ...notes];
+    setNotes(updated);
+    localStorage.setItem('study_assistant_notes', JSON.stringify(updated));
+    setToastMessage(`Saved "${res.title}" to Notebook!`);
+  };
+
+  const handleDeleteNote = (id: string) => {
+    const updated = notes.filter((n) => n.id !== id);
+    setNotes(updated);
+    localStorage.setItem('study_assistant_notes', JSON.stringify(updated));
+    setToastMessage('Note entry removed.');
+  };
+
+  const handleClearAllNotes = () => {
+    if (confirm('Clear all saved notes from Notebook?')) {
+      setNotes([]);
+      localStorage.removeItem('study_assistant_notes');
+      setToastMessage('All notes cleared.');
+    }
+  };
+
+  const handleExecuteOperation = async (op: OperationMeta) => {
+    setExecutingOpId(op.id);
+    try {
+      const res = await requestAiAssistance({
+        content: content || studyTopic || subject || 'Core Study Fundamentals',
+        operation: op.id,
+        subject,
+        studyTopic: studyTopic || op.name,
+        programmingLanguage
+      });
+
+      setAiResponse(res);
+      setToastMessage(`Synthesized ${res.componentType.toUpperCase()} Component!`);
+
+      setTimeout(() => {
+        outputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } catch (err: any) {
+      setToastMessage('Query execution failed. Please check network.');
+    } finally {
+      setExecutingOpId(null);
+    }
+  };
+
+  const loadPreset = (presetType: 'calculus' | 'react_dsa' | 'biology') => {
+    if (presetType === 'calculus') {
+      setSubject('Calculus & Differential Equations');
+      setStudyTopic('Euler Method and Taylor Series Approximations');
+      setContent('Approximate solution to initial value differential equation y\' = x + y with y(0) = 1 at step size h = 0.1.');
+      setSelectedCategory('Math and Science');
+    } else if (presetType === 'react_dsa') {
+      setSubject('Computer Science');
+      setStudyTopic('LRU Cache Eviction Algorithm');
+      setContent('Design an LRU Cache with get and put in O(1) time complexity using Doubly Linked List and Hash Map.');
+      setProgrammingLanguage('TypeScript');
+      setSelectedCategory('Coding');
+    } else {
+      setSubject('Molecular Biology');
+      setStudyTopic('CRISPR-Cas9 Gene Editing Mechanism');
+      setContent('Explain guide RNA binding, Cas9 endonuclease cleavage, and double-strand break repair via NHEJ and HDR.');
+      setSelectedCategory('Core Study');
+    }
+    setToastMessage('Loaded curriculum preset context.');
+  };
+
+  const categoryCounts = operations.reduce((acc, op) => {
+    acc[op.category] = (acc[op.category] || 0) + 1;
+    return acc;
+  }, {} as Record<OperationCategory, number>);
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      <ParticleBackground />
+
+      <Header
+        notesCount={notes.length}
+        onOpenNotes={() => setIsNotesOpen(true)}
+        isBackendOnline={isBackendOnline}
+        isCompactMode={isCompactMode}
+        onToggleCompactMode={() => setIsCompactMode(!isCompactMode)}
+        onCaptureSelection={handleCaptureSelection}
+      />
+
+      <DesignTokensBanner />
+
+      <CategoryNav
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+        categoryCounts={categoryCounts}
+      />
+
+      <main
+        style={{
+          maxWidth: isCompactMode ? '540px' : '1240px',
+          width: '100%',
+          margin: '0 auto',
+          padding: isCompactMode ? '16px 14px' : '24px 20px',
+          flex: 1,
+          zIndex: 10,
+          transition: 'all var(--transition-normal)'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            marginBottom: '16px'
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <h2
+                className="font-plein"
+                style={{
+                  fontSize: isCompactMode ? '18px' : '26px',
+                  color: 'var(--color-text)',
+                  margin: 0
+                }}
+              >
+                Plein
+              </h2>
+              <span
+                className="font-editorial-italic"
+                style={{
+                  fontSize: isCompactMode ? '13px' : '16px',
+                  color: 'var(--color-primary)'
+                }}
+              >
+                Study Workspace
+              </span>
+            </div>
+            <p
+              className="font-grotesk"
+              style={{
+                fontSize: '12px',
+                color: 'var(--color-text-muted)',
+                margin: '2px 0 0 0'
+              }}
+            >
+              Select an operator to synthesize interactive React study modules.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => loadPreset('react_dsa')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: 'var(--color-surface)',
+                border: '1.5px solid var(--color-border)',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--color-text)'
+              }}
+            >
+              <Code2 size={12} color="var(--color-primary)" /> LRU Cache Preset
+            </button>
+
+            <button
+              onClick={() => loadPreset('calculus')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: 'var(--color-surface)',
+                border: '1.5px solid var(--color-border)',
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--color-text)'
+              }}
+            >
+              <Sparkles size={12} color="var(--color-primary)" /> Calculus Preset
+            </button>
+          </div>
+        </div>
+
+        <ContextSelectors
+          subject={subject}
+          onSubjectChange={setSubject}
+          studyTopic={studyTopic}
+          onStudyTopicChange={setStudyTopic}
+          programmingLanguage={programmingLanguage}
+          onProgrammingLanguageChange={setProgrammingLanguage}
+          showLanguageSelector={selectedCategory === 'Coding' || selectedCategory === 'Interview Prep'}
+        />
+
+        <InputModes
+          inputMode={inputMode}
+          onInputModeChange={setInputMode}
+          content={content}
+          onContentChange={setContent}
+        />
+
+        <FeatureGrid
+          operations={operations}
+          selectedCategory={selectedCategory}
+          onExecuteOperation={handleExecuteOperation}
+          executingOpId={executingOpId}
+        />
+
+        <div ref={outputRef}>
+          {aiResponse && (
+            <DynamicOutputRenderer
+              response={aiResponse}
+              onSaveToNotes={handleSaveToNotes}
+              isSavedInNotes={notes.some((n) => n.title === aiResponse.title)}
+            />
+          )}
+        </div>
+      </main>
+
+      <footer
+        style={{
+          borderTop: '1.5px solid var(--color-border-subtle)',
+          padding: '16px 20px',
+          textAlign: 'center',
+          backgroundColor: 'rgba(255, 225, 226, 0.75)',
+          fontSize: '11px',
+          color: 'var(--color-text-muted)',
+          zIndex: 10
+        }}
+      >
+        <span className="font-plein" style={{ fontWeight: 800, color: 'var(--color-accent)' }}>
+          Plein
+        </span>{' '}
+        & <span className="font-grotesk" style={{ fontWeight: 600 }}>Space Grotesk</span> Design System • 100 Operators • Side Panel & Extension Ready
+      </footer>
+
+      <NotesDrawer
+        isOpen={isNotesOpen}
+        onClose={() => setIsNotesOpen(false)}
+        notes={notes}
+        onDeleteNote={handleDeleteNote}
+        onClearAllNotes={handleClearAllNotes}
+      />
+
+      {toastMessage && (
+        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+      )}
+    </div>
+  );
+};

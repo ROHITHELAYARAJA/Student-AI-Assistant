@@ -1,0 +1,15 @@
+{
+  "name": "student-ai-assistant",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Student AI Assistant — React, TypeScript, and Node AI Backend",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "start:backend": "npm --prefix backend start",
+    "preview": "npm --prefix frontend run preview"
+  }
+}
