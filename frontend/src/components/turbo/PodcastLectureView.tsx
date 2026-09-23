@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
-import { TurboMascot } from './TurboMascot.js';
+import { BlastMascot, MascotState } from './BlastMascot.js';
 import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack, TurboPodcastSegment } from '../../types/turbo.js';
 import {
@@ -55,15 +55,15 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
 
   const segments: TurboPodcastSegment[] = studyPack?.podcast?.segments || [
     {
-      speaker: 'Emma (Host)',
-      line: `Welcome to Turbo AI Audio Sessions! Today we are doing a high-yield deep dive into ${activeTitle}. Alex, are you ready to unpack this?`
+      speaker: 'Blast (AI Host)',
+      line: `Welcome to Blast AI Audio Sessions! Today we are doing a high-yield deep dive into ${activeTitle}. Alex, are you ready to unpack this?`
     },
     {
       speaker: 'Alex (Student)',
-      line: `Hey Emma! Definitely. Honestly, starting out with ${activeTitle} can feel overwhelming with all the syntax rules and documentation. Where should a beginner focus first?`
+      line: `Hey Blast! Definitely. Honestly, starting out with ${activeTitle} can feel overwhelming with all the syntax rules and documentation. Where should a beginner focus first?`
     },
     {
-      speaker: 'Emma (Host)',
+      speaker: 'Blast (AI Host)',
       line: `Always start with the core execution model! When you understand how memory is allocated on the stack versus the heap, everything else clicks into place.`
     },
     {
@@ -71,7 +71,7 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
       line: `That makes a ton of sense. And what about exam questions or technical interviews? What are the biggest trap questions?`
     },
     {
-      speaker: 'Emma (Host)',
+      speaker: 'Blast (AI Host)',
       line: `Edge cases! Test writers love testing off-by-one errors, null reference behavior, and thread-safety invariants under high concurrency.`
     },
     {
@@ -79,7 +79,7 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
       line: `Awesome tip. So review the roadmap checkpoints and flashcards before taking the practice quiz.`
     },
     {
-      speaker: 'Emma (Host)',
+      speaker: 'Blast (AI Host)',
       line: `Exactly! Keep practicing active recall and you will ace your upcoming tests. Let's get learning!`
     }
   ];
@@ -158,10 +158,12 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
       <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
-              ⚡
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-orange-500/20 overflow-hidden">
+              <img src="/blast-mascot.png" alt="Blast AI" className="w-full h-full object-cover" />
             </div>
-            <span className="font-headline font-bold text-sm tracking-tight">turbo ai</span>
+            <span className="font-headline font-black text-sm tracking-tight text-white flex items-center gap-1">
+              blast <span className="text-orange-500">ai</span>
+            </span>
           </div>
 
           <div className="h-4 w-[1px] bg-[var(--color-border)]" />

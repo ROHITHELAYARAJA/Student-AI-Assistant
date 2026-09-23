@@ -225,8 +225,8 @@ export const FlashcardsGeneratorView: React.FC<FlashcardsGeneratorViewProps> = (
             {/* Top Memory Score Indicator */}
             <div className="flex items-center justify-between p-4 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-400">
-                  <Brain size={18} />
+                <div className="shrink-0">
+                  <BlastMascot size="sm" state={mascotState} />
                 </div>
                 <div>
                   <div className="font-headline font-bold text-xs text-[var(--color-text)]">
@@ -238,7 +238,7 @@ export const FlashcardsGeneratorView: React.FC<FlashcardsGeneratorViewProps> = (
                 </div>
               </div>
 
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20">
                 Spaced Repetition
               </span>
             </div>
@@ -346,13 +346,13 @@ export const FlashcardsGeneratorView: React.FC<FlashcardsGeneratorViewProps> = (
         </main>
       </div>
 
-      {/* Floating Ask Emma AI Button */}
+      {/* Floating Ask Blast AI Button */}
       <button
         onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
-        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40"
+        className="fixed right-6 bottom-8 py-2 px-4 rounded-full bg-[var(--color-surface)] border border-orange-500/30 shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40 group"
       >
-        <TurboMascot size="xs" expression="teaching" />
-        <span>Ask Emma AI</span>
+        <BlastMascot size="xs" state={mascotState} />
+        <span className="group-hover:text-orange-400 transition-colors">Ask Blast AI</span>
       </button>
     </div>
   );
