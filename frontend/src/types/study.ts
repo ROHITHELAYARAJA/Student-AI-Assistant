@@ -149,3 +149,13 @@ export interface HistoryItem {
 }
 
 export type InputMode = 'text' | 'voice' | 'file';
+
+export interface ChatMessage {
+  id: string;
+  sender: 'user' | 'emma';
+  timestamp: string;
+  text?: string;
+  operation?: string;
+  operationName?: string;
+  response?: StructuredAiResponse;
+}

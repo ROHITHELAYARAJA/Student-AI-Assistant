@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Plein AI Study Assistant",
+  "name": "Emma - AI Study Assistant",
   "version": "2.0.0",
-  "description": "High-performance AI study assistant with 100 features and dynamic React components.",
+  "description": "Smart, conversational AI study and coding assistant for students with dynamic interactive React components.",
   "permissions": [
     "activeTab",
     "storage",
@@ -10,7 +10,7 @@
     "scripting"
   ],
   "action": {
-    "default_title": "Open Plein Study Assistant"
+    "default_title": "Open Emma - AI Study Assistant"
   },
   "side_panel": {
     "default_path": "index.html"
@@ -19,7 +19,7 @@
     "service_worker": "background.js"
   },
   "icons": {
-    "128": "favicon.svg"
+    "128": "emma-logo.jpg"
   },
   "host_permissions": [
     "http://localhost:5000/*",
