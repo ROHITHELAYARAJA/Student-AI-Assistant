@@ -7,6 +7,7 @@ import {
   RotateCcw,
   User
 } from 'lucide-react';
+import { TurboMascot } from './TurboMascot.js';
 
 interface ChatEntry {
   id: string;
@@ -135,11 +136,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
       <div className="p-4 border-b border-[#242436] flex items-center justify-between bg-[#141420]">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <img
-              src={`/emma-expressions/${currentExpression}.png`}
-              alt="Emma Expression"
-              className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500/50 shadow-md shadow-purple-500/20"
-            />
+            <TurboMascot size="sm" expression={currentExpression} />
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-[#101017]" />
           </div>
           <div>
@@ -207,11 +204,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
               className={`flex gap-2.5 ${isEmma ? 'items-start' : 'items-end flex-row-reverse'}`}
             >
               {isEmma ? (
-                <img
-                  src={`/emma-expressions/${msg.expression || 'teaching'}.png`}
-                  alt="Emma"
-                  className="w-7 h-7 rounded-full object-cover ring-1 ring-purple-500/40 shrink-0 mt-0.5"
-                />
+                <TurboMascot size="xs" expression={msg.expression || 'teaching'} className="shrink-0 mt-0.5" />
               ) : (
                 <div className="w-7 h-7 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0">
                   <User size={13} />
@@ -240,11 +233,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
 
         {isLoading && (
           <div className="flex gap-2.5 items-start">
-            <img
-              src="/emma-expressions/thinking.png"
-              alt="Emma Thinking"
-              className="w-7 h-7 rounded-full object-cover ring-1 ring-purple-500/40 shrink-0 mt-0.5 animate-pulse"
-            />
+            <TurboMascot size="xs" expression="thinking" className="shrink-0 mt-0.5 animate-pulse" />
             <div className="p-3 rounded-2xl bg-[#181826] border border-[#27273C] text-xs text-zinc-400 rounded-tl-sm flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
               <span>Emma is analyzing with Bedrock RAG...</span>
