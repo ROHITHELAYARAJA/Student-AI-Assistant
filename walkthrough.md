@@ -68,21 +68,16 @@ Rather than dumping raw text into a plain box, the system dynamically parses the
 
 ---
 
-## 🚀 Running the Project
+---
 
-### 1. Web Application
+## 🚀 Running the Turbo AI Web Application
+
 ```bash
-# Start backend server (port 5000)
+# Terminal 1: Start backend server (port 5000)
 npm run dev:backend
 
-# Start frontend dev server (port 3000)
+# Terminal 2: Start frontend dev server (port 3000)
 npm run dev:frontend
 ```
-Open **`http://localhost:3000/`** in your browser.
+Open **`http://localhost:3000/`** or **`http://localhost:5173/`** in your browser.
 
-### 2. Chrome Extension (Side Panel)
-1. Open Google Chrome and navigate to `chrome://extensions/`.
-2. Toggle on **Developer mode** in the top-right corner.
-3. Click **Load unpacked**.
-4. Select the `extension/` folder located in `Student-AI-Assistant/extension`.
-5. Click the extension icon in Chrome or open the Side Panel to run the assistant directly alongside any webpage!
