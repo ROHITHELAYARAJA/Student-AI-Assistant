@@ -2,6 +2,18 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { handleAssist, handleGetOperations, handleHealth } from './controllers/assistController.js';
+import {
+  handleGenerateRoadmap,
+  handleGenerateLesson,
+  handleGenerateNotes,
+  handleGenerateFlashcards,
+  handleGenerateQuiz,
+  handleGeneratePodcast,
+  handleRagIngest,
+  handleRagList,
+  handleRagQuery,
+  handleRagDelete
+} from './controllers/turboController.js';
 
 dotenv.config();
 
@@ -9,15 +21,27 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({ origin: '*' }));
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 app.get('/api/health', handleHealth);
 app.get('/api/operations', handleGetOperations);
 app.post('/api/assist', handleAssist);
 
+app.post('/api/turbo/generate-roadmap', handleGenerateRoadmap);
+app.post('/api/turbo/generate-lesson', handleGenerateLesson);
+app.post('/api/turbo/generate-notes', handleGenerateNotes);
+app.post('/api/turbo/generate-flashcards', handleGenerateFlashcards);
+app.post('/api/turbo/generate-quiz', handleGenerateQuiz);
+app.post('/api/turbo/generate-podcast', handleGeneratePodcast);
+
+app.post('/api/rag/ingest', handleRagIngest);
+app.get('/api/rag/documents', handleRagList);
+app.post('/api/rag/query', handleRagQuery);
+app.delete('/api/rag/documents/:id', handleRagDelete);
+
 app.listen(PORT, () => {
-  process.stdout.write(`Student AI Assistant backend server running on http://localhost:${PORT}\n`);
+  process.stdout.write(`Turbo AI Study Assistant backend server running on http://localhost:${PORT}\n`);
 });
 
 export default app;
