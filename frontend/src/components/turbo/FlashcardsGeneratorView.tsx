@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
-import { TurboMascot } from './TurboMascot.js';
+import { BlastMascot, MascotState } from './BlastMascot.js';
 import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack, TurboFlashcard } from '../../types/turbo.js';
 import {
@@ -40,6 +40,8 @@ export const FlashcardsGeneratorView: React.FC<FlashcardsGeneratorViewProps> = (
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [memoryScore, setMemoryScore] = useState(85);
+
+  const [mascotState, setMascotState] = useState<MascotState>('idle');
 
   useEffect(() => {
     const existing = getStudyPack(noteId) || getStudyPack(topicTitle);
@@ -102,8 +104,15 @@ export const FlashcardsGeneratorView: React.FC<FlashcardsGeneratorViewProps> = (
   const handleRateCard = (rating: 'hard' | 'good' | 'easy') => {
     if (rating === 'easy') {
       setMemoryScore((prev) => Math.min(100, prev + 2));
+      setMascotState('success');
+      setTimeout(() => setMascotState('idle'), 2400);
     } else if (rating === 'hard') {
       setMemoryScore((prev) => Math.max(40, prev - 3));
+      setMascotState('error');
+      setTimeout(() => setMascotState('idle'), 2000);
+    } else {
+      setMascotState('happy');
+      setTimeout(() => setMascotState('idle'), 1800);
     }
     handleNext();
   };
@@ -114,10 +123,12 @@ export const FlashcardsGeneratorView: React.FC<FlashcardsGeneratorViewProps> = (
       <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
-              ⚡
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-orange-500/20 overflow-hidden">
+              <img src="/blast-mascot.png" alt="Blast AI" className="w-full h-full object-cover" />
             </div>
-            <span className="font-headline font-bold text-sm tracking-tight">turbo ai</span>
+            <span className="font-headline font-black text-sm tracking-tight text-white flex items-center gap-1">
+              blast <span className="text-orange-500">ai</span>
+            </span>
           </div>
 
           <div className="h-4 w-[1px] bg-[var(--color-border)]" />

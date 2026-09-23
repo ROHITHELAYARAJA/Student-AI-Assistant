@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
-import { TurboMascot } from './TurboMascot.js';
+import { BlastMascot } from './BlastMascot.js';
 import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack, TurboNotes } from '../../types/turbo.js';
 import {
@@ -140,10 +140,13 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
       <header className="h-14 px-5 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
-              ⚡
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#FF5E00] to-[#FFAA00] flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-orange-500/30">
+              🔥
             </div>
-            <span className="font-headline font-bold text-sm tracking-tight">turbo ai</span>
+            <span className="font-headline font-bold text-sm tracking-tight flex items-center gap-1">
+              <span>blast</span>
+              <span className="text-[#FF5E00]">ai</span>
+            </span>
           </div>
 
           <div className="h-4 w-[1px] bg-[var(--color-border)]" />
@@ -249,7 +252,7 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
                 : 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
             }`}
           >
-            <TurboMascot size="xs" expression="teaching" />
+            <BlastMascot size="xs" state="listening" />
             <span>AI Side Tutor</span>
           </button>
         </div>
@@ -337,7 +340,7 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
               {/* Note Header */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-xs text-purple-400 font-bold">
-                  <span>📑 TURBO AI EDITORIAL NOTES</span>
+                  <span>📑 BLAST AI EDITORIAL NOTES</span>
                   <span>•</span>
                   <span className="text-[var(--color-text-muted)] font-normal">{notes.lastUpdated}</span>
                 </div>
@@ -427,9 +430,9 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
           <aside className="w-80 bg-[var(--color-surface)] border-l border-[var(--color-border)] flex flex-col shrink-0">
             <div className="p-3 border-b border-[var(--color-border)] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <TurboMascot size="xs" expression="teaching" />
+                <BlastMascot size="xs" state="speaking" />
                 <span className="font-headline font-bold text-xs text-[var(--color-text)]">
-                  Turbo AI Copilot
+                  Blast AI Copilot
                 </span>
               </div>
               <button onClick={() => setIsChatOpen(false)} className="text-zinc-500 hover:text-white p-1">
@@ -467,10 +470,10 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               <div className="text-center pt-2">
-                <div className="w-12 h-12 mx-auto rounded-full bg-purple-500/20 border border-purple-500/40 p-1 flex items-center justify-center mb-2">
-                  <TurboMascot size="sm" expression="teaching" />
+                <div className="w-12 h-12 mx-auto rounded-full bg-orange-500/20 border border-orange-500/40 p-1 flex items-center justify-center mb-2">
+                  <BlastMascot size="sm" state="greeting" />
                 </div>
-                <h3 className="font-headline text-xs font-bold text-[var(--color-text)]">Hey, I&apos;m Turbo</h3>
+                <h3 className="font-headline text-xs font-bold text-[var(--color-text)]">Hey, I&apos;m Blast!</h3>
                 <p className="text-[11px] text-[var(--color-text-muted)] mt-1 max-w-xs mx-auto">
                   Ask me anything about {activeTitle}!
                 </p>

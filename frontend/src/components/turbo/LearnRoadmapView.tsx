@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
-import { TurboMascot } from './TurboMascot.js';
+import { BlastMascot } from './BlastMascot.js';
 import { getStudyPack, fetchStudyPack, saveStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack, TurboRoadmapMilestone, TurboRoadmapStage } from '../../types/turbo.js';
 import {
@@ -134,10 +134,13 @@ export const LearnRoadmapView: React.FC<LearnRoadmapViewProps> = ({
       <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
-              ⚡
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#FF5E00] to-[#FFAA00] flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-orange-500/30">
+              🔥
             </div>
-            <span className="font-headline font-bold text-sm tracking-tight">turbo ai</span>
+            <span className="font-headline font-bold text-sm tracking-tight flex items-center gap-1">
+              <span>blast</span>
+              <span className="text-[#FF5E00]">ai</span>
+            </span>
           </div>
 
           <div className="h-4 w-[1px] bg-[var(--color-border)]" />
@@ -252,7 +255,7 @@ export const LearnRoadmapView: React.FC<LearnRoadmapViewProps> = ({
                     Interactive step-by-step mastery curriculum with milestones, verification tasks, and active recall.
                   </p>
                 </div>
-                <TurboMascot size="md" expression="reading" />
+                <BlastMascot size="md" state={selectedMilestone ? 'excited' : 'idle'} />
               </div>
 
               {isLoading && (
@@ -468,8 +471,8 @@ export const LearnRoadmapView: React.FC<LearnRoadmapViewProps> = ({
         onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
         className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40"
       >
-        <TurboMascot size="xs" expression="teaching" />
-        <span>Ask Emma AI</span>
+        <BlastMascot size="xs" state="speaking" />
+        <span>Ask Blast AI</span>
       </button>
     </div>
   );
