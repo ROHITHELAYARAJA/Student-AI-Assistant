@@ -1,17 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { requestAiAssistance } from '../../services/api.js';
+import { fetchStudyPack } from '../../services/turboApi.js';
+import { router } from '../../services/router.js';
 import {
   X,
   Send,
   RotateCcw,
-  User
+  User,
+  Zap,
+  BookOpen,
+  Sparkles,
+  Loader2,
+  ChevronDown
 } from 'lucide-react';
 import { BlastMascot, MascotState } from './BlastMascot.js';
+import { DEFAULT_AI_MODELS } from '../ui/ai-prompt-input.js';
 
 interface ChatEntry {
   id: string;
   sender: 'user' | 'blast';
   text: string;
+  topicTag?: string;
+  canGeneratePack?: boolean;
   mascotState?: MascotState;
   timestamp: string;
 }
@@ -31,11 +41,17 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
   externalPrompt,
   onClearExternalPrompt
 }) => {
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_AI_MODELS[0].id);
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const [isBuildingPack, setIsBuildingPack] = useState(false);
+
   const [messages, setMessages] = useState<ChatEntry[]>([
     {
       id: 'welcome',
       sender: 'blast',
       text: `Hi! I'm Blast, your Blast AI study copilot. We're currently studying "${activeTopic}". Ask me anything—from concept breakdowns to exam mnemonics!`,
+      canGeneratePack: true,
+      topicTag: activeTopic,
       mascotState: 'greeting',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
@@ -56,7 +72,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isBuildingPack]);
 
   useEffect(() => {
     if (externalPrompt && externalPrompt.trim()) {
@@ -68,8 +84,14 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
   }, [externalPrompt]);
 
   const handleSendPrompt = async (text: string) => {
-    if (!text.trim()) {
+    const trimmed = text.trim();
+    if (!trimmed) {
       setErrorMessage('Please type a study question or prompt for Blast.');
+      return;
+    }
+
+    if (trimmed.length < 3 || /(.)\1{5,}/i.test(trimmed)) {
+      setErrorMessage('Please enter a clear study topic or question (e.g. "Explain JVM Garbage Collection", "10 Quiz on Algorithms").');
       return;
     }
 
@@ -77,7 +99,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
     const userMsg: ChatEntry = {
       id: `u-${Date.now()}`,
       sender: 'user',
-      text,
+      text: trimmed,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -88,9 +110,10 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
 
     try {
       const response = await requestAiAssistance({
-        content: text,
+        content: trimmed,
         operation: 'explain',
-        studyTopic: activeTopic
+        studyTopic: activeTopic,
+        preferredModel: selectedModel
       });
 
       let replyText = '';
@@ -116,6 +139,8 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
         id: `b-${Date.now()}`,
         sender: 'blast',
         text: replyText,
+        topicTag: trimmed,
+        canGeneratePack: true,
         mascotState: 'speaking',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
@@ -133,6 +158,21 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
     }
   };
 
+  const handleBuildLearningPath = async (topic: string) => {
+    try {
+      setIsBuildingPack(true);
+      setMascotState('processing');
+      const pack = await fetchStudyPack(topic, { modelId: selectedModel });
+      onClose();
+      router.navigate(`/notes/${pack.id}`);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to generate learning path. Please try a different study topic.');
+      setMascotState('error');
+    } finally {
+      setIsBuildingPack(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
@@ -141,8 +181,11 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
 
   if (!isOpen) return null;
 
+  const currentModelObj = DEFAULT_AI_MODELS.find(m => m.id === selectedModel) || DEFAULT_AI_MODELS[0];
+
   return (
     <aside className="fixed right-0 top-0 bottom-0 w-96 bg-[#101017] border-l border-[#242436] shadow-2xl flex flex-col z-50">
+      {/* Drawer Header */}
       <div className="p-4 border-b border-[#242436] flex items-center justify-between bg-[#141420]">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -152,11 +195,11 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <h3 className="font-bold text-white text-xs tracking-wide">Blast AI Study Copilot</h3>
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase">
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500/20 text-[#FF5E00] border border-orange-500/30 uppercase">
                 Active
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400">Context: {activeTopic}</p>
+            <p className="text-[11px] text-zinc-400 truncate max-w-[170px]">Context: {activeTopic}</p>
           </div>
         </div>
 
@@ -180,9 +223,10 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
           >
             <RotateCcw size={14} />
           </button>
+
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-[#1C1C2C] transition-colors"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-[#1C1C2C] transition-colors"
             title="Close Drawer"
           >
             <X size={16} />
@@ -190,16 +234,50 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
         </div>
       </div>
 
-      <div className="px-3 py-2 border-b border-[#202030] bg-[#0E0E16] flex gap-1.5 overflow-x-auto text-[11px]">
-        {[
-          'Summarize in 3 bullets',
-          'Give me an exam mnemonic',
-          'Explain the edge-case traps',
-          'Generate 2 flashcards'
-        ].map((pill, idx) => (
+      {/* Model Selection Bar */}
+      <div className="px-4 py-2 border-b border-[#242436] bg-[#12121E] flex items-center justify-between text-xs relative">
+        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1">
+          <Zap size={11} className="text-[#FF5E00]" />
+          <span>Bedrock Model:</span>
+        </span>
+
+        <button
+          onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+          className="flex items-center gap-1.5 text-xs text-white bg-[#1A1A2A] hover:bg-[#222238] border border-[#2E2E44] px-2.5 py-1 rounded-lg transition-all"
+        >
+          <span className="font-semibold">{currentModelObj.label}</span>
+          <ChevronDown size={12} className="text-[#FF5E00]" />
+        </button>
+
+        {isModelDropdownOpen && (
+          <div className="absolute right-4 top-10 w-56 bg-[#161624] border border-[#2E2E44] rounded-xl shadow-2xl p-1 z-50">
+            {DEFAULT_AI_MODELS.map((model) => (
+              <button
+                key={model.id}
+                onClick={() => {
+                  setSelectedModel(model.id);
+                  setIsModelDropdownOpen(false);
+                }}
+                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex flex-col transition-colors ${
+                  selectedModel === model.id
+                    ? 'bg-[#FF5E00]/20 text-[#FF5E00] font-bold'
+                    : 'text-zinc-300 hover:bg-[#202034] hover:text-white'
+                }`}
+              >
+                <span>{model.label}</span>
+                <span className="text-[10px] text-zinc-500 font-normal">{model.contexts?.[0] || 'Fast'} tokens</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Suggested Study Prompts */}
+      <div className="px-4 py-2 bg-[#12121E] flex items-center gap-1.5 overflow-x-auto text-[11px] border-b border-[#242436] no-scrollbar">
+        {['Key Formulas', 'Exam Traps', 'Flashcard Quiz', 'Explain Deeply'].map((pill, idx) => (
           <button
             key={idx}
-            onClick={() => handleSendPrompt(pill)}
+            onClick={() => handleSendPrompt(`${pill} for ${activeTopic}`)}
             className="px-2.5 py-1 rounded-full bg-[#181826] hover:bg-orange-600/20 text-zinc-300 hover:text-orange-300 border border-[#26263A] whitespace-nowrap transition-all"
           >
             {pill}
@@ -207,6 +285,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
         ))}
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((msg) => {
           const isBlast = msg.sender === 'blast';
@@ -226,12 +305,27 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
               )}
 
               <div
-                className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed space-y-1 ${isBlast
+                className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed space-y-2 ${isBlast
                     ? 'bg-[#181826] border border-[#27273C] text-zinc-200 rounded-tl-sm'
                     : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-tr-sm shadow-md shadow-orange-600/20'
                   }`}
               >
                 <div className="whitespace-pre-line">{msg.text}</div>
+
+                {/* On-Demand Learning Path Launcher for this prompt */}
+                {isBlast && msg.canGeneratePack && (
+                  <div className="pt-1 border-t border-[#2A2A40]">
+                    <button
+                      onClick={() => handleBuildLearningPath(msg.topicTag || activeTopic)}
+                      disabled={isBuildingPack}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-gradient-to-r from-[#FF5E00]/20 to-amber-500/20 hover:from-[#FF5E00]/30 hover:to-amber-500/30 border border-orange-500/30 text-[#FF5E00] text-[11px] font-bold transition-all shadow-sm group"
+                    >
+                      <Sparkles size={12} className="group-hover:scale-110 transition-transform" />
+                      <span>Build Learning Path & Study Pack →</span>
+                    </button>
+                  </div>
+                )}
+
                 <div
                   className={`text-[9px] ${isBlast ? 'text-zinc-500 text-right' : 'text-orange-200 text-right'
                     }`}
@@ -250,8 +344,15 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
             </div>
             <div className="p-3 rounded-2xl bg-[#181826] border border-[#27273C] text-xs text-zinc-400 rounded-tl-sm flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-ping" />
-              <span>Blast AI is analyzing with Bedrock RAG...</span>
+              <span>Blast AI is analyzing with {currentModelObj.label}...</span>
             </div>
+          </div>
+        )}
+
+        {isBuildingPack && (
+          <div className="p-3 rounded-2xl bg-orange-950/20 border border-orange-500/40 text-xs text-orange-300 flex items-center gap-2 animate-pulse">
+            <Loader2 size={14} className="animate-spin text-[#FF5E00]" />
+            <span>Building complete Turbo AI study pack with roadmap, quiz & notes...</span>
           </div>
         )}
 
@@ -264,6 +365,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input */}
       <form onSubmit={handleSubmit} className="p-3 border-t border-[#242436] bg-[#12121D] space-y-2">
         <div className="relative">
           <input

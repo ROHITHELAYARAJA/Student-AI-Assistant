@@ -26,13 +26,17 @@ export async function processStudyRequest(request: StudyRequest): Promise<Struct
   let structuredResponse: StructuredAiResponse | null = null;
 
   if (bedrockToken) {
-    const bedrockModels = [
+    const defaultModels = [
+      'anthropic.claude-3-haiku-20240307-v1:0',
       'meta.llama3-70b-instruct-v1:0',
       'meta.llama3-8b-instruct-v1:0',
       'amazon.nova-lite-v1:0',
-      'amazon.nova-micro-v1:0',
-      'anthropic.claude-3-haiku-20240307-v1:0'
+      'amazon.nova-micro-v1:0'
     ];
+    let bedrockModels = defaultModels;
+    if (request.preferredModel && defaultModels.includes(request.preferredModel)) {
+      bedrockModels = [request.preferredModel, ...defaultModels.filter((m) => m !== request.preferredModel)];
+    }
 
     const jsonSystemPrompt = buildStrictJsonPrompt(opMeta.id, opMeta.outputComponent, extractedTopic, rawInput, request.programmingLanguage);
 

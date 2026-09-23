@@ -38,7 +38,8 @@ export async function handleAssist(req: Request, res: Response): Promise<void> {
       researchGoal: req.body.researchGoal,
       programmingLanguage: req.body.programmingLanguage || req.body.ProgrammingLanguage,
       subject: req.body.subject,
-      studyTopic: req.body.studyTopic || req.body.topic
+      studyTopic: req.body.studyTopic || req.body.topic,
+      preferredModel: req.body.preferredModel || req.body.modelId || req.body.model
     };
 
     const response = await processStudyRequest(studyReq);

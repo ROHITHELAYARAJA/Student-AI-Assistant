@@ -125,6 +125,7 @@ export interface StudyRequest {
   programmingLanguage?: string;
   subject?: string;
   studyTopic?: string;
+  preferredModel?: string;
 }
 
 export interface NoteItem {

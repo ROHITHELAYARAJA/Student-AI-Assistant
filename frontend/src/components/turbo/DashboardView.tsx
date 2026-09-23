@@ -4,26 +4,33 @@ import { BlastMascot, BlastMascotState } from './BlastMascot.js';
 import { getSavedStudyPacks, fetchStudyPack, saveStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack } from '../../types/turbo.js';
 import {
+  AiPromptInput,
+  AiModelSelection,
+  AiPromptSendStatus,
+  DEFAULT_AI_MODELS
+} from '../ui/ai-prompt-input.js';
+import { VoicePoweredOrb } from '../ui/voice-powered-orb.js';
+import { Button } from '../ui/button.js';
+import {
   Mic,
+  MicOff,
   Upload,
   Youtube,
-  ArrowUp,
-  FolderPlus,
   Sparkles,
   Sun,
   Moon,
   Loader2,
   BookOpen,
-  Compass,
   FileText,
   Award,
   Layers,
   Headphones,
   FolderGit2,
-  Flame,
-  Clock,
   Trash2,
-  Plus
+  X,
+  AlertTriangle,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -42,12 +49,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenBlast
 }) => {
   const openBlastHandler = onOpenBlast || onOpenEmma;
-  const [prompt, setPrompt] = useState('');
   const [studyPacks, setStudyPacks] = useState<TurboStudyPack[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeGeneratingTopic, setActiveGeneratingTopic] = useState('');
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const [mascotState, setMascotState] = useState<BlastMascotState>('greeting');
+  const [promptStatus, setPromptStatus] = useState<AiPromptSendStatus>('idle');
+  const [promptValue, setPromptValue] = useState('');
+  const [modelSelection, setModelSelection] = useState<AiModelSelection>({
+    id: DEFAULT_AI_MODELS[0].id,
+    effort: 'high',
+    context: '200K',
+    fast: true,
+    thinking: true
+  });
+
+  // Voice Interaction Modal with VoicePoweredOrb
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [isOrbRecording, setIsOrbRecording] = useState(false);
+  const [orbVoiceDetected, setOrbVoiceDetected] = useState(false);
+
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('blast_theme') as 'dark' | 'light') || 'dark';
   });
@@ -65,320 +87,57 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     localStorage.setItem('blast_theme', theme);
   }, [theme]);
 
-  // Load saved packs or seed with high-yield default courses
+  // Load saved packs created strictly by user requests (no static mock defaults)
   useEffect(() => {
     const existing = getSavedStudyPacks();
-    if (existing.length > 0) {
-      setStudyPacks(existing);
-    } else {
-      // Default high-yield learning modules by default
-      const defaultPacks: TurboStudyPack[] = [
-        {
-          id: 'java-mastery',
-          topic: 'How to learn Java from scratch',
-          createdAt: new Date().toISOString(),
-          roadmap: {
-            topic: 'How to learn Java from scratch',
-            targetGoal: 'Master Java OOP, Collections, JVM & Spring Boot',
-            totalStages: 3,
-            totalMilestones: 6,
-            overallProgress: 25,
-            stages: [
-              {
-                id: 's-1',
-                stageName: 'Stage 1: Core Syntax & JVM Architecture',
-                description: 'Memory model, compilation, primitives and classes.',
-                progressPercent: 50,
-                milestones: [
-                  {
-                    id: 'm-1',
-                    title: 'Java Fundamentals & Main Class Structure',
-                    duration: '45 mins',
-                    completed: true,
-                    keyConcepts: ['JVM', 'Bytecode', 'Classloader'],
-                    tasks: ['Configure JDK', 'Compile and run first class']
-                  },
-                  {
-                    id: 'm-2',
-                    title: 'Memory Allocation: Stack vs Heap',
-                    duration: '1 hr',
-                    completed: false,
-                    keyConcepts: ['Garbage Collection', 'References', 'Pointers'],
-                    tasks: ['Trace object allocations', 'Inspect memory overhead']
-                  }
-                ]
-              }
-            ]
-          },
-          notes: {
-            topic: 'How to learn Java from scratch',
-            title: 'Mastery Notes: Java Core & Applied Systems',
-            lastUpdated: 'Today',
-            summary: 'Comprehensive guide covering Java language fundamentals, JVM mechanics, OOP abstractions, and enterprise concurrency.',
-            keyTakeaways: [
-              'Understand the distinction between compilation into bytecode and JIT execution.',
-              'Master OOP pillars: Encapsulation, Polymorphism, Inheritance, and Abstraction.',
-              'Use Collections framework (List, Map, Set) with appropriate asymptotic bounds.'
-            ],
-            sections: [
-              {
-                heading: '1. The JVM Execution Model',
-                content: 'Java source code (.java) compiles into portable bytecode (.class) which executes on the Java Virtual Machine using Just-In-Time (JIT) compilation.',
-                bulletPoints: [
-                  'Stack memory stores local variables and method invocations',
-                  'Heap memory stores all instantiated objects',
-                  'Garbage Collector reclaims unreachable heap objects'
-                ],
-                codeSnippet: {
-                  language: 'java',
-                  code: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Blast AI Java Engine Active!");\n    }\n}'
-                }
-              }
-            ]
-          },
-          quiz: {
-            topic: 'How to learn Java from scratch',
-            title: 'Java Architecture & Core Assessment',
-            timeLimitMinutes: 15,
-            questions: [
-              {
-                id: 'q-1',
-                question: 'Which component is responsible for executing Java bytecode and translating it into native machine code at runtime?',
-                options: [
-                  'The Java Development Kit (JDK) compiler',
-                  'The JVM with the Just-In-Time (JIT) compiler',
-                  'The operating system kernel directly',
-                  'The text editor runtime'
-                ],
-                correctIndex: 1,
-                explanation: 'The JVM parses bytecode and optimizes hot code paths directly into machine code via the JIT compiler.'
-              },
-              {
-                id: 'q-2',
-                question: 'Where are dynamic object instances stored during Java program execution?',
-                options: [
-                  'In the execution stack memory',
-                  'In the globally managed Heap memory',
-                  'Inside the CPU instruction cache only',
-                  'On the local hard drive storage'
-                ],
-                correctIndex: 1,
-                explanation: 'All object instances in Java reside in the Heap memory and are managed by the Garbage Collector.'
-              }
-            ]
-          },
-          flashcards: {
-            topic: 'How to learn Java from scratch',
-            cards: [
-              {
-                id: 'c-1',
-                front: 'What does "Write Once, Run Anywhere" mean in Java?',
-                back: 'Java source compiles to standardized bytecode (.class) that executes on any operating system with a compatible JVM.',
-                category: 'Architecture',
-                masteryLevel: 'mastered'
-              },
-              {
-                id: 'c-2',
-                front: 'What is the time complexity of looking up a key in a java.util.HashMap?',
-                back: 'Amortized O(1) constant time, assuming a uniform hash distribution without excessive hash collisions.',
-                category: 'Collections',
-                masteryLevel: 'learning'
-              }
-            ]
-          },
-          podcast: {
-            topic: 'How to learn Java from scratch',
-            title: 'Blast Audio Deep Dive: Mastering Java from Scratch',
-            audioDurationEstimate: '3 mins',
-            overview: 'Blast and Alex break down JVM architecture, memory allocation, and the fastest path to building production services.',
-            segments: [
-              {
-                speaker: 'Blast (Host)',
-                line: 'Welcome to Blast AI Audio Sessions! Today we are dissecting Java—from core memory models to production architecture.'
-              },
-              {
-                speaker: 'Alex (Student)',
-                line: 'Hey Blast! Java syntax looks intimidating with all the verbose boilerplate. Where should I focus first?'
-              },
-              {
-                speaker: 'Blast (Host)',
-                line: 'Focus on understanding Stack versus Heap memory! Once you visualize how references point to heap objects, the rest of OOP becomes crystal clear.'
-              }
-            ]
-          },
-          sources: [
-            {
-              id: 'java-core-docs',
-              title: 'Java Platform Standard Edition Official Documentation',
-              category: 'Official Reference Manual',
-              summary: 'Definitive API specifications for the Java base libraries, memory model, and JVM specification.',
-              keyTakeaways: ['Runtime semantics', 'Core collections', 'Thread synchronization'],
-              relevance: 'Primary foundation reference',
-              sourceUrl: 'https://docs.oracle.com/en/java/'
-            }
-          ]
-        },
-        {
-          id: 'ml-foundations',
-          topic: 'Machine Learning & Neural Networks',
-          createdAt: new Date().toISOString(),
-          roadmap: {
-            topic: 'Machine Learning & Neural Networks',
-            targetGoal: 'Master Supervised Learning, Backpropagation & Transformers',
-            totalStages: 3,
-            totalMilestones: 6,
-            overallProgress: 15,
-            stages: [
-              {
-                id: 's-1',
-                stageName: 'Stage 1: Mathematical Foundations & Linear Models',
-                description: 'Linear regression, loss surfaces, and gradient descent.',
-                progressPercent: 30,
-                milestones: [
-                  {
-                    id: 'm-1',
-                    title: 'Loss Functions & Gradient Descent Optimization',
-                    duration: '1 hr',
-                    completed: true,
-                    keyConcepts: ['MSE', 'Learning Rate', 'Backprop'],
-                    tasks: ['Derive gradient vectors', 'Implement stochastic gradient descent']
-                  }
-                ]
-              }
-            ]
-          },
-          notes: {
-            topic: 'Machine Learning & Neural Networks',
-            title: 'High-Yield Notes: Machine Learning & Deep Learning',
-            lastUpdated: 'Today',
-            summary: 'Essential formulations, backpropagation mechanics, attention layers, and model evaluation protocols.',
-            keyTakeaways: [
-              'Gradient descent iteratively adjusts weight parameters by computing loss gradients with the chain rule.',
-              'Overfitting is mitigated using L1/L2 regularization, dropout, and cross-validation splits.',
-              'Self-attention scales with O(N^2) in sequence length, enabling parallelized sequence modeling.'
-            ],
-            sections: [
-              {
-                heading: '1. Gradient Descent Formulation',
-                content: 'Parameters are updated in the opposite direction of the gradient of the objective function.',
-                formulas: ['w_{t+1} = w_t - \\eta \\nabla_w \\mathcal{L}(w_t)']
-              }
-            ]
-          },
-          quiz: {
-            topic: 'Machine Learning & Neural Networks',
-            title: 'Deep Learning & Neural Network Assessment',
-            timeLimitMinutes: 15,
-            questions: [
-              {
-                id: 'q-1',
-                question: 'What is the primary purpose of an activation function in a neural network?',
-                options: [
-                  'To normalize input batch sizes',
-                  'To introduce non-linearity so the network can model complex non-linear functions',
-                  'To speed up CPU clock cycles',
-                  'To automatically label training data'
-                ],
-                correctIndex: 1,
-                explanation: 'Without non-linear activations, stacking multiple layers would simply collapse into a single linear transformation.'
-              }
-            ]
-          },
-          flashcards: {
-            topic: 'Machine Learning & Neural Networks',
-            cards: [
-              {
-                id: 'c-1',
-                front: 'What is the Vanishing Gradient problem in deep networks?',
-                back: 'During backpropagation, multiplying many small gradients (< 1) causes gradients in early layers to shrink toward zero, halting learning.',
-                category: 'Optimization',
-                masteryLevel: 'learning'
-              }
-            ]
-          },
-          podcast: {
-            topic: 'Machine Learning & Neural Networks',
-            title: 'Blast Audio Deep Dive: Demystifying Neural Networks',
-            audioDurationEstimate: '3 mins',
-            overview: 'Blast and Alex break down loss gradients, backpropagation, and transformer architectures.',
-            segments: [
-              {
-                speaker: 'Blast (Host)',
-                line: 'Welcome back to Blast AI! Today we are demystifying how neural networks actually learn from raw data.'
-              }
-            ]
-          },
-          sources: []
-        }
-      ];
-
-      setStudyPacks(defaultPacks);
-      defaultPacks.forEach((p) => saveStudyPack(p));
-    }
+    setStudyPacks(existing);
   }, []);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setPrompt(e.target.value);
-    if (e.target.value.trim().length > 0) {
-      setMascotState('listening');
-    } else {
-      setMascotState('idle');
-    }
-  };
-
-  const handleGenerate = async (topicToGenerate: string) => {
+  const handleGenerate = async (topicToGenerate: string, selection?: AiModelSelection) => {
     const clean = topicToGenerate.trim();
     if (!clean) return;
 
+    setGenerationError(null);
+    setIsGenerating(true);
+    setPromptStatus('loading');
+    setActiveGeneratingTopic(clean);
+    setMascotState('thinking');
+    const startTime = Date.now();
+
     try {
-      setIsGenerating(true);
-      setActiveGeneratingTopic(clean);
-      setMascotState('thinking');
+      // Parse question count if prompt specifies e.g. "10 quiz"
+      const countMatch = clean.match(/(?:^|\b)(\d+)\s*(?:quiz|questions?|mcqs?|cards?|problems?)(?:\b|$)/i);
+      const requestedCount = countMatch ? parseInt(countMatch[1], 10) : undefined;
 
-      setTimeout(() => {
-        setMascotState('processing');
-      }, 800);
+      const pack = await fetchStudyPack(clean, {
+        questionCount: requestedCount,
+        modelId: selection?.id || modelSelection.id
+      });
 
-      const pack = await fetchStudyPack(clean);
-      setStudyPacks(getSavedStudyPacks());
+      const elapsed = Date.now() - startTime;
+      setLastLatencyMs(elapsed);
+      setPromptStatus('success');
       setMascotState('success');
+      setStudyPacks(getSavedStudyPacks());
       onStartNewLesson(clean);
 
       setTimeout(() => {
+        setPromptStatus('idle');
+        setPromptValue('');
         router.navigate(`/notes/${pack.id}`);
-      }, 600);
-    } catch (err) {
+      }, 700);
+    } catch (err: any) {
       console.error('Error generating study pack:', err);
+      setGenerationError(err?.message || 'Could not generate study pack for this input.');
+      setPromptStatus('idle');
       setMascotState('error');
-      onStartNewLesson(clean);
-      setTimeout(() => {
-        router.navigate('/notes/learn');
-      }, 800);
     } finally {
       setIsGenerating(false);
       setActiveGeneratingTopic('');
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim() || isGenerating) return;
-    const text = prompt.trim();
-    setPrompt('');
-    handleGenerate(text);
-  };
-
-  const handleRecordToggle = () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      setPrompt('Live recorded lecture: Algorithms, Data Flow, and Concurrency');
-      setMascotState('listening');
-    } else {
-      setMascotState('idle');
     }
   };
 
@@ -390,6 +149,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   const latestPack = studyPacks.length > 0 ? studyPacks[0] : null;
+  const currentModelLabel = DEFAULT_AI_MODELS.find(m => m.id === modelSelection.id)?.label || 'Claude 3 Haiku';
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col font-body select-none transition-colors duration-200">
@@ -412,41 +172,60 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Active Model Indicator */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-muted)]">
+            <Zap size={13} className="text-[#FF5E00]" />
+            <span className="font-medium text-[var(--color-text)]">{currentModelLabel}</span>
+            {lastLatencyMs && (
+              <span className="text-[10px] text-emerald-400 font-mono">
+                ({(lastLatencyMs / 1000).toFixed(1)}s)
+              </span>
+            )}
+          </div>
+
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
             className="p-2 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-all"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
           >
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
+          {/* Voice Mode Quick Launch */}
+          <button
+            onClick={() => {
+              setIsVoiceModalOpen(true);
+              setIsOrbRecording(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-[#FF5E00] text-xs font-semibold transition-all"
+            title="Launch Voice-Powered Orb Talk Mode"
+          >
+            <Mic size={14} />
+            <span className="hidden sm:inline">Voice Mode</span>
+          </button>
+
+          {/* Upgrade Button */}
           <button
             onClick={onOpenUpgrade}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-bold text-xs shadow-md shadow-amber-500/20 transition-all active:scale-[0.98]"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-black font-headline font-bold text-xs shadow-md shadow-orange-500/20 hover:scale-105 active:scale-95 transition-all"
           >
             <Sparkles size={13} className="fill-black" />
             <span>Upgrade</span>
           </button>
-
-          <button
-            onClick={() => router.navigate('/signup')}
-            className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF5E00] to-[#E11D48] text-white font-bold text-xs flex items-center justify-center ring-2 ring-orange-500/30 hover:ring-orange-400 transition-all"
-            title="Profile / Sign In"
-          >
-            {userName ? userName[0].toUpperCase() : 'S'}
-          </button>
         </div>
       </header>
 
-      {/* Main Layout with Left Study Navigation Sidebar */}
+      {/* Main Body */}
       <div className="flex-1 flex overflow-visible">
-        {/* Left Study Sidebar (As Highlighted in Red on Screenshot) */}
-        <aside className="w-64 bg-[var(--color-bg)] border-r border-[var(--color-border)] p-4 hidden md:flex flex-col justify-between shrink-0 sticky top-16 h-[calc(100vh-4rem)]">
+        {/* Left Sidebar */}
+        <aside className="w-64 border-r border-[var(--color-border)] bg-[var(--color-bg)] hidden lg:flex flex-col justify-between p-4 shrink-0">
           <div className="space-y-6">
             <div>
-              <div className="text-[10px] font-bold text-[var(--color-text-faint)] uppercase tracking-wider px-3 mb-2">
-                Study Modules
+              <div className="flex items-center justify-between px-3 mb-2">
+                <span className="text-[10px] font-bold text-[var(--color-text-faint)] uppercase tracking-wider">
+                  Turbo Study Modes
+                </span>
               </div>
 
               <div className="space-y-1">
@@ -495,37 +274,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors group"
                 >
                   <FolderGit2 size={16} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-                  <span>Sources & References</span>
+                  <span>Google & Web Sources</span>
                 </button>
               </div>
             </div>
 
-            {/* Courses / Subjects */}
+            {/* Courses / Subjects Created By User */}
             <div>
               <div className="flex items-center justify-between px-3 mb-2">
                 <span className="text-[10px] font-bold text-[var(--color-text-faint)] uppercase tracking-wider">
-                  Active Subjects
+                  Generated Subjects
                 </span>
                 <span className="text-[10px] text-[var(--color-text-faint)] font-mono">
                   {studyPacks.length}
                 </span>
               </div>
 
-              <div className="space-y-1">
-                {studyPacks.slice(0, 4).map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      onStartNewLesson(p.topic);
-                      router.navigate(`/notes/${p.id}`);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] truncate flex items-center gap-2"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-[#FF5E00]" />
-                    <span className="truncate">{p.topic}</span>
-                  </button>
-                ))}
-              </div>
+              {studyPacks.length === 0 ? (
+                <div className="px-3 py-3 rounded-xl border border-dashed border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] text-center">
+                  No packs created yet. Type any subject above to generate!
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {studyPacks.slice(0, 5).map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        onStartNewLesson(p.topic);
+                        router.navigate(`/notes/${p.id}`);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] truncate flex items-center gap-2"
+                    >
+                      <span className="w-2 h-2 rounded-full bg-[#FF5E00]" />
+                      <span className="truncate">{p.topic}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -542,7 +327,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </aside>
 
         {/* Main Scrolling Dashboard Content */}
-        <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-10 flex flex-col items-center overflow-visible">
+        <main className="flex-1 max-w-4xl w-full mx-auto px-4 md:px-8 py-10 flex flex-col items-center overflow-visible">
           {/* Animated Mascot & Hero Heading */}
           <div className="mb-6 flex flex-col items-center text-center">
             <div className="relative mb-3">
@@ -560,106 +345,97 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <h1 className="font-headline text-3xl md:text-4xl font-extrabold tracking-tight">
               What do you want to learn?
             </h1>
-            <p className="text-xs md:text-sm text-[var(--color-text-muted)] mt-1.5 max-w-md">
-              Enter any topic, lecture, or syllabus to instantly generate structured roadmaps, smart notes, quizzes, 3D flashcards, and podcasts.
+            <p className="text-xs md:text-sm text-[var(--color-text-muted)] mt-1.5 max-w-lg leading-relaxed">
+              Enter any syllabus concept, question, or exam topic to dynamically generate structured roadmaps, smart notes, quizzes, flashcards, and podcasts via AWS Bedrock models.
             </p>
           </div>
 
-          {/* Input Card */}
-          <div className="w-full max-w-2xl bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-4 shadow-2xl space-y-3">
-            <div className="text-[11px] text-[var(--color-text-muted)] px-2 font-medium flex items-center justify-between">
-              <span>Tip: Type any topic (e.g. &ldquo;How to learn Java&rdquo;) or press Record</span>
-              <span className="text-[10px] text-[#FF5E00] font-mono font-bold">AWS Bedrock AI</span>
-            </div>
-
-            <form onSubmit={handleSubmit} className="relative">
-              <textarea
-                rows={3}
-                value={prompt}
-                onChange={handleInputChange}
-                disabled={isGenerating}
-                placeholder="Paste lecture notes, enter a course topic, or drop a concept link..."
-                className="w-full px-3 py-2 bg-transparent text-sm text-[var(--color-text)] placeholder:text-zinc-500 focus:outline-none resize-none disabled:opacity-50"
-              />
-
-              <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleRecordToggle}
-                    disabled={isGenerating}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      isRecording
-                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 animate-pulse'
-                        : 'bg-[var(--color-bg-alt)] hover:bg-[var(--color-surface-hover)] border-[var(--color-border)] text-[var(--color-text-muted)]'
-                    }`}
-                  >
-                    <Mic size={13} className={isRecording ? 'text-rose-400' : 'text-amber-400'} />
-                    <span>{isRecording ? 'Recording...' : 'Record'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isGenerating}
-                    onClick={() => {
-                      const text = window.prompt('Paste or enter notes to process:');
-                      if (text && text.trim()) handleGenerate(text.trim());
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--color-bg-alt)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-muted)] text-xs font-semibold transition-all"
-                  >
-                    <Upload size={13} className="text-indigo-400" />
-                    <span>Upload</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isGenerating}
-                    onClick={() => {
-                      const url = window.prompt('Enter YouTube video or lecture URL:');
-                      if (url && url.trim()) handleGenerate(`YouTube Lecture: ${url.trim()}`);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--color-bg-alt)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] text-[var(--color-text-muted)] text-xs font-semibold transition-all"
-                  >
-                    <Youtube size={13} className="text-red-400" />
-                    <span>YouTube</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[var(--color-text-faint)] font-mono px-2 py-0.5 rounded bg-[var(--color-bg-alt)] border border-[var(--color-border)]">
-                    /
-                  </span>
-                  <button
-                    type="submit"
-                    disabled={!prompt.trim() || isGenerating}
-                    className="w-8 h-8 rounded-full bg-gradient-to-r from-[#FF5E00] to-[#FFAA00] hover:from-[#FF4500] hover:to-[#FF8800] text-white flex items-center justify-center transition-all disabled:opacity-40 shadow-md shadow-orange-500/30"
-                  >
-                    {isGenerating ? <Loader2 size={15} className="animate-spin" /> : <ArrowUp size={16} />}
-                  </button>
-                </div>
+          {/* Validation / Edge-case Error Alert */}
+          {generationError && (
+            <div className="w-full max-w-2xl mb-4 p-3.5 rounded-2xl bg-rose-950/20 border border-rose-500/40 flex items-start gap-3 text-xs text-rose-300">
+              <AlertTriangle size={16} className="text-rose-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-bold">Input Error:</div>
+                <div className="mt-0.5">{generationError}</div>
               </div>
-            </form>
+              <button onClick={() => setGenerationError(null)} className="text-rose-400 hover:text-white p-0.5">
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
+          {/* Premium AiPromptInput Composer Component with 5 Models */}
+          <div className="w-full max-w-2xl">
+            <AiPromptInput
+              value={promptValue}
+              onChange={setPromptValue}
+              onSubmit={(text, selection) => handleGenerate(text, selection)}
+              modelSelection={modelSelection}
+              onModelSelectionChange={setModelSelection}
+              status={promptStatus}
+              disabled={isGenerating}
+              onVoiceChange={(talking) => {
+                if (talking) {
+                  setIsVoiceModalOpen(true);
+                  setIsOrbRecording(true);
+                }
+              }}
+              onUploadFile={() => {
+                const text = window.prompt('Paste notes or syllabus text to analyze:');
+                if (text && text.trim()) handleGenerate(text.trim());
+              }}
+              onSkills={() => {
+                setPromptValue('10 quiz questions on ');
+              }}
+              onConnectors={() => {
+                router.navigate('/notes/sources');
+              }}
+            />
+          </div>
+
+          {/* Quick Prompt Starters (Active Only - No Default Hardcoded Packs) */}
+          <div className="w-full max-w-2xl mt-4 flex flex-wrap items-center justify-center gap-2">
+            <span className="text-[11px] text-[var(--color-text-faint)] font-medium">Try asking:</span>
+            {[
+              '10 quiz questions on Operating Systems Deadlocks',
+              'Machine Learning Gradient Descent & Backpropagation',
+              'Data Structures: Balanced AVL Trees',
+              'Python Concurrency & Asyncio Event Loops'
+            ].map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => {
+                  setPromptValue(suggestion);
+                  handleGenerate(suggestion);
+                }}
+                disabled={isGenerating}
+                className="px-2.5 py-1 rounded-full bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] hover:border-orange-500/40 text-[11px] text-[var(--color-text-muted)] hover:text-white transition-all flex items-center gap-1 group"
+              >
+                <span>{suggestion}</span>
+                <ArrowRight size={10} className="text-[#FF5E00] opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            ))}
           </div>
 
           {/* Loading Indicator with Mascot */}
           {isGenerating && (
-            <div className="w-full max-w-2xl mt-4 p-4 rounded-2xl bg-orange-950/20 border border-orange-500/30 flex items-center gap-3 animate-pulse">
+            <div className="w-full max-w-2xl mt-6 p-4 rounded-2xl bg-orange-950/20 border border-orange-500/30 flex items-center gap-3 animate-pulse">
               <BlastMascot size="sm" state="processing" />
               <div className="flex-1">
                 <p className="text-xs font-bold text-orange-300">
                   Blast AI is synthesizing your study pack for &ldquo;{activeGeneratingTopic}&rdquo;...
                 </p>
                 <p className="text-[11px] text-zinc-400 mt-0.5">
-                  Generating custom roadmap milestones, notes with code & formulas, quizzes, 3D flashcards, and dual-voice podcast.
+                  Invoking AWS Bedrock ({currentModelLabel}) to construct your custom roadmap, editable notes, diagnostic quiz, 3D cards, and podcast.
                 </p>
               </div>
               <Loader2 size={16} className="text-orange-400 animate-spin" />
             </div>
           )}
 
-          {/* Jump Back In Card */}
+          {/* Jump Back In Card (if user has created packs) */}
           {latestPack && !isGenerating && (
-            <div className="w-full max-w-2xl mt-4">
+            <div className="w-full max-w-2xl mt-6">
               <button
                 onClick={() => {
                   onStartNewLesson(latestPack.topic);
@@ -667,17 +443,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 }}
                 className="w-full py-3 px-4 rounded-2xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-orange-500/30 hover:border-orange-500/50 flex items-center justify-between text-xs transition-all group shadow-md"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 truncate">
                   <span className="text-base">🔥</span>
-                  <span className="font-headline font-semibold text-[var(--color-text)]">
+                  <span className="font-headline font-semibold text-[var(--color-text)] truncate">
                     {latestPack.topic}
                   </span>
                   <span className="text-[var(--color-text-faint)]">•</span>
-                  <span className="text-[var(--color-text-muted)]">
-                    {latestPack.roadmap?.stages?.length || 3} Stages • {latestPack.quiz?.questions?.length || 5} Questions
+                  <span className="text-[var(--color-text-muted)] shrink-0">
+                    {latestPack.quiz?.questions?.length || 5} Quiz Qs • {latestPack.flashcards?.cards?.length || 6} Cards
                   </span>
                 </div>
-                <span className="text-[#FF5E00] group-hover:text-orange-400 font-bold flex items-center gap-1">
+                <span className="text-[#FF5E00] group-hover:text-orange-400 font-bold flex items-center gap-1 shrink-0 ml-2">
                   <span>Resume Learning</span>
                   <span>→</span>
                 </span>
@@ -685,64 +461,153 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           )}
 
-          {/* Course Modules Section */}
-          <section className="w-full max-w-2xl mt-10 space-y-3 pb-16">
-            <div className="flex items-center justify-between">
-              <h2 className="font-headline text-base font-bold tracking-wide">
-                Available Courses & Study Packs
+          {/* User's Created Study Packs Section */}
+          {studyPacks.length > 0 && (
+            <section className="w-full max-w-2xl mt-10 space-y-3 pb-16">
+              <div className="flex items-center justify-between">
+                <h2 className="font-headline text-base font-bold tracking-wide">
+                  Your Dynamic Study Packs
+                </h2>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  {studyPacks.length} subjects created
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {studyPacks.map((pack) => (
+                  <div
+                    key={pack.id}
+                    onClick={() => {
+                      onStartNewLesson(pack.topic);
+                      router.navigate(`/notes/${pack.id}`);
+                    }}
+                    className="p-4 rounded-2xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] hover:border-orange-500/40 flex items-center justify-between cursor-pointer transition-all group shadow-sm"
+                  >
+                    <div className="flex items-center gap-3.5 truncate">
+                      <div className="w-10 h-10 rounded-xl bg-orange-600/10 border border-orange-500/20 flex items-center justify-center text-[#FF5E00] shrink-0">
+                        <BookOpen size={18} />
+                      </div>
+
+                      <div className="truncate">
+                        <h3 className="font-headline font-bold text-xs text-[var(--color-text)] group-hover:text-[#FF5E00] transition-colors truncate">
+                          {pack.topic}
+                        </h3>
+                        <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 flex items-center gap-2">
+                          <span>Roadmap ready</span>
+                          <span>•</span>
+                          <span>{pack.quiz?.questions?.length || 5} Quiz Qs</span>
+                          <span>•</span>
+                          <span>{pack.flashcards?.cards?.length || 6} Cards</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 ml-3">
+                      <button
+                        onClick={(e) => handleDeletePack(pack.id, e)}
+                        className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete study pack"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                      <span className="text-[#FF5E00] text-xs font-bold px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20">
+                        Open →
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </main>
+      </div>
+
+      {/* Voice-Powered Orb Interactive Modal */}
+      {isVoiceModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 max-w-lg w-full flex flex-col items-center text-center space-y-6 shadow-2xl relative">
+            <button
+              onClick={() => {
+                setIsVoiceModalOpen(false);
+                setIsOrbRecording(false);
+              }}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#FF5E00]">
+                <Zap size={14} />
+                <span>BLAST VOICE ORB ENGINE</span>
+              </div>
+              <h2 className="font-headline text-xl font-bold text-white">
+                Live Voice Conversation with Blast
               </h2>
-              <span className="text-xs text-[var(--color-text-muted)]">
-                {studyPacks.length} subjects ready
+              <p className="text-xs text-[var(--color-text-muted)] max-w-sm">
+                Speak directly to Blast. The WebGL orb dynamically senses and visualizes your speech amplitude in real-time.
+              </p>
+            </div>
+
+            {/* WebGL VoicePoweredOrb */}
+            <div className="w-64 h-64 relative rounded-2xl overflow-hidden bg-black/40 border border-orange-500/20 shadow-inner">
+              <VoicePoweredOrb
+                enableVoiceControl={isOrbRecording}
+                hue={25}
+                voiceSensitivity={2.0}
+                className="w-full h-full"
+                onVoiceDetected={setOrbVoiceDetected}
+              />
+            </div>
+
+            {/* Voice Detection State */}
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <span className={`w-2.5 h-2.5 rounded-full ${orbVoiceDetected ? 'bg-emerald-400 animate-ping' : isOrbRecording ? 'bg-amber-400' : 'bg-zinc-600'}`} />
+              <span className="text-[var(--color-text-muted)]">
+                {orbVoiceDetected ? 'Voice Detected — Synthesizing...' : isOrbRecording ? 'Listening for speech...' : 'Microphone Paused'}
               </span>
             </div>
 
-            <div className="space-y-2.5">
-              {studyPacks.map((pack) => (
-                <div
-                  key={pack.id}
-                  onClick={() => {
-                    onStartNewLesson(pack.topic);
-                    router.navigate(`/notes/${pack.id}`);
-                  }}
-                  className="p-4 rounded-2xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] hover:border-orange-500/40 flex items-center justify-between cursor-pointer transition-all group shadow-sm"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-orange-600/10 border border-orange-500/20 flex items-center justify-center text-[#FF5E00]">
-                      <BookOpen size={18} />
-                    </div>
+            {/* Controls */}
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => setIsOrbRecording(!isOrbRecording)}
+                variant={isOrbRecording ? "destructive" : "default"}
+                size="lg"
+                className="px-6 font-bold"
+              >
+                {isOrbRecording ? (
+                  <>
+                    <MicOff className="w-4 h-4 mr-2" />
+                    Pause Mic
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-4 h-4 mr-2" />
+                    Resume Mic
+                  </>
+                )}
+              </Button>
 
-                    <div>
-                      <h3 className="font-headline font-bold text-xs text-[var(--color-text)] group-hover:text-[#FF5E00] transition-colors">
-                        {pack.topic}
-                      </h3>
-                      <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 flex items-center gap-2">
-                        <span>Roadmap ready</span>
-                        <span>•</span>
-                        <span>{pack.flashcards?.cards?.length || 8} Flashcards</span>
-                        <span>•</span>
-                        <span>{pack.quiz?.questions?.length || 5} Quiz Qs</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={(e) => handleDeletePack(pack.id, e)}
-                      className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100"
-                      title="Delete study pack"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                    <span className="text-[#FF5E00] text-xs font-bold px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20">
-                      Open →
-                    </span>
-                  </div>
-                </div>
-              ))}
+              <Button
+                onClick={() => {
+                  const speechTopic = window.prompt('Confirm topic discussed to generate study pack:', 'Algorithms and Data Structures');
+                  if (speechTopic && speechTopic.trim()) {
+                    setIsVoiceModalOpen(false);
+                    setIsOrbRecording(false);
+                    handleGenerate(speechTopic.trim());
+                  }
+                }}
+                variant="outline"
+                size="lg"
+                className="px-6 font-bold border-orange-500/30 text-[#FF5E00] hover:bg-orange-500/10"
+              >
+                Generate Study Pack
+              </Button>
             </div>
-          </section>
-        </main>
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Ask Blast AI Button */}
       <button
@@ -755,4 +620,5 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     </div>
   );
 };
+
 export default DashboardView;
