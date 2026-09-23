@@ -18,12 +18,14 @@ interface LearnRoadmapViewProps {
   noteId?: string;
   topicTitle?: string;
   onOpenUpgrade?: () => void;
+  onOpenEmma?: () => void;
 }
 
 export const LearnRoadmapView: React.FC<LearnRoadmapViewProps> = ({
   noteId = 'faang-sde',
   topicTitle = 'Roadmap: Resume to FAANG/MAANG SDE',
-  onOpenUpgrade
+  onOpenUpgrade,
+  onOpenEmma
 }) => {
   const contents = [
     { id: 1, title: 'Getting Started', status: 'completed' },
@@ -264,6 +266,14 @@ export const LearnRoadmapView: React.FC<LearnRoadmapViewProps> = ({
           </div>
         </main>
       </div>
+
+      <button
+        onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
+        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[#181824] border border-[#2D2D44] shadow-xl text-xs font-bold text-white flex items-center gap-2 hover:bg-[#222234] hover:scale-105 active:scale-95 transition-all z-40"
+      >
+        <img src="/emma-expressions/teaching.png" alt="Mascot" className="w-5 h-5 rounded-full object-cover" />
+        <span>Ask Emma AI</span>
+      </button>
     </div>
   );
 };

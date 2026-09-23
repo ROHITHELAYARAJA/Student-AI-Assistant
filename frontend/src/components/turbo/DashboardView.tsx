@@ -22,12 +22,14 @@ interface DashboardViewProps {
   userName?: string;
   onStartNewLesson: (prompt: string) => void;
   onOpenUpgrade?: () => void;
+  onOpenEmma?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   userName = 'Sarthak',
   onStartNewLesson,
-  onOpenUpgrade
+  onOpenUpgrade,
+  onOpenEmma
 }) => {
   const [prompt, setPrompt] = useState('');
   const [lessons, setLessons] = useState<LessonCardData[]>([
@@ -267,6 +269,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </section>
       </main>
+
+      <button
+        onClick={onOpenEmma || (() => router.navigate('/notes/faang-sde'))}
+        className="fixed right-6 bottom-8 py-2.5 px-4 rounded-full bg-[#181824] border border-[#2D2D44] shadow-2xl text-xs font-bold text-white flex items-center gap-2 hover:bg-[#222234] hover:scale-105 active:scale-95 transition-all z-40"
+      >
+        <img src="/emma-expressions/reading.png" alt="Mascot" className="w-5 h-5 rounded-full object-cover" />
+        <span>Ask Emma AI</span>
+      </button>
     </div>
   );
 };

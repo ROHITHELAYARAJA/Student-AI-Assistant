@@ -18,12 +18,14 @@ interface PodcastLectureViewProps {
   noteId?: string;
   topicTitle?: string;
   onOpenUpgrade?: () => void;
+  onOpenEmma?: () => void;
 }
 
 export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
   noteId = 'faang-sde',
   topicTitle = 'Roadmap: Resume to FAANG/MAANG SDE',
-  onOpenUpgrade
+  onOpenUpgrade,
+  onOpenEmma
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeSpeaker, setActiveSpeaker] = useState(0);
@@ -50,6 +52,45 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
       text: 'Quality beats raw quantity! Master the core patterns first—two pointers, sliding window, topological sort, and dynamic programming—around 150 well-understood problems.'
     }
   ];
+
+  // Speech playback support
+  const handleTogglePlay = () => {
+    if (isPlaying) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsPlaying(false);
+    } else {
+      setIsPlaying(true);
+      playSegment(activeSpeaker);
+    }
+  };
+
+  const playSegment = (index: number) => {
+    if (index >= script.length) {
+      setIsPlaying(false);
+      setActiveSpeaker(0);
+      return;
+    }
+    setActiveSpeaker(index);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const item = script[index];
+      const utter = new SpeechSynthesisUtterance(item.text);
+      utter.rate = 1.05;
+      utter.pitch = item.speaker.includes('Emma') ? 1.15 : 0.95;
+      utter.onend = () => {
+        if (index + 1 < script.length) {
+          playSegment(index + 1);
+        } else {
+          setIsPlaying(false);
+          setActiveSpeaker(0);
+        }
+      };
+      utter.onerror = () => setIsPlaying(false);
+      window.speechSynthesis.speak(utter);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#111114] text-zinc-100 flex flex-col font-sans select-none">
@@ -158,7 +199,7 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
             </div>
 
             <button
-              onClick={() => setIsPlaying(!isPlaying)}
+              onClick={handleTogglePlay}
               className="p-3.5 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white shadow-lg shadow-purple-600/30 transition-all active:scale-[0.96]"
             >
               {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
@@ -170,7 +211,12 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
             {script.map((seg, idx) => (
               <div
                 key={idx}
-                onClick={() => setActiveSpeaker(idx)}
+                onClick={() => {
+                  setActiveSpeaker(idx);
+                  if (isPlaying) {
+                    playSegment(idx);
+                  }
+                }}
                 className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                   activeSpeaker === idx
                     ? 'bg-[#1C1828] border-purple-500/60 shadow-md shadow-purple-500/5'
@@ -193,6 +239,14 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
           </div>
         </main>
       </div>
+
+      <button
+        onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
+        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[#181824] border border-[#2D2D44] shadow-xl text-xs font-bold text-white flex items-center gap-2 hover:bg-[#222234] hover:scale-105 active:scale-95 transition-all z-40"
+      >
+        <img src="/emma-expressions/teaching.png" alt="Mascot" className="w-5 h-5 rounded-full object-cover" />
+        <span>Ask Emma AI</span>
+      </button>
     </div>
   );
 };

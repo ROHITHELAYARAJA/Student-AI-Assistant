@@ -14,16 +14,20 @@ import {
   Search
 } from 'lucide-react';
 
+import { ingestDocument } from '../../services/turboApi.js';
+
 interface SourcesKnowledgeViewProps {
   noteId?: string;
   topicTitle?: string;
   onOpenUpgrade?: () => void;
+  onOpenEmma?: () => void;
 }
 
 export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
   noteId = 'faang-sde',
   topicTitle = 'Roadmap: Resume to FAANG/MAANG SDE',
-  onOpenUpgrade
+  onOpenUpgrade,
+  onOpenEmma
 }) => {
   const [sources, setSources] = useState([
     {
@@ -46,22 +50,32 @@ export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!titleInput.trim()) return;
+    const title = titleInput.trim();
+    const content = contentInput.trim();
+    const newDocId = `doc-${Date.now()}`;
+
     setSources((prev) => [
       {
-        id: `doc-${Date.now()}`,
-        title: titleInput.trim(),
+        id: newDocId,
+        title,
         type: 'Notes',
-        size: '150 KB',
-        chunks: Math.max(1, Math.round(contentInput.length / 300)),
+        size: `${Math.max(1, Math.round(content.length / 1024))} KB`,
+        chunks: Math.max(1, Math.round(content.length / 300)),
         date: 'Today'
       },
       ...prev
     ]);
     setTitleInput('');
     setContentInput('');
+
+    try {
+      await ingestDocument(title, content, 'notes');
+    } catch {
+      // Graceful local offline support
+    }
   };
 
   return (
@@ -238,6 +252,14 @@ export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
           </div>
         </main>
       </div>
+
+      <button
+        onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
+        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[#181824] border border-[#2D2D44] shadow-xl text-xs font-bold text-white flex items-center gap-2 hover:bg-[#222234] hover:scale-105 active:scale-95 transition-all z-40"
+      >
+        <img src="/emma-expressions/teaching.png" alt="Mascot" className="w-5 h-5 rounded-full object-cover" />
+        <span>Ask Emma AI</span>
+      </button>
     </div>
   );
 };
