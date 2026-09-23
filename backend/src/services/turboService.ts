@@ -127,6 +127,8 @@ export interface TurboStudyPack {
 
 export interface PromptValidationResult {
   valid: boolean;
+  isStudyTopic: boolean;
+  isGreeting?: boolean;
   cleanTopic: string;
   reason?: string;
   requestedQuestionCount?: number;
@@ -136,6 +138,7 @@ export function validateStudyPrompt(input: string): PromptValidationResult {
   if (!input || typeof input !== 'string') {
     return {
       valid: false,
+      isStudyTopic: false,
       cleanTopic: '',
       reason: 'Please enter a study topic, syllabus concept, or question.'
     };
@@ -145,8 +148,29 @@ export function validateStudyPrompt(input: string): PromptValidationResult {
   if (trimmed.length < 2) {
     return {
       valid: false,
+      isStudyTopic: false,
       cleanTopic: '',
       reason: 'Your study query is too short. Please provide at least 2 characters (e.g., "Python Async", "Linear Algebra", "10 Quiz on DSA").'
+    };
+  }
+
+  const lower = trimmed.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+
+  // Common conversational greetings and banter that should NOT generate dummy study packs
+  const GREETINGS = [
+    'hi', 'hii', 'hiii', 'hello', 'helloo', 'hey', 'heyy', 'yo', 'sup', 'wassup',
+    'hola', 'howdy', 'good morning', 'good afternoon', 'good evening',
+    'who are you', 'what are you', 'how are you', 'what can you do', 'help',
+    'test', 'testing', 'ok', 'okay', 'cool', 'thanks', 'thank you', 'bye'
+  ];
+
+  if (GREETINGS.includes(lower)) {
+    return {
+      valid: true,
+      isStudyTopic: false,
+      isGreeting: true,
+      cleanTopic: trimmed,
+      reason: 'Greetings and chat are handled in conversational mode.'
     };
   }
 
@@ -155,6 +179,7 @@ export function validateStudyPrompt(input: string): PromptValidationResult {
   if (alphanumericCount < 2 || alphanumericCount / trimmed.length < 0.25) {
     return {
       valid: false,
+      isStudyTopic: false,
       cleanTopic: '',
       reason: 'Input contains mostly non-text characters or symbols. Please enter a valid study topic.'
     };
@@ -164,16 +189,17 @@ export function validateStudyPrompt(input: string): PromptValidationResult {
   if (/(.)\1{5,}/i.test(trimmed)) {
     return {
       valid: false,
+      isStudyTopic: false,
       cleanTopic: '',
       reason: 'Input contains excessive repeated characters. Please enter a clear study topic or question.'
     };
   }
   const keyboardMashes = ['asdfgh', 'qwerty', 'zxcvbn', 'lkjhgf', 'poiuyt'];
-  const lower = trimmed.toLowerCase();
   for (const mash of keyboardMashes) {
     if (lower.includes(mash) && trimmed.length < 15) {
       return {
         valid: false,
+        isStudyTopic: false,
         cleanTopic: '',
         reason: 'Input appears to be random keyboard keys. Please enter a valid topic to generate study materials.'
       };
@@ -200,8 +226,19 @@ export function validateStudyPrompt(input: string): PromptValidationResult {
     clean = trimmed;
   }
 
+  // If after cleaning it's just a greeting word, mark as greeting
+  if (GREETINGS.includes(clean.toLowerCase())) {
+    return {
+      valid: true,
+      isStudyTopic: false,
+      isGreeting: true,
+      cleanTopic: trimmed
+    };
+  }
+
   return {
     valid: true,
+    isStudyTopic: true,
     cleanTopic: clean,
     requestedQuestionCount
   };
@@ -235,7 +272,7 @@ async function callBedrock(prompt: string, preferredModel?: string): Promise<str
     try {
       const url = `https://bedrock-runtime.${bedrockRegion}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 7000);
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
       const res = await fetch(url, {
         method: 'POST',
@@ -292,7 +329,7 @@ function extractJsonBlock(rawText: string): any {
   }
 }
 
-export async function generateRoadmap(topic: string, examDate?: string): Promise<TurboRoadmap> {
+export async function generateRoadmap(topic: string, examDate?: string, modelId?: string): Promise<TurboRoadmap> {
   const retrievedChunks = ragEngine.search(topic, 3);
   let contextText = '';
   if (retrievedChunks.length > 0) {
@@ -305,19 +342,19 @@ Return ONLY valid raw JSON matching this TypeScript schema:
   "topic": "${topic}",
   "examDate": "${examDate || 'In 2 Weeks'}",
   "targetGoal": "100% Exam Mastery & Conceptual Dominance",
-  "totalStages": 4,
-  "totalMilestones": 8,
+  "totalStages": 3,
+  "totalMilestones": 6,
   "overallProgress": 15,
   "stages": [
     {
       "id": "stage-1",
-      "stageName": "Stage 1: Core Foundations",
-      "description": "Essential terminology, foundational laws, and initial concepts",
-      "progressPercent": 60,
+      "stageName": "Stage 1: Core Foundations & Principles",
+      "description": "Essential terminology, foundational laws, and initial concepts of ${topic}",
+      "progressPercent": 50,
       "milestones": [
         {
           "id": "m-1",
-          "title": "Fundamental Concepts & Definitions",
+          "title": "Fundamental Concepts & Definitions of ${topic}",
           "duration": "45 mins",
           "completed": true,
           "keyConcepts": ["Base Axioms", "Standard Notations"],
@@ -325,7 +362,7 @@ Return ONLY valid raw JSON matching this TypeScript schema:
         },
         {
           "id": "m-2",
-          "title": "Architectural Breakdown",
+          "title": "Architectural Breakdown & Execution Flow",
           "duration": "60 mins",
           "completed": false,
           "keyConcepts": ["Structural Flow", "Data Schemas"],
@@ -335,17 +372,49 @@ Return ONLY valid raw JSON matching this TypeScript schema:
     },
     {
       "id": "stage-2",
-      "stageName": "Stage 2: Deep Mechanics & Logic",
+      "stageName": "Stage 2: Core Mechanics & Deep Dive",
       "description": "Advanced dynamics, mathematical formulas, and algorithmic pathways",
       "progressPercent": 0,
       "milestones": [
         {
           "id": "m-3",
-          "title": "Algorithmic Precision & Optimization",
+          "title": "Algorithmic Precision & Optimization in ${topic}",
           "duration": "90 mins",
           "completed": false,
           "keyConcepts": ["Complexity Analysis", "In-depth Logic"],
           "tasks": ["Solve benchmark equations", "Analyze edge-case scenarios"]
+        },
+        {
+          "id": "m-4",
+          "title": "Critical Edge Cases & Boundary Conditions",
+          "duration": "45 mins",
+          "completed": false,
+          "keyConcepts": ["Tricky Distractors", "Boundary Conditions"],
+          "tasks": ["Take diagnostic checkpoint quiz", "Clarify weak points with Blast"]
+        }
+      ]
+    },
+    {
+      "id": "stage-3",
+      "stageName": "Stage 3: High-Yield Practice & Exam Readiness",
+      "description": "Timed practice, full mock questions, and rapid recall drills",
+      "progressPercent": 0,
+      "milestones": [
+        {
+          "id": "m-5",
+          "title": "Active Recall & Spaced Retrieval Drills",
+          "duration": "40 mins",
+          "completed": false,
+          "keyConcepts": ["Rapid Identification", "Instant Retrieval"],
+          "tasks": ["Drill 20 spaced repetition flashcards", "Audio overview listening"]
+        },
+        {
+          "id": "m-6",
+          "title": "Timed Assessment & Mastery Verification",
+          "duration": "45 mins",
+          "completed": false,
+          "keyConcepts": ["Test Conditions", "Confidence Calibration"],
+          "tasks": ["Complete evaluation quiz", "Review mistakes with Blast"]
         }
       ]
     }
@@ -353,7 +422,7 @@ Return ONLY valid raw JSON matching this TypeScript schema:
 }
 Make sure all text directly relates to "${topic}". No markdown formatting or extra commentary outside the JSON block.`;
 
-  const aiText = await callBedrock(prompt);
+  const aiText = await callBedrock(prompt, modelId);
   if (aiText) {
     const parsed = extractJsonBlock(aiText);
     if (parsed && Array.isArray(parsed.stages) && parsed.stages.length > 0) {
@@ -361,83 +430,84 @@ Make sure all text directly relates to "${topic}". No markdown formatting or ext
     }
   }
 
+  const cleanTitle = topic.charAt(0).toUpperCase() + topic.slice(1);
   return {
     topic,
     examDate: examDate || 'Upcoming Exam',
-    targetGoal: `Comprehensive Mastery of ${topic}`,
+    targetGoal: `Comprehensive Mastery of ${cleanTitle}`,
     totalStages: 3,
     totalMilestones: 6,
-    overallProgress: 20,
+    overallProgress: 15,
     stages: [
       {
         id: 'stage-1',
-        stageName: 'Stage 1: Fundamentals & Vocabulary',
-        description: `Establish bedrock mental models and terminology for ${topic}`,
+        stageName: `Stage 1: Core Fundamentals of ${cleanTitle}`,
+        description: `Establish bedrock mental models, notations, and core axioms for ${cleanTitle}`,
         progressPercent: 50,
         milestones: [
           {
             id: 'm-1',
-            title: `Introduction & Key Definitions of ${topic}`,
+            title: `Primary Axioms & Notational Standards of ${cleanTitle}`,
             duration: '35 mins',
             completed: true,
-            keyConcepts: ['Core Terminology', 'Primary Principles'],
-            tasks: ['Review high-yield flashcard deck', 'Skim chapter summaries']
+            keyConcepts: [`${cleanTitle} Syntax & Scope`, 'Base Principles', 'System Boundaries'],
+            tasks: [`Review fundamental briefing`, `Master core definitions in flashcards`]
           },
           {
             id: 'm-2',
-            title: 'Foundational Systems & Working Rules',
+            title: `System Invariants & Execution Flow`,
             duration: '50 mins',
             completed: false,
-            keyConcepts: ['System Boundaries', 'Fundamental Equations'],
-            tasks: ['Solve 5 warm-up multiple choice items', 'Draw mental model diagram']
+            keyConcepts: ['Data Model', 'State Transitions', 'Runtime Guarantees'],
+            tasks: [`Trace state machine transitions`, `Complete diagnostic checkpoint quiz`]
           }
         ]
       },
       {
         id: 'stage-2',
-        stageName: 'Stage 2: Core Mechanics & Deep Dive',
-        description: `Explore interconnected mechanisms, problem patterns, and edge cases in ${topic}`,
+        stageName: `Stage 2: Core Mechanics & Algorithm Implementation`,
+        description: `Explore interconnected mechanisms, problem patterns, and edge cases in ${cleanTitle}`,
         progressPercent: 0,
         milestones: [
           {
             id: 'm-3',
-            title: 'Deep Mechanical Interactions',
+            title: `Algorithm Design & Performance Optimization in ${cleanTitle}`,
             duration: '60 mins',
             completed: false,
-            keyConcepts: ['Step-by-step Execution', 'Variable Sensitivity'],
-            tasks: ['Analyze case studies', 'Complete Interactive Practice Lesson']
+            keyConcepts: ['Asymptotic Complexity', 'Memory Footprint', 'Concurrency & Bottlenecks'],
+            tasks: [`Analyze real-world benchmarks`, `Implement reference algorithms`]
           },
           {
             id: 'm-4',
-            title: 'Common Pitfalls & Exam Edge Cases',
+            title: `Critical Edge Cases & Boundary Violations`,
             duration: '45 mins',
             completed: false,
-            keyConcepts: ['Tricky Distractors', 'Boundary Conditions'],
-            tasks: ['Take diagnostic checkpoint quiz', 'Clarify weak points with Blast']
+            keyConcepts: ['Degenerate States', 'Boundary Violations', 'Common Exam Pitfalls'],
+            tasks: [`Identify common test traps`, `Review failure recovery patterns`]
           }
         ]
       },
       {
         id: 'stage-3',
-        stageName: 'Stage 3: High-Yield Practice & Exam Readiness',
-        description: `Timed practice, full mock questions, and rapid recall drills`,
+        stageName: `Stage 3: High-Yield Practice & Exam Readiness`,
+        description: `Timed mock questions, full assessment, and rapid spaced recall for ${cleanTitle}`,
         progressPercent: 0,
         milestones: [
           {
             id: 'm-5',
-            title: 'Speed Recall & Flashcard Mastery',
+            title: `Active Recall & Spaced Retrieval Drills`,
             duration: '40 mins',
             completed: false,
-            keyConcepts: ['Rapid Identification', 'Instant Retrieval'],
-            tasks: ['Drill 20 spaced repetition flashcards', 'Audio overview listening']
+            keyConcepts: ['Rapid Pattern Identification', 'Formula Derivations', 'Mental Models'],
+            tasks: [`Complete active recall flashcards`, `Listen to audio podcast summary`]
           },
           {
             id: 'm-6',
-            title: 'Timed Assessment Challenge',
+            title: `Timed Assessment & Full Mock Challenge`,
             duration: '45 mins',
             completed: false,
-            keyConcepts: ['Test Conditions', 'Confidence Calibration'],
-            tasks: ['Complete final 10-question evaluation quiz', 'Review mistakes with Blast']
+            keyConcepts: ['Test Conditions', 'Confidence Calibration', 'Error Analysis'],
+            tasks: [`Take timed evaluation quiz`, `Review flagged items with Blast AI`]
           }
         ]
       }
@@ -552,7 +622,7 @@ Make sure all content is deeply tailored to "${topic}". No markdown codeblocks o
   };
 }
 
-export async function generateNotes(topic: string): Promise<TurboNotes> {
+export async function generateNotes(topic: string, modelId?: string): Promise<TurboNotes> {
   const retrievedChunks = ragEngine.search(topic, 4);
   let contextText = '';
   if (retrievedChunks.length > 0) {
@@ -593,7 +663,7 @@ Return ONLY valid raw JSON matching this schema:
 }
 No markdown backticks outside JSON. Strictly pure JSON.`;
 
-  const aiText = await callBedrock(prompt);
+  const aiText = await callBedrock(prompt, modelId);
   if (aiText) {
     const parsed = extractJsonBlock(aiText);
     if (parsed && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
@@ -645,7 +715,7 @@ No markdown backticks outside JSON. Strictly pure JSON.`;
   };
 }
 
-export async function generateFlashcards(topic: string): Promise<TurboFlashcardDeck> {
+export async function generateFlashcards(topic: string, modelId?: string): Promise<TurboFlashcardDeck> {
   const retrievedChunks = ragEngine.search(topic, 3);
   let contextText = '';
   if (retrievedChunks.length > 0) {
@@ -668,7 +738,7 @@ Return ONLY valid raw JSON matching this schema:
 }
 Make sure cards test key distinctions, equations, definitions, and common mistakes. Pure JSON only.`;
 
-  const aiText = await callBedrock(prompt);
+  const aiText = await callBedrock(prompt, modelId);
   if (aiText) {
     const parsed = extractJsonBlock(aiText);
     if (parsed && Array.isArray(parsed.cards) && parsed.cards.length > 0) {
@@ -1043,10 +1113,10 @@ export async function generateStudyPack(
 
   // Run generation for all 5 study modules concurrently
   const [roadmap, notes, quiz, flashcards, podcast, sources] = await Promise.all([
-    generateRoadmap(cleanTopic, undefined),
-    generateNotes(cleanTopic),
+    generateRoadmap(cleanTopic, undefined, modelId),
+    generateNotes(cleanTopic, modelId),
     generateQuiz(cleanTopic, qCount, modelId),
-    generateFlashcards(cleanTopic),
+    generateFlashcards(cleanTopic, modelId),
     generatePodcastScript(cleanTopic, modelId),
     generateSources(cleanTopic)
   ]);
@@ -1063,3 +1133,99 @@ export async function generateStudyPack(
     sources
   };
 }
+
+export interface TurboChatResult {
+  reply: string;
+  isStudyTopic: boolean;
+  topic: string;
+  studyPack: TurboStudyPack | null;
+  modelUsed: string;
+  latencyMs: number;
+}
+
+export async function processTurboChat(
+  message: string,
+  modelId?: string,
+  _history?: Array<{ sender: 'user' | 'blast'; text: string }>
+): Promise<TurboChatResult> {
+  const startTime = Date.now();
+  const validation = validateStudyPrompt(message);
+
+  if (!validation.valid) {
+    return {
+      reply: validation.reason || 'Please provide a valid study topic, concept, or question.',
+      isStudyTopic: false,
+      topic: '',
+      studyPack: null,
+      modelUsed: modelId || 'Claude 3 Haiku',
+      latencyMs: Date.now() - startTime
+    };
+  }
+
+  if (validation.isGreeting || !validation.isStudyTopic) {
+    return {
+      reply: `Hello! 👋 I'm **Blast**, your AI Study Assistant powered by AWS Bedrock.
+
+I'm ready to help you understand tough concepts, prepare for exams, and master your coursework.
+
+**What would you like to study today?**
+• **Ask an academic concept**: e.g., *"Explain Operating Systems Deadlocks"* or *"Binary Trees & AVL Balancing"*
+• **Request a tailored quiz**: e.g., *"10 quiz questions on Machine Learning"*
+• **Explore code & system design**: e.g., *"Python asyncio event loops"*
+
+Whenever you ask a study question, I will reply in detail and generate your complete learning suite: an interactive curriculum roadmap, custom quiz, smart notes, 3D flashcards, audio podcast, and verified Google resources!`,
+      isStudyTopic: false,
+      topic: '',
+      studyPack: null,
+      modelUsed: modelId || 'Claude 3 Haiku',
+      latencyMs: Date.now() - startTime
+    };
+  }
+
+  // Generate an immediate, rich academic explanation for the chat
+  const prompt = `You are Blast, an elite AI university professor and study tutor.
+The student has asked:
+"${message}"
+
+Provide a clear, engaging, easy-to-understand explanation that directly answers their question or explains the topic "${validation.cleanTopic}".
+Structure your response clearly:
+1. High-level intuition & concept breakdown
+2. Core rules / state invariants / mathematical or conceptual principles
+3. A practical real-world scenario or code snippet if relevant
+4. Clear takeaway advice for mastering this in exams
+
+Write in clean, well-formatted markdown.`;
+
+  let explanation = await callBedrock(prompt, modelId);
+  if (!explanation || explanation.trim().length < 50) {
+    explanation = `### Comprehensive Analysis of ${validation.cleanTopic}
+
+${validation.cleanTopic} is a core academic subject requiring structured understanding of principles, invariant rules, and trade-offs.
+
+#### 1. Foundational Architecture & Core Rules
+• Establish clear conceptual boundaries: define what state transitions are valid and what guarantees the system maintains.
+• Understand execution dynamics: trace how inputs transform through the core operational pipeline.
+
+#### 2. Key Mechanisms & Implementation Patterns
+• Analyze runtime characteristics: balance asymptotic time complexity against space overhead.
+• Verify edge-case stability: guard against degenerate inputs, race conditions, or unhandled boundary states.
+
+I have generated your complete **Interactive Study Suite** below! You can dive straight into the **Learning Roadmap**, test your skills with the **Quiz**, study **Smart Notes**, flip **Flashcards**, or view **Google Sources**.`;
+  }
+
+  const questionCount = validation.requestedQuestionCount || 5;
+  const studyPack = await generateStudyPack(validation.cleanTopic, {
+    questionCount,
+    modelId
+  });
+
+  return {
+    reply: explanation,
+    isStudyTopic: true,
+    topic: validation.cleanTopic,
+    studyPack,
+    modelUsed: modelId || 'Claude 3 Haiku',
+    latencyMs: Date.now() - startTime
+  };
+}
+

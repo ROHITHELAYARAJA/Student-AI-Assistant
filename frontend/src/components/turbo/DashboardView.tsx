@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { router } from '../../services/router.js';
 import { BlastMascot, BlastMascotState } from './BlastMascot.js';
-import { getSavedStudyPacks, fetchStudyPack, saveStudyPack } from '../../services/turboApi.js';
+import {
+  getSavedStudyPacks,
+  deleteStudyPack,
+  fetchTurboChat,
+  TurboChatResponse
+} from '../../services/turboApi.js';
 import { TurboStudyPack } from '../../types/turbo.js';
 import {
   AiPromptInput,
@@ -14,9 +19,6 @@ import { Button } from '../ui/button.js';
 import {
   Mic,
   MicOff,
-  Upload,
-  Youtube,
-  Sparkles,
   Sun,
   Moon,
   Loader2,
@@ -25,13 +27,26 @@ import {
   Award,
   Layers,
   Headphones,
-  FolderGit2,
   Trash2,
   X,
   AlertTriangle,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  ExternalLink,
+  RotateCcw
 } from 'lucide-react';
+
+interface ChatMessage {
+  id: string;
+  sender: 'user' | 'blast';
+  text: string;
+  timestamp: string;
+  modelUsed?: string;
+  latencyMs?: number;
+  studyPack?: TurboStudyPack | null;
+  isStudyTopic?: boolean;
+}
 
 interface DashboardViewProps {
   userName?: string;
@@ -48,12 +63,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenEmma,
   onOpenBlast
 }) => {
-  const openBlastHandler = onOpenBlast || onOpenEmma;
   const [studyPacks, setStudyPacks] = useState<TurboStudyPack[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [activeGeneratingTopic, setActiveGeneratingTopic] = useState('');
   const [generationError, setGenerationError] = useState<string | null>(null);
-  const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const [mascotState, setMascotState] = useState<BlastMascotState>('greeting');
   const [promptStatus, setPromptStatus] = useState<AiPromptSendStatus>('idle');
   const [promptValue, setPromptValue] = useState('');
@@ -74,11 +87,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return (localStorage.getItem('blast_theme') as 'dark' | 'light') || 'dark';
   });
 
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
   // Switch from greeting to idle after entrance
   useEffect(() => {
     const timer = setTimeout(() => {
       setMascotState('idle');
-    }, 2400);
+    }, 2200);
     return () => clearTimeout(timer);
   }, []);
 
@@ -87,536 +102,651 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     localStorage.setItem('blast_theme', theme);
   }, [theme]);
 
-  // Load saved packs created strictly by user requests (no static mock defaults)
+  // Load saved packs created strictly by user requests (filtered, no "hii" or broken packs)
   useEffect(() => {
+    refreshPacks();
+  }, []);
+
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages, isGenerating]);
+
+  const refreshPacks = () => {
     const existing = getSavedStudyPacks();
     setStudyPacks(existing);
-  }, []);
+  };
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  const handleGenerate = async (topicToGenerate: string, selection?: AiModelSelection) => {
-    const clean = topicToGenerate.trim();
-    if (!clean) return;
+  const handleDeletePack = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteStudyPack(id);
+    refreshPacks();
+  };
+
+  const handleClearChat = () => {
+    setChatMessages([]);
+    setGenerationError(null);
+    setMascotState('idle');
+  };
+
+  const handleSendMessage = async (userPrompt: string, selection?: AiModelSelection) => {
+    const clean = userPrompt.trim();
+    if (!clean || isGenerating) return;
 
     setGenerationError(null);
     setIsGenerating(true);
     setPromptStatus('loading');
-    setActiveGeneratingTopic(clean);
     setMascotState('thinking');
+
+    const activeModelId = selection?.id || modelSelection.id;
+    const modelMeta = DEFAULT_AI_MODELS.find((m) => m.id === activeModelId);
+    const modelLabel = modelMeta?.label || 'Claude 3 Haiku';
+
+    // Append user message immediately
+    const userMsg: ChatMessage = {
+      id: `u-${Date.now()}`,
+      sender: 'user',
+      text: clean,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setChatMessages((prev) => [...prev, userMsg]);
+    setPromptValue('');
+
     const startTime = Date.now();
 
     try {
-      // Parse question count if prompt specifies e.g. "10 quiz"
-      const countMatch = clean.match(/(?:^|\b)(\d+)\s*(?:quiz|questions?|mcqs?|cards?|problems?)(?:\b|$)/i);
-      const requestedCount = countMatch ? parseInt(countMatch[1], 10) : undefined;
-
-      const pack = await fetchStudyPack(clean, {
-        questionCount: requestedCount,
-        modelId: selection?.id || modelSelection.id
-      });
+      const response: TurboChatResponse = await fetchTurboChat(
+        clean,
+        activeModelId,
+        chatMessages.map((m) => ({ sender: m.sender, text: m.text }))
+      );
 
       const elapsed = Date.now() - startTime;
-      setLastLatencyMs(elapsed);
       setPromptStatus('success');
       setMascotState('success');
-      setStudyPacks(getSavedStudyPacks());
-      onStartNewLesson(clean);
+
+      // Append Blast's AI reply
+      const blastMsg: ChatMessage = {
+        id: `b-${Date.now()}`,
+        sender: 'blast',
+        text: response.reply,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        modelUsed: modelLabel,
+        latencyMs: elapsed,
+        studyPack: response.studyPack,
+        isStudyTopic: response.isStudyTopic
+      };
+
+      setChatMessages((prev) => [...prev, blastMsg]);
+      refreshPacks();
+
+      if (response.isStudyTopic && response.topic) {
+        onStartNewLesson(response.topic);
+      }
 
       setTimeout(() => {
         setPromptStatus('idle');
-        setPromptValue('');
-        router.navigate(`/notes/${pack.id}`);
-      }, 700);
+        setMascotState('idle');
+      }, 1200);
     } catch (err: any) {
-      console.error('Error generating study pack:', err);
-      setGenerationError(err?.message || 'Could not generate study pack for this input.');
+      console.error('Error in chat response:', err);
+      const errMsg = err?.message || 'Could not process query. Please check your prompt.';
+      setGenerationError(errMsg);
       setPromptStatus('idle');
       setMascotState('error');
+
+      const errorReply: ChatMessage = {
+        id: `err-${Date.now()}`,
+        sender: 'blast',
+        text: `⚠️ **Unable to complete request**: ${errMsg}\n\nPlease try asking a clear study topic or question (e.g., *"10 quiz questions on Operating Systems"*, *"Explain Balanced Binary Search Trees"*, or *"How does Dijkstra's Algorithm work?"*).`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        modelUsed: modelLabel,
+        isStudyTopic: false
+      };
+      setChatMessages((prev) => [...prev, errorReply]);
+
+      setTimeout(() => {
+        setMascotState('idle');
+      }, 3000);
     } finally {
       setIsGenerating(false);
-      setActiveGeneratingTopic('');
     }
   };
 
-  const handleDeletePack = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = studyPacks.filter((p) => p.id !== id);
-    setStudyPacks(updated);
-    localStorage.setItem('turbo_study_packs_v1', JSON.stringify(updated));
-  };
-
-  const latestPack = studyPacks.length > 0 ? studyPacks[0] : null;
-  const currentModelLabel = DEFAULT_AI_MODELS.find(m => m.id === modelSelection.id)?.label || 'Claude 3 Haiku';
+  const activeModelMeta = DEFAULT_AI_MODELS.find((m) => m.id === modelSelection.id) || DEFAULT_AI_MODELS[0];
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col font-body select-none transition-colors duration-200">
-      {/* Top Header */}
-      <header className="h-16 px-6 md:px-8 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md sticky top-0 z-30 shrink-0">
-        <div
-          className="flex items-center gap-3 cursor-pointer group"
-          onClick={() => router.navigate('/dashboard')}
-        >
-          {/* Blast AI Official Flame Emblem Logo */}
-          <img
-            src="/blast-logo.png"
-            alt="Blast AI Logo"
-            className="w-8 h-8 rounded-xl object-contain shadow-md shadow-orange-500/30 group-hover:scale-105 transition-transform bg-[#181824] p-1 border border-orange-500/20"
-          />
-          <span className="font-headline font-bold text-lg tracking-tight flex items-center gap-1">
-            <span>blast</span>
-            <span className="text-[#FF5E00]">ai</span>
-          </span>
+    <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col font-sans transition-colors duration-200">
+      {/* Top Header Navbar */}
+      <header className="border-b border-[var(--color-border)] sticky top-0 bg-[var(--color-bg)]/90 backdrop-blur-md z-40 px-4 sm:px-8 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            onClick={() => router.navigate('/dashboard')}
+            className="flex items-center gap-2 cursor-pointer group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
+              <Zap className="w-4 h-4 text-white fill-white" />
+            </div>
+            <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-orange-500 via-amber-500 to-purple-600 bg-clip-text text-transparent">
+              blast ai
+            </span>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-2 ml-4 px-2.5 py-1 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            AWS Bedrock Engine
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Active Model Indicator */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-text-muted)]">
-            <Zap size={13} className="text-[#FF5E00]" />
-            <span className="font-medium text-[var(--color-text)]">{currentModelLabel}</span>
-            {lastLatencyMs && (
-              <span className="text-[10px] text-emerald-400 font-mono">
-                ({(lastLatencyMs / 1000).toFixed(1)}s)
-              </span>
-            )}
-          </div>
+          {chatMessages.length > 0 && (
+            <button
+              onClick={handleClearChat}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-secondary)] transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              New Topic
+            </button>
+          )}
 
-          {/* Theme Toggle */}
+          <button
+            onClick={() => setIsVoiceModalOpen(true)}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:bg-[var(--color-card)] text-xs font-semibold text-[var(--color-text-secondary)] transition-colors"
+          >
+            <Mic className="w-3.5 h-3.5 text-orange-500" />
+            Voice Orb
+          </button>
+
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-all"
-            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+            aria-label="Toggle Theme"
+            className="p-2 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-card)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
           >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          {/* Voice Mode Quick Launch */}
-          <button
-            onClick={() => {
-              setIsVoiceModalOpen(true);
-              setIsOrbRecording(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-[#FF5E00] text-xs font-semibold transition-all"
-            title="Launch Voice-Powered Orb Talk Mode"
-          >
-            <Mic size={14} />
-            <span className="hidden sm:inline">Voice Mode</span>
-          </button>
+          {onOpenUpgrade && (
+            <button
+              onClick={onOpenUpgrade}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold shadow-md shadow-orange-500/20 hover:opacity-95 transition-opacity"
+            >
+              Pro
+            </button>
+          )}
 
-          {/* Upgrade Button */}
-          <button
-            onClick={onOpenUpgrade}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-black font-headline font-bold text-xs shadow-md shadow-orange-500/20 hover:scale-105 active:scale-95 transition-all"
-          >
-            <Sparkles size={13} className="fill-black" />
-            <span>Upgrade</span>
-          </button>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold uppercase shadow-sm">
+            {userName.charAt(0)}
+          </div>
         </div>
       </header>
 
-      {/* Main Body */}
-      <div className="flex-1 flex overflow-visible">
-        {/* Left Sidebar */}
-        <aside className="w-64 border-r border-[var(--color-border)] bg-[var(--color-bg)] hidden lg:flex flex-col justify-between p-4 shrink-0">
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between px-3 mb-2">
-                <span className="text-[10px] font-bold text-[var(--color-text-faint)] uppercase tracking-wider">
-                  Turbo Study Modes
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <button
-                  onClick={() => router.navigate(latestPack ? `/notes/${latestPack.id}` : '/notes/learn')}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors group"
-                >
-                  <BookOpen size={16} className="text-[#FF5E00] group-hover:scale-110 transition-transform" />
-                  <span>Learn Roadmap</span>
-                </button>
-
-                <button
-                  onClick={() => router.navigate(latestPack ? `/notes/${latestPack.id}/editor` : '/notes/editor')}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors group"
-                >
-                  <FileText size={16} className="text-purple-400 group-hover:scale-110 transition-transform" />
-                  <span>Smart Notes</span>
-                </button>
-
-                <button
-                  onClick={() => router.navigate(latestPack ? `/notes/${latestPack.id}/quiz` : '/notes/quiz')}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors group"
-                >
-                  <Award size={16} className="text-amber-400 group-hover:scale-110 transition-transform" />
-                  <span>Interactive Quiz</span>
-                </button>
-
-                <button
-                  onClick={() => router.navigate(latestPack ? `/notes/${latestPack.id}/flashcards` : '/notes/flashcards')}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors group"
-                >
-                  <Layers size={16} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-                  <span>3D Flashcards</span>
-                </button>
-
-                <button
-                  onClick={() => router.navigate(latestPack ? `/notes/${latestPack.id}/podcast` : '/notes/podcast')}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors group"
-                >
-                  <Headphones size={16} className="text-sky-400 group-hover:scale-110 transition-transform" />
-                  <span>Audio Podcast</span>
-                </button>
-
-                <button
-                  onClick={() => router.navigate(latestPack ? `/notes/${latestPack.id}/sources` : '/notes/sources')}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors group"
-                >
-                  <FolderGit2 size={16} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-                  <span>Google & Web Sources</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Courses / Subjects Created By User */}
-            <div>
-              <div className="flex items-center justify-between px-3 mb-2">
-                <span className="text-[10px] font-bold text-[var(--color-text-faint)] uppercase tracking-wider">
-                  Generated Subjects
-                </span>
-                <span className="text-[10px] text-[var(--color-text-faint)] font-mono">
-                  {studyPacks.length}
-                </span>
-              </div>
-
-              {studyPacks.length === 0 ? (
-                <div className="px-3 py-3 rounded-xl border border-dashed border-[var(--color-border)] text-[11px] text-[var(--color-text-muted)] text-center">
-                  No packs created yet. Type any subject above to generate!
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {studyPacks.slice(0, 5).map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => {
-                        onStartNewLesson(p.topic);
-                        router.navigate(`/notes/${p.id}`);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text)] truncate flex items-center gap-2"
-                    >
-                      <span className="w-2 h-2 rounded-full bg-[#FF5E00]" />
-                      <span className="truncate">{p.topic}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Assistant Banner Card */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#FF5E00]/10 via-[#FFAA00]/5 to-transparent border border-[#FF5E00]/20 space-y-2">
-            <div className="flex items-center gap-2">
-              <BlastMascot size="xs" state={mascotState} />
-              <div className="text-xs font-bold text-[var(--color-text)]">Blast AI Copilot</div>
-            </div>
-            <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
-              Living study assistant ready to explain concepts, generate quizzes, and quiz your recall.
-            </p>
-          </div>
-        </aside>
-
-        {/* Main Scrolling Dashboard Content */}
-        <main className="flex-1 max-w-4xl w-full mx-auto px-4 md:px-8 py-10 flex flex-col items-center overflow-visible">
-          {/* Animated Mascot & Hero Heading */}
-          <div className="mb-6 flex flex-col items-center text-center">
-            <div className="relative mb-3">
-              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#FF5E00] via-[#FFAA00] to-[#E11D48] p-1 flex items-center justify-center shadow-2xl shadow-orange-500/25">
-                <div className="w-full h-full rounded-3xl bg-[var(--color-surface)] flex items-center justify-center overflow-hidden">
-                  <BlastMascot size="lg" state={mascotState} />
-                </div>
-              </div>
-              <div className="absolute -top-2 -right-3 p-1 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md flex items-center gap-1 text-[11px]">
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col">
+        {chatMessages.length === 0 ? (
+          /* Initial Hero Landing View */
+          <div className="flex-1 flex flex-col items-center justify-center my-auto py-8">
+            <div className="relative mb-5 flex flex-col items-center">
+              <BlastMascot
+                state={mascotState}
+                size="lg"
+              />
+              <div className="absolute -top-1 -right-1 flex gap-1 px-1.5 py-0.5 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] text-[10px] text-orange-500 font-bold shadow-sm">
                 <span>🔥</span>
                 <span>⚡</span>
               </div>
             </div>
 
-            <h1 className="font-headline text-3xl md:text-4xl font-extrabold tracking-tight">
-              What do you want to learn?
-            </h1>
-            <p className="text-xs md:text-sm text-[var(--color-text-muted)] mt-1.5 max-w-lg leading-relaxed">
-              Enter any syllabus concept, question, or exam topic to dynamically generate structured roadmaps, smart notes, quizzes, flashcards, and podcasts via AWS Bedrock models.
-            </p>
-          </div>
-
-          {/* Validation / Edge-case Error Alert */}
-          {generationError && (
-            <div className="w-full max-w-2xl mb-4 p-3.5 rounded-2xl bg-rose-950/20 border border-rose-500/40 flex items-start gap-3 text-xs text-rose-300">
-              <AlertTriangle size={16} className="text-rose-400 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <div className="font-bold">Input Error:</div>
-                <div className="mt-0.5">{generationError}</div>
-              </div>
-              <button onClick={() => setGenerationError(null)} className="text-rose-400 hover:text-white p-0.5">
-                <X size={14} />
-              </button>
+            <div className="text-center max-w-xl mb-7">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-[var(--color-text)] mb-3">
+                What do you want to learn?
+              </h1>
+              <p className="text-sm sm:text-base text-[var(--color-text-secondary)] leading-relaxed">
+                Ask any question or study topic. Blast will reply in chat, explain the concept, and build your tailored curriculum roadmap, quiz, notes, flashcards, and podcast.
+              </p>
             </div>
-          )}
 
-          {/* Premium AiPromptInput Composer Component with 5 Models */}
-          <div className="w-full max-w-2xl">
-            <AiPromptInput
-              value={promptValue}
-              onChange={setPromptValue}
-              onSubmit={(text, selection) => handleGenerate(text, selection)}
-              modelSelection={modelSelection}
-              onModelSelectionChange={setModelSelection}
-              status={promptStatus}
-              disabled={isGenerating}
-              onVoiceChange={(talking) => {
-                if (talking) {
-                  setIsVoiceModalOpen(true);
-                  setIsOrbRecording(true);
-                }
-              }}
-              onUploadFile={() => {
-                const text = window.prompt('Paste notes or syllabus text to analyze:');
-                if (text && text.trim()) handleGenerate(text.trim());
-              }}
-              onSkills={() => {
-                setPromptValue('10 quiz questions on ');
-              }}
-              onConnectors={() => {
-                router.navigate('/notes/sources');
-              }}
-            />
-          </div>
-
-          {/* Quick Prompt Starters (Active Only - No Default Hardcoded Packs) */}
-          <div className="w-full max-w-2xl mt-4 flex flex-wrap items-center justify-center gap-2">
-            <span className="text-[11px] text-[var(--color-text-faint)] font-medium">Try asking:</span>
-            {[
-              '10 quiz questions on Operating Systems Deadlocks',
-              'Machine Learning Gradient Descent & Backpropagation',
-              'Data Structures: Balanced AVL Trees',
-              'Python Concurrency & Asyncio Event Loops'
-            ].map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => {
-                  setPromptValue(suggestion);
-                  handleGenerate(suggestion);
-                }}
-                disabled={isGenerating}
-                className="px-2.5 py-1 rounded-full bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] hover:border-orange-500/40 text-[11px] text-[var(--color-text-muted)] hover:text-white transition-all flex items-center gap-1 group"
-              >
-                <span>{suggestion}</span>
-                <ArrowRight size={10} className="text-[#FF5E00] opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-            ))}
-          </div>
-
-          {/* Loading Indicator with Mascot */}
-          {isGenerating && (
-            <div className="w-full max-w-2xl mt-6 p-4 rounded-2xl bg-orange-950/20 border border-orange-500/30 flex items-center gap-3 animate-pulse">
-              <BlastMascot size="sm" state="processing" />
-              <div className="flex-1">
-                <p className="text-xs font-bold text-orange-300">
-                  Blast AI is synthesizing your study pack for &ldquo;{activeGeneratingTopic}&rdquo;...
-                </p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
-                  Invoking AWS Bedrock ({currentModelLabel}) to construct your custom roadmap, editable notes, diagnostic quiz, 3D cards, and podcast.
-                </p>
+            {/* Error Notification */}
+            {generationError && (
+              <div className="w-full max-w-2xl mb-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-start gap-3 text-sm text-red-500 dark:text-red-400">
+                <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="font-semibold mb-0.5">Study Topic Validation</div>
+                  <div className="text-xs leading-relaxed opacity-90">{generationError}</div>
+                </div>
+                <button
+                  onClick={() => setGenerationError(null)}
+                  className="p-1 hover:bg-red-500/20 rounded-md transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <Loader2 size={16} className="text-orange-400 animate-spin" />
-            </div>
-          )}
+            )}
 
-          {/* Jump Back In Card (if user has created packs) */}
-          {latestPack && !isGenerating && (
-            <div className="w-full max-w-2xl mt-6">
-              <button
-                onClick={() => {
-                  onStartNewLesson(latestPack.topic);
-                  router.navigate(`/notes/${latestPack.id}`);
+            {/* Hero Prompt Input Composer */}
+            <div className="w-full max-w-2xl mb-6">
+              <AiPromptInput
+                value={promptValue}
+                onChange={setPromptValue}
+                onSubmit={(val, sel) => handleSendMessage(val, sel)}
+                models={DEFAULT_AI_MODELS}
+                modelSelection={modelSelection}
+                onModelSelectionChange={setModelSelection}
+                status={promptStatus}
+                placeholderInterval={3200}
+                placeholders={[
+                  "Ask Blast anything (e.g. '10 quiz questions on Operating Systems Deadlocks')...",
+                  "Explain Machine Learning Gradient Descent...",
+                  "How does balanced AVL Tree rotation work?",
+                  "Generate study notes on Python Concurrency...",
+                  "Write 5 quiz questions on Quantum Computing..."
+                ]}
+                showToolbar={true}
+                showModelSelector={true}
+                showActions={true}
+                onVoiceChange={(active) => {
+                  if (active) setIsVoiceModalOpen(true);
                 }}
-                className="w-full py-3 px-4 rounded-2xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-orange-500/30 hover:border-orange-500/50 flex items-center justify-between text-xs transition-all group shadow-md"
-              >
-                <div className="flex items-center gap-3 truncate">
-                  <span className="text-base">🔥</span>
-                  <span className="font-headline font-semibold text-[var(--color-text)] truncate">
-                    {latestPack.topic}
-                  </span>
-                  <span className="text-[var(--color-text-faint)]">•</span>
-                  <span className="text-[var(--color-text-muted)] shrink-0">
-                    {latestPack.quiz?.questions?.length || 5} Quiz Qs • {latestPack.flashcards?.cards?.length || 6} Cards
+              />
+            </div>
+
+            {/* Prompt Starter Suggestions */}
+            <div className="w-full max-w-2xl flex flex-wrap items-center justify-center gap-2 mb-10 text-xs">
+              <span className="text-[var(--color-text-secondary)] font-medium mr-1">Try asking:</span>
+              {[
+                "10 quiz questions on Operating Systems Deadlocks",
+                "Machine Learning Gradient Descent & Backpropagation",
+                "Data Structures: Balanced AVL Trees",
+                "Python Concurrency & Asyncio Event Loops"
+              ].map((topic) => (
+                <button
+                  key={topic}
+                  onClick={() => handleSendMessage(topic)}
+                  className="px-3 py-1.5 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] hover:border-orange-500/50 hover:bg-orange-500/5 text-[var(--color-text)] font-medium transition-all"
+                >
+                  {topic}
+                </button>
+              ))}
+            </div>
+
+            {/* Saved Dynamic Study Packs */}
+            {studyPacks.length > 0 && (
+              <div className="w-full max-w-2xl pt-4 border-t border-[var(--color-border)]">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-bold text-[var(--color-text)]">
+                    Your Dynamic Study Packs
+                  </h2>
+                  <span className="text-xs text-[var(--color-text-secondary)]">
+                    {studyPacks.length} subject{studyPacks.length === 1 ? '' : 's'} created
                   </span>
                 </div>
-                <span className="text-[#FF5E00] group-hover:text-orange-400 font-bold flex items-center gap-1 shrink-0 ml-2">
-                  <span>Resume Learning</span>
-                  <span>→</span>
-                </span>
-              </button>
-            </div>
-          )}
 
-          {/* User's Created Study Packs Section */}
-          {studyPacks.length > 0 && (
-            <section className="w-full max-w-2xl mt-10 space-y-3 pb-16">
-              <div className="flex items-center justify-between">
-                <h2 className="font-headline text-base font-bold tracking-wide">
-                  Your Dynamic Study Packs
-                </h2>
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  {studyPacks.length} subjects created
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {studyPacks.map((pack) => (
-                  <div
-                    key={pack.id}
-                    onClick={() => {
-                      onStartNewLesson(pack.topic);
-                      router.navigate(`/notes/${pack.id}`);
-                    }}
-                    className="p-4 rounded-2xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] hover:border-orange-500/40 flex items-center justify-between cursor-pointer transition-all group shadow-sm"
-                  >
-                    <div className="flex items-center gap-3.5 truncate">
-                      <div className="w-10 h-10 rounded-xl bg-orange-600/10 border border-orange-500/20 flex items-center justify-center text-[#FF5E00] shrink-0">
-                        <BookOpen size={18} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {studyPacks.map((pack) => (
+                    <div
+                      key={pack.id}
+                      onClick={() => router.navigate(`/notes/${pack.id}`)}
+                      className="p-3 rounded-xl bg-[var(--color-card)] border border-[var(--color-border)] hover:border-orange-500/40 hover:shadow-md cursor-pointer transition-all flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0">
+                          <BookOpen className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-xs text-[var(--color-text)] truncate group-hover:text-orange-500 transition-colors">
+                            {pack.topic}
+                          </div>
+                          <div className="text-[10px] text-[var(--color-text-secondary)] truncate">
+                            {pack.quiz?.questions?.length || 5} Quiz Qs • {pack.flashcards?.cards?.length || 6} Cards
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="truncate">
-                        <h3 className="font-headline font-bold text-xs text-[var(--color-text)] group-hover:text-[#FF5E00] transition-colors truncate">
-                          {pack.topic}
-                        </h3>
-                        <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5 flex items-center gap-2">
-                          <span>Roadmap ready</span>
-                          <span>•</span>
-                          <span>{pack.quiz?.questions?.length || 5} Quiz Qs</span>
-                          <span>•</span>
-                          <span>{pack.flashcards?.cards?.length || 6} Cards</span>
-                        </p>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={(e) => handleDeletePack(pack.id, e)}
+                          title="Delete pack"
+                          className="p-1 rounded-md text-[var(--color-text-secondary)] hover:text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <ArrowRight className="w-3.5 h-3.5 text-[var(--color-text-secondary)] group-hover:text-orange-500 group-hover:translate-x-0.5 transition-all" />
                       </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Active Chat Workspace */
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Chat Messages Stream */}
+            <div className="flex-1 overflow-y-auto space-y-5 pb-6">
+              {chatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex gap-3 sm:gap-4 ${
+                    msg.sender === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
+                  {msg.sender === 'blast' && (
+                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 p-0.5 shadow-md shrink-0 flex items-center justify-center">
+                      <div className="w-full h-full bg-[var(--color-card)] rounded-[14px] flex items-center justify-center overflow-hidden">
+                        <BlastMascot state="speaking" size="sm" />
+                      </div>
+                    </div>
+                  )}
 
-                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <button
-                        onClick={(e) => handleDeletePack(pack.id, e)}
-                        className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Delete study pack"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                      <span className="text-[#FF5E00] text-xs font-bold px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20">
-                        Open →
-                      </span>
+                  <div
+                    className={`max-w-2xl rounded-2xl p-4 sm:p-5 text-sm leading-relaxed shadow-sm ${
+                      msg.sender === 'user'
+                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-br-none ml-10 font-medium'
+                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text)] rounded-tl-none mr-2 sm:mr-10'
+                    }`}
+                  >
+                    {/* Message Header info for AI */}
+                    {msg.sender === 'blast' && (
+                      <div className="flex items-center justify-between gap-2 pb-2.5 mb-3 border-b border-[var(--color-border)] text-[11px] text-[var(--color-text-secondary)]">
+                        <div className="flex items-center gap-1.5 font-semibold text-orange-500">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Blast AI</span>
+                          {msg.modelUsed && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 font-normal text-[var(--color-text-secondary)]">
+                              {msg.modelUsed}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {msg.latencyMs && (
+                            <span className="text-[10px] opacity-75">
+                              {(msg.latencyMs / 1000).toFixed(1)}s
+                            </span>
+                          )}
+                          <span>{msg.timestamp}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Formatted Message Body */}
+                    <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                      {msg.text}
+                    </div>
+
+                    {/* Structured Learning Suite for Study Topics */}
+                    {msg.studyPack && (
+                      <div className="mt-5 pt-4 border-t border-[var(--color-border)]">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                            Generated Learning Path & Study Materials
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
+                          {/* 1. Roadmap Card */}
+                          <div
+                            onClick={() => router.navigate(`/notes/${msg.studyPack!.id}`)}
+                            className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] hover:border-orange-500/50 cursor-pointer transition-all hover:shadow-sm group"
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text)]">
+                                <BookOpen className="w-4 h-4 text-orange-500" />
+                                <span>Mastery Roadmap</span>
+                              </div>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-600 font-semibold">
+                                {msg.studyPack.roadmap.stages.length} Stages
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--color-text-secondary)] line-clamp-2 mb-2">
+                              {msg.studyPack.roadmap.stages[0]?.description || 'Step-by-step curriculum milestones'}
+                            </p>
+                            <div className="text-[11px] text-orange-500 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                              <span>Start Learning Path</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </div>
+                          </div>
+
+                          {/* 2. Quiz Card */}
+                          <div
+                            onClick={() => router.navigate(`/notes/${msg.studyPack!.id}/quiz`)}
+                            className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] hover:border-purple-500/50 cursor-pointer transition-all hover:shadow-sm group"
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text)]">
+                                <Award className="w-4 h-4 text-purple-500" />
+                                <span>Assessment Quiz</span>
+                              </div>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 font-semibold">
+                                {msg.studyPack.quiz.questions.length} Questions
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--color-text-secondary)] line-clamp-2 mb-2">
+                              {msg.studyPack.quiz.title || 'Dynamic MCQ challenge testing core invariants'}
+                            </p>
+                            <div className="text-[11px] text-purple-500 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                              <span>Take Quiz Challenge</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </div>
+                          </div>
+
+                          {/* 3. Notes Card */}
+                          <div
+                            onClick={() => router.navigate(`/notes/${msg.studyPack!.id}/editor`)}
+                            className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] hover:border-blue-500/50 cursor-pointer transition-all hover:shadow-sm group"
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text)]">
+                                <FileText className="w-4 h-4 text-blue-500" />
+                                <span>High-Yield Notes</span>
+                              </div>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 font-semibold">
+                                Studio Ready
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--color-text-secondary)] line-clamp-2 mb-2">
+                              {msg.studyPack.notes.summary || 'Comprehensive theory, key takeaways & formulas'}
+                            </p>
+                            <div className="text-[11px] text-blue-500 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                              <span>Open Notes in Studio</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </div>
+                          </div>
+
+                          {/* 4. Flashcards Card */}
+                          <div
+                            onClick={() => router.navigate(`/notes/${msg.studyPack!.id}/flashcards`)}
+                            className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] hover:border-amber-500/50 cursor-pointer transition-all hover:shadow-sm group"
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text)]">
+                                <Layers className="w-4 h-4 text-amber-500" />
+                                <span>3D Flashcards</span>
+                              </div>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 font-semibold">
+                                {msg.studyPack.flashcards.cards.length} Cards
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--color-text-secondary)] line-clamp-2 mb-2">
+                              Active recall deck formatted for spaced repetition and rapid retention
+                            </p>
+                            <div className="text-[11px] text-amber-500 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                              <span>Practice Flashcards</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </div>
+                          </div>
+
+                          {/* 5. Podcast Card */}
+                          <div
+                            onClick={() => router.navigate(`/notes/${msg.studyPack!.id}/podcast`)}
+                            className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] hover:border-rose-500/50 cursor-pointer transition-all hover:shadow-sm group"
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text)]">
+                                <Headphones className="w-4 h-4 text-rose-500" />
+                                <span>Audio Podcast</span>
+                              </div>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 font-semibold">
+                                {msg.studyPack.podcast.audioDurationEstimate || '5-7 mins'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--color-text-secondary)] line-clamp-2 mb-2">
+                              2-speaker interactive dialogue between Blast (host) and Alex (student)
+                            </p>
+                            <div className="text-[11px] text-rose-500 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                              <span>Listen to Lecture</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </div>
+                          </div>
+
+                          {/* 6. Sources Card */}
+                          <div
+                            onClick={() => router.navigate(`/notes/${msg.studyPack!.id}/source`)}
+                            className="p-3 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] hover:border-emerald-500/50 cursor-pointer transition-all hover:shadow-sm group"
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text)]">
+                                <ExternalLink className="w-4 h-4 text-emerald-500" />
+                                <span>Google & Web Sources</span>
+                              </div>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-semibold">
+                                {msg.studyPack.sources?.length || 4} Sources
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--color-text-secondary)] line-clamp-2 mb-2">
+                              Google Search, Google Scholar, Wikipedia reference, and YouTube video tutorials
+                            </p>
+                            <div className="text-[11px] text-emerald-500 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                              <span>Explore Sources</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Generating / Loading Indicator */}
+              {isGenerating && (
+                <div className="flex gap-3 sm:gap-4 justify-start items-center">
+                  <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 p-0.5 shadow-md shrink-0 flex items-center justify-center">
+                    <div className="w-full h-full bg-[var(--color-card)] rounded-[14px] flex items-center justify-center overflow-hidden">
+                      <BlastMascot state="thinking" size="sm" />
                     </div>
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </main>
-      </div>
+                  <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] flex items-center gap-2.5 shadow-sm">
+                    <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
+                    <span>
+                      Blast is synthesizing response with <strong>{activeModelMeta.label}</strong>...
+                    </span>
+                  </div>
+                </div>
+              )}
 
-      {/* Voice-Powered Orb Interactive Modal */}
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Pinned Bottom Chat Input */}
+            <div className="sticky bottom-0 pt-2 pb-3 bg-[var(--color-bg)]/95 backdrop-blur-md">
+              <AiPromptInput
+                value={promptValue}
+                onChange={setPromptValue}
+                onSubmit={(val, sel) => handleSendMessage(val, sel)}
+                models={DEFAULT_AI_MODELS}
+                modelSelection={modelSelection}
+                onModelSelectionChange={setModelSelection}
+                status={promptStatus}
+                placeholderInterval={3200}
+                placeholders={[
+                  "Ask a follow up question or enter a new study topic...",
+                  "Request a 10-question quiz or practice test...",
+                  "Ask for code examples or deeper formula breakdowns..."
+                ]}
+                showToolbar={true}
+                showModelSelector={true}
+                showActions={true}
+                onVoiceChange={(active) => {
+                  if (active) setIsVoiceModalOpen(true);
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Voice Mode Modal with WebGL VoicePoweredOrb */}
       {isVoiceModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 max-w-lg w-full flex flex-col items-center text-center space-y-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-3xl bg-[var(--color-card)] border border-[var(--color-border)] p-6 sm:p-8 flex flex-col items-center shadow-2xl">
             <button
               onClick={() => {
                 setIsVoiceModalOpen(false);
                 setIsOrbRecording(false);
               }}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1"
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-[var(--color-border)] text-[var(--color-text-secondary)] transition-colors"
             >
-              <X size={18} />
+              <X className="w-5 h-5" />
             </button>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#FF5E00]">
-                <Zap size={14} />
-                <span>BLAST VOICE ORB ENGINE</span>
-              </div>
-              <h2 className="font-headline text-xl font-bold text-white">
-                Live Voice Conversation with Blast
-              </h2>
-              <p className="text-xs text-[var(--color-text-muted)] max-w-sm">
-                Speak directly to Blast. The WebGL orb dynamically senses and visualizes your speech amplitude in real-time.
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-[var(--color-text)] flex items-center justify-center gap-2">
+                <Sparkles className="w-5 h-5 text-orange-500" />
+                Blast Voice Mode
+              </h3>
+              <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                Powered by WebGL GLSL shader & real-time audio analysis
               </p>
             </div>
 
-            {/* WebGL VoicePoweredOrb */}
-            <div className="w-64 h-64 relative rounded-2xl overflow-hidden bg-black/40 border border-orange-500/20 shadow-inner">
+            {/* Shader Orb Display */}
+            <div className="w-64 h-64 sm:w-72 sm:h-72 relative mb-6 rounded-2xl overflow-hidden shadow-inner bg-black/10">
               <VoicePoweredOrb
                 enableVoiceControl={isOrbRecording}
-                hue={25}
-                voiceSensitivity={2.0}
-                className="w-full h-full"
                 onVoiceDetected={setOrbVoiceDetected}
+                className="w-full h-full"
+                hue={28}
+                voiceSensitivity={1.8}
               />
             </div>
 
-            {/* Voice Detection State */}
-            <div className="flex items-center gap-2 text-xs font-medium">
-              <span className={`w-2.5 h-2.5 rounded-full ${orbVoiceDetected ? 'bg-emerald-400 animate-ping' : isOrbRecording ? 'bg-amber-400' : 'bg-zinc-600'}`} />
-              <span className="text-[var(--color-text-muted)]">
-                {orbVoiceDetected ? 'Voice Detected — Synthesizing...' : isOrbRecording ? 'Listening for speech...' : 'Microphone Paused'}
-              </span>
-            </div>
-
-            {/* Controls */}
-            <div className="flex items-center gap-3">
+            {/* Recording Controls */}
+            <div className="flex flex-col items-center gap-3 w-full">
               <Button
                 onClick={() => setIsOrbRecording(!isOrbRecording)}
                 variant={isOrbRecording ? "destructive" : "default"}
                 size="lg"
-                className="px-6 font-bold"
+                className="w-full max-w-xs font-semibold shadow-lg"
               >
                 {isOrbRecording ? (
                   <>
-                    <MicOff className="w-4 h-4 mr-2" />
-                    Pause Mic
+                    <MicOff className="w-5 h-5 mr-2" />
+                    Stop Voice Listening
                   </>
                 ) : (
                   <>
-                    <Mic className="w-4 h-4 mr-2" />
-                    Resume Mic
+                    <Mic className="w-5 h-5 mr-2" />
+                    Start Voice Listening
                   </>
                 )}
               </Button>
 
-              <Button
-                onClick={() => {
-                  const speechTopic = window.prompt('Confirm topic discussed to generate study pack:', 'Algorithms and Data Structures');
-                  if (speechTopic && speechTopic.trim()) {
-                    setIsVoiceModalOpen(false);
-                    setIsOrbRecording(false);
-                    handleGenerate(speechTopic.trim());
-                  }
-                }}
-                variant="outline"
-                size="lg"
-                className="px-6 font-bold border-orange-500/30 text-[#FF5E00] hover:bg-orange-500/10"
-              >
-                Generate Study Pack
-              </Button>
+              <p className="text-[11px] text-[var(--color-text-secondary)] text-center max-w-xs leading-relaxed">
+                {isOrbRecording
+                  ? orbVoiceDetected
+                    ? "Voice detected! The orb reacts dynamically to your speech."
+                    : "Listening... speak into your microphone."
+                  : "Click Start to enable your microphone and converse with Blast."}
+              </p>
             </div>
           </div>
         </div>
       )}
-
-      {/* Floating Ask Blast AI Button */}
-      <button
-        onClick={openBlastHandler || (() => router.navigate('/notes/learn'))}
-        className="fixed right-6 bottom-8 py-2 px-4 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2.5 hover:bg-[var(--color-surface-hover)] hover:scale-105 active:scale-95 transition-all z-40"
-      >
-        <BlastMascot size="xs" state="speaking" />
-        <span>Ask Blast AI</span>
-      </button>
     </div>
   );
 };

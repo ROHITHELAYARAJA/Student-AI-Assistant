@@ -9,8 +9,22 @@ import {
   generatePodcastScript,
   generateStudyPack,
   generateSources,
-  validateStudyPrompt
+  validateStudyPrompt,
+  processTurboChat
 } from '../services/turboService.js';
+
+export async function handleTurboChat(req: Request, res: Response): Promise<void> {
+  try {
+    const rawMessage = req.body.message || req.body.prompt || req.body.content || '';
+    const modelId = req.body.modelId || req.body.model;
+    const history = req.body.history || [];
+
+    const result = await processTurboChat(rawMessage, modelId, history);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: 'TURBO_CHAT_FAILED', message: error?.message || 'Chat processing error' });
+  }
+}
 
 export async function handleGenerateStudyPack(req: Request, res: Response): Promise<void> {
   try {

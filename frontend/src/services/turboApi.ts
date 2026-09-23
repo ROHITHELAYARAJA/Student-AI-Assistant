@@ -163,14 +163,64 @@ export async function fetchStudyPack(
   return pack;
 }
 
+export interface TurboChatResponse {
+  reply: string;
+  isStudyTopic: boolean;
+  topic: string;
+  studyPack: TurboStudyPack | null;
+  modelUsed: string;
+  latencyMs: number;
+}
+
+export async function fetchTurboChat(
+  message: string,
+  modelId?: string,
+  history?: Array<{ sender: 'user' | 'blast'; text: string }>
+): Promise<TurboChatResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/turbo/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, modelId, history })
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    throw new Error(errorData?.message || 'Chat request failed');
+  }
+
+  const data: TurboChatResponse = await res.json();
+  if (data.studyPack) {
+    saveStudyPack(data.studyPack);
+  }
+  return data;
+}
+
 const STORAGE_KEY = 'turbo_study_packs_v1';
 
 export function getSavedStudyPacks(): TurboStudyPack[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const list: TurboStudyPack[] = JSON.parse(raw);
+    const BANNED = ['hi', 'hii', 'hiii', 'hello', 'hey', 'test', 'ok'];
+    const filtered = list.filter(
+      (p) => p && p.topic && !BANNED.includes(p.topic.toLowerCase().trim()) && p.topic.trim().length >= 3
+    );
+    if (filtered.length !== list.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    }
+    return filtered;
   } catch {
     return [];
+  }
+}
+
+export function deleteStudyPack(id: string): void {
+  try {
+    const packs = getSavedStudyPacks().filter((p) => p.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(packs));
+  } catch (err) {
+    console.error('Failed to delete study pack:', err);
   }
 }
 
@@ -184,6 +234,11 @@ export function getStudyPack(topicOrId: string): TurboStudyPack | null {
 
 export function saveStudyPack(pack: TurboStudyPack): void {
   try {
+    if (!pack || !pack.topic) return;
+    const BANNED = ['hi', 'hii', 'hiii', 'hello', 'hey', 'test', 'ok'];
+    if (BANNED.includes(pack.topic.toLowerCase().trim()) || pack.topic.trim().length < 3) {
+      return; // Do not save greeting/chatter packs
+    }
     const packs = getSavedStudyPacks();
     const existingIndex = packs.findIndex((p) => p.id === pack.id || p.topic.toLowerCase() === pack.topic.toLowerCase());
     if (existingIndex >= 0) {
