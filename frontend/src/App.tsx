@@ -5,17 +5,18 @@ import { DynamicOutputRenderer } from './components/ai-output/DynamicOutputRende
 import { NotesDrawer } from './components/layout/NotesDrawer.js';
 import { HistoryDrawer } from './components/layout/HistoryDrawer.js';
 import { Toast } from './components/ui/Toast.js';
+import { EmmaAvatar } from './components/ui/EmmaAvatar.js';
 import {
   ChatMessage,
   StructuredAiResponse,
   NoteItem,
-  HistoryItem
+  HistoryItem,
+  EmmaExpression
 } from './types/study.js';
 import { requestAiAssistance } from './services/api.js';
 import {
   Send,
   Sparkles,
-  Bot,
   User,
   Layers,
   Award,
@@ -29,26 +30,28 @@ import {
   MicOff,
   Globe,
   Loader2,
-  Trash2
+  Trash2,
+  Heart
 } from 'lucide-react';
 
 interface QuickTool {
   id: string;
   name: string;
+  expression: EmmaExpression;
   icon: React.ReactNode;
   promptPrefix: string;
 }
 
 const QUICK_TOOLS: QuickTool[] = [
-  { id: 'auto', name: 'Auto Detect', icon: <Sparkles size={13} />, promptPrefix: '' },
-  { id: 'flashcards', name: 'Flashcards', icon: <Layers size={13} />, promptPrefix: 'Generate 10 interactive study flashcards for: ' },
-  { id: 'quiz', name: 'Quiz Me', icon: <Award size={13} />, promptPrefix: 'Generate an interactive multiple-choice quiz with explanations on: ' },
-  { id: 'code', name: 'Code Studio', icon: <Code2 size={13} />, promptPrefix: 'Write clean, optimal code with explanation and Big-O complexity for: ' },
-  { id: 'mindmap', name: 'Mind Map', icon: <GitFork size={13} />, promptPrefix: 'Build a comprehensive mind map and concept tree for: ' },
-  { id: 'compare', name: 'Compare', icon: <GitCompare size={13} />, promptPrefix: 'Do a deep side-by-side comparison across all key dimensions for: ' },
-  { id: 'formulas', name: 'Formulas', icon: <Sigma size={13} />, promptPrefix: 'List and explain key formulas, variables, and examples for: ' },
-  { id: 'study_plan', name: '7-Day Plan', icon: <CalendarDays size={13} />, promptPrefix: 'Create an intensive 7-day milestone study plan for: ' },
-  { id: 'notes', name: 'Study Notes', icon: <BookOpen size={13} />, promptPrefix: 'Create structured, high-yield academic study notes on: ' }
+  { id: 'auto', name: 'Auto Detect', expression: 'thinking', icon: <Sparkles size={13} />, promptPrefix: '' },
+  { id: 'flashcards', name: 'Flashcards', expression: 'reading', icon: <Layers size={13} />, promptPrefix: 'Generate 10 interactive study flashcards for: ' },
+  { id: 'quiz', name: 'Quiz Me', expression: 'teaching', icon: <Award size={13} />, promptPrefix: 'Generate an interactive multiple-choice quiz with explanations on: ' },
+  { id: 'code', name: 'Code Studio', expression: 'coding', icon: <Code2 size={13} />, promptPrefix: 'Write clean, optimal code with explanation and Big-O complexity for: ' },
+  { id: 'mindmap', name: 'Mind Map', expression: 'teaching', icon: <GitFork size={13} />, promptPrefix: 'Build a comprehensive mind map and concept tree for: ' },
+  { id: 'compare', name: 'Compare', expression: 'reading', icon: <GitCompare size={13} />, promptPrefix: 'Do a deep side-by-side comparison across all key dimensions for: ' },
+  { id: 'formulas', name: 'Formulas', expression: 'teaching', icon: <Sigma size={13} />, promptPrefix: 'List and explain key formulas, variables, and examples for: ' },
+  { id: 'study_plan', name: '7-Day Plan', expression: 'reading', icon: <CalendarDays size={13} />, promptPrefix: 'Create an intensive 7-day milestone study plan for: ' },
+  { id: 'notes', name: 'Study Notes', expression: 'reading', icon: <BookOpen size={13} />, promptPrefix: 'Create structured, high-yield academic study notes on: ' }
 ];
 
 export const App: React.FC = () => {
@@ -65,8 +68,9 @@ export const App: React.FC = () => {
       {
         id: 'welcome',
         sender: 'emma',
+        expression: 'waving',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: "Hi! I'm Emma, your AI study & coding companion 🎓. Ask me anything, paste syllabus notes or code, or pick one of the study tools below to get started!"
+        text: "Hi! I'm Emma, your personal AI study & coding companion 🎓. Ask me anything, paste notes or code, or click one of the interactive tools below!"
       }
     ];
   });
@@ -77,6 +81,7 @@ export const App: React.FC = () => {
   const [activeTabSnippet, setActiveTabSnippet] = useState<string>('');
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [currentExpression, setCurrentExpression] = useState<EmmaExpression>('waving');
   const [notes, setNotes] = useState<NoteItem[]>(() => {
     const saved = localStorage.getItem('emma_study_notes');
     return saved ? JSON.parse(saved) : [];
@@ -130,6 +135,7 @@ export const App: React.FC = () => {
           const text = results[0]?.result?.trim();
           if (text) {
             setActiveTabSnippet(text);
+            setCurrentExpression('reading');
             showToast('Captured text from active browser tab');
             return;
           }
@@ -139,6 +145,7 @@ export const App: React.FC = () => {
       const winSel = window.getSelection()?.toString().trim();
       if (winSel) {
         setActiveTabSnippet(winSel);
+        setCurrentExpression('reading');
         showToast('Captured selected text');
       } else {
         showToast('Please highlight text on the web page first');
@@ -180,6 +187,19 @@ export const App: React.FC = () => {
     }
   };
 
+  const determineEmmaExpression = (operation: string, componentType: string): EmmaExpression => {
+    if (componentType === 'code' || operation.includes('code') || operation.includes('debug')) {
+      return 'coding';
+    }
+    if (componentType === 'quiz' || componentType === 'formula' || componentType === 'mindmap') {
+      return 'teaching';
+    }
+    if (componentType === 'flashcards' || componentType === 'timeline' || componentType === 'article') {
+      return 'reading';
+    }
+    return 'teaching';
+  };
+
   const handleSendMessage = async (customPrompt?: string, customTool?: string) => {
     const queryToSend = (customPrompt ?? inputQuery).trim();
     if (!queryToSend && !activeTabSnippet) {
@@ -211,6 +231,7 @@ export const App: React.FC = () => {
     setInputQuery('');
     setActiveTabSnippet('');
     setIsGenerating(true);
+    setCurrentExpression('thinking');
 
     try {
       let resolvedOp = opToUse;
@@ -218,7 +239,7 @@ export const App: React.FC = () => {
         const lower = queryToSend.toLowerCase();
         if (lower.includes('flashcard') || lower.includes('card')) resolvedOp = 'flashcards';
         else if (lower.includes('quiz') || lower.includes('test me') || lower.includes('mcq')) resolvedOp = 'quiz';
-        else if (lower.includes('code') || lower.includes('algorithm') || lower.includes('python') || lower.includes('function')) resolvedOp = 'code';
+        else if (lower.includes('code') || lower.includes('algorithm') || lower.includes('python') || lower.includes('function') || lower.includes('debug')) resolvedOp = 'code';
         else if (lower.includes('mindmap') || lower.includes('mind map') || lower.includes('concept map')) resolvedOp = 'mindmap';
         else if (lower.includes('compare') || lower.includes('difference between') || lower.includes('vs')) resolvedOp = 'compare';
         else if (lower.includes('formula') || lower.includes('math') || lower.includes('derive')) resolvedOp = 'formulas';
@@ -232,11 +253,15 @@ export const App: React.FC = () => {
         studyTopic: queryToSend.slice(0, 80)
       });
 
+      const replyExpression = determineEmmaExpression(resolvedOp, response.componentType);
+      setCurrentExpression(replyExpression);
+
       const emmaMessage: ChatMessage = {
         id: 'emma_' + Date.now(),
         sender: 'emma',
+        expression: replyExpression,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: `Here is your structured study module for "${response.title}":`,
+        text: `Here is your structured solution for "${response.title}":`,
         operation: resolvedOp,
         response
       };
@@ -263,10 +288,12 @@ export const App: React.FC = () => {
       const errorMessage: ChatMessage = {
         id: 'err_' + Date.now(),
         sender: 'emma',
+        expression: 'thinking',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         text: `⚠️ ${errorDetail}`
       };
       setMessages((prev) => [...prev, errorMessage]);
+      setCurrentExpression('waving');
       showToast(errorDetail);
     } finally {
       setIsGenerating(false);
@@ -283,7 +310,8 @@ export const App: React.FC = () => {
       componentType: response.componentType
     };
     setNotes((prev) => [newNote, ...prev]);
-    showToast(`Saved "${response.title}" to Notes`);
+    setCurrentExpression('loving');
+    showToast(`Saved "${response.title}" to Notes ❤️`);
   };
 
   const handleClearChat = () => {
@@ -292,11 +320,13 @@ export const App: React.FC = () => {
         {
           id: 'welcome',
           sender: 'emma',
+          expression: 'waving',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           text: "Fresh chat started! What topic or code would you like to master today? 🎓"
         }
       ];
       setMessages(initial);
+      setCurrentExpression('waving');
       localStorage.setItem('emma_chat_messages', JSON.stringify(initial));
     }
   };
@@ -332,16 +362,17 @@ export const App: React.FC = () => {
         onClearChat={handleClearChat}
         onCaptureSelection={handleCapturePageText}
         isBackendOnline={isBackendOnline}
+        currentExpression={currentExpression}
       />
 
       <main
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '16px 14px',
+          padding: '12px 10px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px',
+          gap: '14px',
           position: 'relative',
           zIndex: 10
         }}
@@ -353,51 +384,48 @@ export const App: React.FC = () => {
               key={msg.id}
               style={{
                 display: 'flex',
-                gap: '10px',
+                gap: '8px',
                 alignItems: 'flex-start',
                 flexDirection: isUser ? 'row-reverse' : 'row',
                 maxWidth: '100%'
               }}
             >
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                  backgroundColor: isUser ? 'var(--color-primary)' : '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: isUser ? 'none' : '1.5px solid var(--color-primary)',
-                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)'
-                }}
-              >
-                {isUser ? (
-                  <User size={18} color="#FFFFFF" />
-                ) : (
-                  <img
-                    src="./emma-logo.jpg"
-                    alt="Emma"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                )}
-              </div>
+              {isUser ? (
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+                    flexShrink: 0
+                  }}
+                >
+                  <User size={16} color="#FFFFFF" />
+                </div>
+              ) : (
+                <EmmaAvatar
+                  expression={msg.expression || 'reading'}
+                  size={32}
+                />
+              )}
 
               <div
                 style={{
-                  maxWidth: isUser ? '85%' : '92%',
+                  maxWidth: isUser ? '85%' : '94%',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '6px'
+                  gap: '4px'
                 }}
               >
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '5px',
                     justifyContent: isUser ? 'flex-end' : 'flex-start',
                     fontSize: '11px',
                     color: 'var(--color-text-muted)'
@@ -411,7 +439,7 @@ export const App: React.FC = () => {
                   {!isUser && msg.response && (
                     <span
                       style={{
-                        padding: '1px 6px',
+                        padding: '1px 5px',
                         borderRadius: '999px',
                         backgroundColor: 'var(--color-surface)',
                         color: 'var(--color-accent)',
@@ -427,16 +455,16 @@ export const App: React.FC = () => {
 
                 <div
                   style={{
-                    padding: isUser ? '10px 14px' : '14px 16px',
-                    borderRadius: isUser ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
+                    padding: isUser ? '8px 12px' : '10px 12px',
+                    borderRadius: isUser ? '14px 14px 4px 14px' : '4px 14px 14px 14px',
                     backgroundColor: isUser ? 'var(--color-primary)' : 'var(--color-surface)',
                     color: isUser ? '#FFFFFF' : 'var(--color-text)',
                     boxShadow: isUser
-                      ? '0 2px 8px rgba(225, 29, 72, 0.25)'
-                      : '0 2px 10px rgba(81, 0, 0, 0.06)',
+                      ? '0 2px 6px rgba(225, 29, 72, 0.2)'
+                      : '0 2px 8px rgba(81, 0, 0, 0.05)',
                     border: isUser ? 'none' : '1px solid var(--color-border)',
-                    fontSize: '13.5px',
-                    lineHeight: 1.5,
+                    fontSize: '13px',
+                    lineHeight: 1.45,
                     wordBreak: 'break-word'
                   }}
                 >
@@ -445,7 +473,7 @@ export const App: React.FC = () => {
                   )}
 
                   {msg.response && (
-                    <div style={{ marginTop: '12px' }}>
+                    <div style={{ marginTop: '8px' }}>
                       <DynamicOutputRenderer
                         response={msg.response}
                         onSaveToNotes={handleSaveToNotes}
@@ -460,30 +488,19 @@ export const App: React.FC = () => {
         })}
 
         {isGenerating && (
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                overflow: 'hidden',
-                flexShrink: 0,
-                border: '1.5px solid var(--color-primary)'
-              }}
-            >
-              <img
-                src="./emma-logo.jpg"
-                alt="Emma"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <EmmaAvatar
+              expression="thinking"
+              size={32}
+              isPulsing={true}
+            />
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '10px 16px',
-                borderRadius: '16px',
+                padding: '8px 12px',
+                borderRadius: '14px',
                 backgroundColor: 'var(--color-surface)',
                 border: '1px solid var(--color-border)',
                 color: 'var(--color-text)',
@@ -491,8 +508,8 @@ export const App: React.FC = () => {
                 fontWeight: 600
               }}
             >
-              <Loader2 size={15} className="spinner" color="var(--color-primary)" />
-              <span>Emma is analyzing and building your interactive component...</span>
+              <Loader2 size={14} className="spinner" color="var(--color-primary)" />
+              <span>Emma is thinking & structuring your solution...</span>
             </div>
           </div>
         )}
@@ -508,18 +525,18 @@ export const App: React.FC = () => {
           backgroundColor: 'rgba(255, 225, 226, 0.96)',
           backdropFilter: 'blur(16px)',
           borderTop: '1.5px solid var(--color-border)',
-          padding: '10px 14px',
+          padding: '8px 10px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px',
-          boxShadow: '0 -2px 10px rgba(81, 0, 0, 0.04)'
+          gap: '6px',
+          boxShadow: '0 -2px 8px rgba(81, 0, 0, 0.03)'
         }}
       >
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '5px',
             overflowX: 'auto',
             paddingBottom: '2px',
             scrollbarWidth: 'none'
@@ -532,6 +549,7 @@ export const App: React.FC = () => {
                 key={tool.id}
                 onClick={() => {
                   setSelectedTool(tool.id);
+                  setCurrentExpression(tool.expression);
                   if (tool.promptPrefix && !inputQuery) {
                     setInputQuery(tool.promptPrefix);
                     textareaRef.current?.focus();
@@ -540,8 +558,8 @@ export const App: React.FC = () => {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 10px',
+                  gap: '3px',
+                  padding: '3px 8px',
                   borderRadius: 'var(--radius-full)',
                   backgroundColor: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
                   color: isSelected ? '#FFFFFF' : 'var(--color-text)',
@@ -566,18 +584,18 @@ export const App: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '4px 10px',
-              borderRadius: '8px',
+              padding: '3px 8px',
+              borderRadius: '6px',
               backgroundColor: 'rgba(225, 29, 72, 0.08)',
               border: '1px solid var(--color-border)',
               fontSize: '11px'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-              <Globe size={12} color="var(--color-primary)" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden' }}>
+              <Globe size={11} color="var(--color-primary)" />
               <span style={{ fontWeight: 700 }}>Attached Page Snippet:</span>
               <span style={{ color: 'var(--color-text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                {activeTabSnippet.slice(0, 50)}...
+                {activeTabSnippet.slice(0, 45)}...
               </span>
             </div>
             <button
@@ -591,7 +609,7 @@ export const App: React.FC = () => {
               }}
               title="Remove snippet"
             >
-              <Trash2 size={12} />
+              <Trash2 size={11} />
             </button>
           </div>
         )}
@@ -600,11 +618,11 @@ export const App: React.FC = () => {
           style={{
             display: 'flex',
             alignItems: 'flex-end',
-            gap: '8px',
+            gap: '6px',
             backgroundColor: 'var(--color-surface)',
-            borderRadius: '16px',
+            borderRadius: '14px',
             border: '1.5px solid var(--color-border)',
-            padding: '6px 10px',
+            padding: '5px 8px',
             boxShadow: 'var(--shadow-sm)'
           }}
         >
@@ -612,7 +630,7 @@ export const App: React.FC = () => {
             onClick={handleCapturePageText}
             title="Grab text from active browser tab"
             style={{
-              padding: '6px',
+              padding: '5px',
               borderRadius: '50%',
               border: 'none',
               backgroundColor: 'transparent',
@@ -623,14 +641,14 @@ export const App: React.FC = () => {
               justifyContent: 'center'
             }}
           >
-            <Globe size={16} />
+            <Globe size={15} />
           </button>
 
           <button
             onClick={handleToggleVoice}
             title={isListening ? 'Listening...' : 'Voice Dictation'}
             style={{
-              padding: '6px',
+              padding: '5px',
               borderRadius: '50%',
               border: 'none',
               backgroundColor: isListening ? 'var(--color-primary)' : 'transparent',
@@ -641,7 +659,7 @@ export const App: React.FC = () => {
               justifyContent: 'center'
             }}
           >
-            {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+            {isListening ? <MicOff size={15} /> : <Mic size={15} />}
           </button>
 
           <textarea
@@ -649,7 +667,7 @@ export const App: React.FC = () => {
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Emma anything, paste study notes or code... (Enter to send)"
+            placeholder="Ask Emma anything, paste notes or code... (Enter to send)"
             rows={1}
             style={{
               flex: 1,
@@ -658,11 +676,11 @@ export const App: React.FC = () => {
               resize: 'none',
               backgroundColor: 'transparent',
               fontFamily: 'var(--font-body)',
-              fontSize: '13px',
+              fontSize: '12.5px',
               color: 'var(--color-text)',
-              maxHeight: '100px',
+              maxHeight: '90px',
               lineHeight: 1.4,
-              padding: '4px 0'
+              padding: '3px 0'
             }}
           />
 
@@ -671,8 +689,8 @@ export const App: React.FC = () => {
             disabled={(!inputQuery.trim() && !activeTabSnippet) || isGenerating}
             title="Send to Emma"
             style={{
-              padding: '8px',
-              borderRadius: '12px',
+              padding: '7px',
+              borderRadius: '10px',
               border: 'none',
               backgroundColor:
                 (!inputQuery.trim() && !activeTabSnippet) || isGenerating
@@ -690,9 +708,9 @@ export const App: React.FC = () => {
             }}
           >
             {isGenerating ? (
-              <Loader2 size={16} className="spinner" />
+              <Loader2 size={15} className="spinner" />
             ) : (
-              <Send size={16} />
+              <Send size={15} />
             )}
           </button>
         </div>
@@ -717,15 +735,18 @@ export const App: React.FC = () => {
         onClose={() => setIsHistoryOpen(false)}
         history={history}
         onSelectHistoryItem={(item) => {
+          const restoredExpression = determineEmmaExpression(item.operation, item.response.componentType);
           const restoredMsg: ChatMessage = {
             id: 'hist_restored_' + Date.now(),
             sender: 'emma',
+            expression: restoredExpression,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             text: `Restored previous output for "${item.operationName}":`,
             operation: item.operation,
             response: item.response
           };
           setMessages((prev) => [...prev, restoredMsg]);
+          setCurrentExpression(restoredExpression);
           setIsHistoryOpen(false);
           showToast(`Restored "${item.operationName}" into chat`);
         }}

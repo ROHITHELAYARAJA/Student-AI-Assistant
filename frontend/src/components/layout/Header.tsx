@@ -5,6 +5,8 @@ import {
   RotateCcw,
   Globe
 } from 'lucide-react';
+import { EmmaAvatar } from '../ui/EmmaAvatar.js';
+import { EmmaExpression } from '../../types/study.js';
 
 interface HeaderProps {
   notesCount: number;
@@ -14,6 +16,7 @@ interface HeaderProps {
   onClearChat: () => void;
   onCaptureSelection: () => void;
   isBackendOnline: boolean;
+  currentExpression?: EmmaExpression;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,7 +26,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenHistory,
   onClearChat,
   onCaptureSelection,
-  isBackendOnline
+  isBackendOnline,
+  currentExpression
 }) => {
   return (
     <header
@@ -43,42 +47,13 @@ export const Header: React.FC<HeaderProps> = ({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div
-          style={{
-            position: 'relative',
-            width: '38px',
-            height: '38px',
-            borderRadius: '50%',
-            overflow: 'hidden',
-            border: '2px solid var(--color-primary)',
-            boxShadow: '0 2px 8px rgba(225, 29, 72, 0.25)',
-            flexShrink: 0,
-            backgroundColor: '#FFFFFF'
-          }}
-        >
-          <img
-            src="./emma-logo.jpg"
-            alt="Emma AI"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover'
-            }}
-          />
-          <span
-            style={{
-              position: 'absolute',
-              bottom: '1px',
-              right: '1px',
-              width: '9px',
-              height: '9px',
-              borderRadius: '50%',
-              backgroundColor: isBackendOnline ? '#10B981' : '#F59E0B',
-              border: '1.5px solid #FFFFFF'
-            }}
-            title={isBackendOnline ? 'Emma is online' : 'Local fallback engine'}
-          />
-        </div>
+        <EmmaAvatar
+          expression={currentExpression}
+          size={38}
+          showStatus={true}
+          isOnline={isBackendOnline}
+          isPulsing={currentExpression === 'thinking'}
+        />
 
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
