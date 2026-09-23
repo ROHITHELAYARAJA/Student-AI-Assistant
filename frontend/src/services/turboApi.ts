@@ -5,6 +5,7 @@ import {
   TurboFlashcardDeck,
   TurboQuiz,
   TurboPodcastScript,
+  TurboStudyPack,
   IngestedDocument,
   DocumentChunk
 } from '../types/turbo.js';
@@ -131,3 +132,52 @@ export async function deleteDocument(id: string): Promise<boolean> {
   const data = await res.json();
   return data.success;
 }
+
+export async function fetchStudyPack(topic: string): Promise<TurboStudyPack> {
+  const res = await fetch(`${API_BASE_URL}/api/turbo/generate-study-pack`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ topic })
+  });
+  if (!res.ok) {
+    throw new Error('Failed to generate full study pack');
+  }
+  const pack: TurboStudyPack = await res.json();
+  saveStudyPack(pack);
+  return pack;
+}
+
+const STORAGE_KEY = 'turbo_study_packs_v1';
+
+export function getSavedStudyPacks(): TurboStudyPack[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getStudyPack(topicOrId: string): TurboStudyPack | null {
+  const packs = getSavedStudyPacks();
+  const query = topicOrId.toLowerCase().trim();
+  return (
+    packs.find((p) => p.id === topicOrId || p.topic.toLowerCase().trim() === query) || null
+  );
+}
+
+export function saveStudyPack(pack: TurboStudyPack): void {
+  try {
+    const packs = getSavedStudyPacks();
+    const existingIndex = packs.findIndex((p) => p.id === pack.id || p.topic.toLowerCase() === pack.topic.toLowerCase());
+    if (existingIndex >= 0) {
+      packs[existingIndex] = pack;
+    } else {
+      packs.unshift(pack);
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(packs));
+  } catch (err) {
+    console.error('Failed to save study pack to localStorage:', err);
+  }
+}
+

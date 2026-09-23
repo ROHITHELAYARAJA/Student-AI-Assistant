@@ -1,25 +1,54 @@
 :root {
+  /* Dark Mode Default Tokens */
   --color-bg: #0C0C11;
   --color-bg-alt: #12121A;
-  --color-surface: #151522;
-  --color-surface-hover: #1C1C2C;
-  --color-border: #242436;
-  --color-border-subtle: #2D2D42;
+  --color-surface: #181822;
+  --color-surface-hover: #1E1E2C;
+  --color-border: #272738;
+  --color-border-subtle: #383850;
   
-  --color-text: #F4F4F5;
+  --color-text: #F4F4F6;
   --color-text-muted: #A1A1AA;
   --color-text-faint: #71717A;
   
-  --color-primary: #8B5CF6;
-  --color-primary-hover: #7C3AED;
-  --color-primary-light: rgba(139, 92, 246, 0.15);
+  --color-primary: #7C3AED;
+  --color-primary-hover: #6D28D9;
+  --color-primary-light: rgba(124, 58, 237, 0.15);
   
-  --color-accent: #10B981;
-  --color-accent-soft: rgba(16, 185, 129, 0.15);
+  --color-accent: #404040;
+  --color-accent-soft: rgba(64, 64, 64, 0.2);
 
-  --font-headline: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-headline: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-code: 'Fira Code', monospace;
+}
+
+[data-theme='light'] {
+  --color-bg: #FFFFFF;
+  --color-bg-alt: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-border-subtle: #CBD5E1;
+  
+  --color-text: #161616;
+  --color-text-muted: #64748B;
+  --color-text-faint: #94A3B8;
+  
+  --color-primary: #000000;
+  --color-primary-hover: #18181B;
+  --color-primary-light: rgba(0, 0, 0, 0.06);
+  
+  --color-accent: #404040;
+  --color-accent-soft: rgba(64, 64, 64, 0.08);
+}
+
+h1, h2, h3, h4, .font-headline {
+  font-family: var(--font-headline) !important;
+}
+
+body, p, span, button, input, textarea, .font-body {
+  font-family: var(--font-body);
 }
 
 * {

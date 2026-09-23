@@ -131,3 +131,25 @@ export interface IngestedDocument {
   chunks: DocumentChunk[];
   createdAt: string;
 }
+
+export interface TurboSourceItem {
+  id: string;
+  title: string;
+  category: string;
+  summary: string;
+  keyTakeaways: string[];
+  relevance: string;
+  sourceUrl?: string;
+}
+
+export interface TurboStudyPack {
+  id: string;
+  topic: string;
+  createdAt: string;
+  roadmap: TurboRoadmap;
+  notes: TurboNotes;
+  quiz: TurboQuiz;
+  flashcards: TurboFlashcardDeck;
+  podcast: TurboPodcastScript;
+  sources: TurboSourceItem[];
+}

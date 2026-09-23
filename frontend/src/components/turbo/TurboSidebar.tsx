@@ -13,6 +13,7 @@ import {
   Calendar,
   Sparkles
 } from 'lucide-react';
+import { TurboMascot } from './TurboMascot.js';
 
 interface TurboSidebarProps {
   currentTab: TurboTab;
@@ -146,11 +147,7 @@ export const TurboSidebar: React.FC<TurboSidebarProps> = ({
           }`}
         >
           <div className="flex items-center gap-2">
-            <img
-              src="/emma-expressions/teaching.png"
-              alt="Emma"
-              className="w-5 h-5 rounded-full object-cover"
-            />
+            <TurboMascot size="xs" expression="teaching" />
             <span className="font-medium text-[11px]">Ask Emma Tutor</span>
           </div>
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />

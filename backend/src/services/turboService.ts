@@ -103,6 +103,28 @@ export interface TurboPodcastScript {
   }>;
 }
 
+export interface TurboSourceItem {
+  id: string;
+  title: string;
+  category: string;
+  summary: string;
+  keyTakeaways: string[];
+  relevance: string;
+  sourceUrl?: string;
+}
+
+export interface TurboStudyPack {
+  id: string;
+  topic: string;
+  createdAt: string;
+  roadmap: TurboRoadmap;
+  notes: TurboNotes;
+  quiz: TurboQuiz;
+  flashcards: TurboFlashcardDeck;
+  podcast: TurboPodcastScript;
+  sources: TurboSourceItem[];
+}
+
 async function callBedrock(prompt: string): Promise<string> {
   const bedrockToken =
     process.env.AWS_BEARER_TOKEN_BEDROCK ||
@@ -115,6 +137,7 @@ async function callBedrock(prompt: string): Promise<string> {
   }
 
   const bedrockModels = [
+    'anthropic.claude-3-haiku-20240307-v1:0',
     'meta.llama3-70b-instruct-v1:0',
     'meta.llama3-8b-instruct-v1:0',
     'amazon.nova-lite-v1:0',
@@ -776,5 +799,78 @@ Include 6 to 10 alternating lines highlighting the big ideas and memorable analo
         line: `Exactly! Keep practicing with your flashcards and roadmap checkpoints, and you'll dominate your upcoming exam. You've got this!`
       }
     ]
+  };
+}
+
+export async function generateSources(topic: string): Promise<TurboSourceItem[]> {
+  const cleanTopic = topic.trim();
+  const slug = cleanTopic.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  
+  return [
+    {
+      id: `${slug}-core-cheatsheet`,
+      title: `${cleanTopic} — Core Concepts & Syntax Cheatsheet`,
+      category: 'Quick Reference Guide',
+      summary: `High-yield reference covering essential definitions, patterns, time/space complexity, and architecture paradigms for ${cleanTopic}.`,
+      keyTakeaways: [
+        'Fundamental primitives and memory execution models',
+        'Standard idiomatic patterns and conventions',
+        'Common boundary pitfalls and anti-patterns'
+      ],
+      relevance: 'Primary foundation reference for mastery and review',
+      sourceUrl: 'https://docs.oracle.com/en/'
+    },
+    {
+      id: `${slug}-exam-patterns`,
+      title: `${cleanTopic} — High-Yield Interview & Exam Problem Patterns`,
+      category: 'Exam / Interview Guide',
+      summary: `Curated breakdown of the top question archetypes, test-case edge conditions, and analytical frameworks asked in examinations.`,
+      keyTakeaways: [
+        'Frequent problem classifications and step-by-step algorithms',
+        'Space/time trade-off matrices',
+        'Checklist for verifying solutions before submission'
+      ],
+      relevance: 'Critical for exam prep and technical interviews',
+      sourceUrl: 'https://en.wikipedia.org/wiki/'
+    },
+    {
+      id: `${slug}-pitfalls-edge-cases`,
+      title: `${cleanTopic} — Debugging Playbook & Common Pitfalls`,
+      category: 'System Diagnostics & Best Practices',
+      summary: `In-depth analysis of silent bugs, null references, concurrency hazards, and compiler subtleties specific to ${cleanTopic}.`,
+      keyTakeaways: [
+        'How to trace execution stack traces methodically',
+        'Defensive coding principles and assertion strategies',
+        'Benchmarking and performance profiling techniques'
+      ],
+      relevance: 'Essential for practical implementation and problem sets'
+    }
+  ];
+}
+
+export async function generateStudyPack(topic: string): Promise<TurboStudyPack> {
+  const cleanTopic = topic.trim();
+  const packId = `pack-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+  // Run generation for all 5 study modules concurrently
+  const [roadmap, notes, quiz, flashcards, podcast, sources] = await Promise.all([
+    generateRoadmap(cleanTopic),
+    generateNotes(cleanTopic),
+    generateQuiz(cleanTopic),
+    generateFlashcards(cleanTopic),
+    generatePodcastScript(cleanTopic),
+    generateSources(cleanTopic)
+  ]);
+
+  return {
+    id: packId,
+    topic: cleanTopic,
+    createdAt: new Date().toISOString(),
+    roadmap,
+    notes,
+    quiz,
+    flashcards,
+    podcast,
+    sources
   };
 }

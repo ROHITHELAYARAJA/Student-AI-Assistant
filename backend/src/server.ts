@@ -9,6 +9,7 @@ import {
   handleGenerateFlashcards,
   handleGenerateQuiz,
   handleGeneratePodcast,
+  handleGenerateStudyPack,
   handleRagIngest,
   handleRagList,
   handleRagQuery,
@@ -28,6 +29,7 @@ app.get('/api/health', handleHealth);
 app.get('/api/operations', handleGetOperations);
 app.post('/api/assist', handleAssist);
 
+app.post('/api/turbo/generate-study-pack', handleGenerateStudyPack);
 app.post('/api/turbo/generate-roadmap', handleGenerateRoadmap);
 app.post('/api/turbo/generate-lesson', handleGenerateLesson);
 app.post('/api/turbo/generate-notes', handleGenerateNotes);

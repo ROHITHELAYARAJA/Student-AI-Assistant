@@ -6,8 +6,20 @@ import {
   generateNotes,
   generateFlashcards,
   generateQuiz,
-  generatePodcastScript
+  generatePodcastScript,
+  generateStudyPack,
+  generateSources
 } from '../services/turboService.js';
+
+export async function handleGenerateStudyPack(req: Request, res: Response): Promise<void> {
+  try {
+    const topic = (req.body.topic || req.body.content || 'How to learn Java').trim();
+    const studyPack = await generateStudyPack(topic);
+    res.json(studyPack);
+  } catch (error: any) {
+    res.status(500).json({ error: 'STUDY_PACK_GENERATION_FAILED', message: error?.message });
+  }
+}
 
 export async function handleGenerateRoadmap(req: Request, res: Response): Promise<void> {
   try {
