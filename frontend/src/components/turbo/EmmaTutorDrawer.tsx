@@ -226,17 +226,15 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
               )}
 
               <div
-                className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed space-y-1 ${
-                  isBlast
+                className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed space-y-1 ${isBlast
                     ? 'bg-[#181826] border border-[#27273C] text-zinc-200 rounded-tl-sm'
                     : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-tr-sm shadow-md shadow-orange-600/20'
-                }`}
+                  }`}
               >
                 <div className="whitespace-pre-line">{msg.text}</div>
                 <div
-                  className={`text-[9px] ${
-                    isBlast ? 'text-zinc-500 text-right' : 'text-orange-200 text-right'
-                  }`}
+                  className={`text-[9px] ${isBlast ? 'text-zinc-500 text-right' : 'text-orange-200 text-right'
+                    }`}
                 >
                   {msg.timestamp}
                 </div>
