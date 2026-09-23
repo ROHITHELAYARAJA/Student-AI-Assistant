@@ -7,6 +7,7 @@ interface EmmaAvatarProps {
   showStatus?: boolean;
   isOnline?: boolean;
   isPulsing?: boolean;
+  useOfficialLogo?: boolean;
   style?: React.CSSProperties;
 }
 
@@ -23,13 +24,17 @@ const EXPRESSION_MAP: Record<EmmaExpression, string> = {
 
 export const EmmaAvatar: React.FC<EmmaAvatarProps> = ({
   expression,
-  size = 34,
+  size = 36,
   showStatus = false,
   isOnline = true,
   isPulsing = false,
+  useOfficialLogo = false,
   style = {}
 }) => {
-  const imageSrc = expression && EXPRESSION_MAP[expression] ? EXPRESSION_MAP[expression] : './emma-logo.jpg';
+  const imageSrc =
+    useOfficialLogo || !expression
+      ? './emma-logo.jpg'
+      : EXPRESSION_MAP[expression] || './emma-logo.jpg';
 
   return (
     <div
@@ -37,43 +42,55 @@ export const EmmaAvatar: React.FC<EmmaAvatarProps> = ({
         position: 'relative',
         width: `${size}px`,
         height: `${size}px`,
-        borderRadius: '50%',
-        overflow: 'hidden',
-        border: '1.5px solid var(--color-primary)',
-        boxShadow: isPulsing ? '0 0 12px rgba(225, 29, 72, 0.45)' : '0 2px 6px rgba(0, 0, 0, 0.08)',
-        backgroundColor: '#FFFFFF',
         flexShrink: 0,
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
         ...style
       }}
     >
-      <img
-        src={imageSrc}
-        alt={`Emma ${expression || 'Avatar'}`}
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).src = './emma-logo.jpg';
-        }}
+      <div
         style={{
           width: '100%',
           height: '100%',
-          objectFit: 'cover',
-          display: 'block'
+          borderRadius: '50%',
+          overflow: 'hidden',
+          backgroundColor: '#FFFFFF',
+          border: '1.5px solid var(--color-border)',
+          boxShadow: isPulsing
+            ? '0 0 0 3px rgba(225, 29, 72, 0.25), 0 2px 8px rgba(81, 0, 0, 0.1)'
+            : '0 1px 4px rgba(81, 0, 0, 0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}
-      />
+      >
+        <img
+          src={imageSrc}
+          alt={`Emma ${expression || 'Avatar'}`}
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src = './emma-logo.jpg';
+          }}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block'
+          }}
+        />
+      </div>
 
       {showStatus && (
         <span
           style={{
             position: 'absolute',
-            bottom: '1px',
-            right: '1px',
-            width: `${Math.max(6, Math.round(size * 0.24))}px`,
-            height: `${Math.max(6, Math.round(size * 0.24))}px`,
+            bottom: '0px',
+            right: '0px',
+            width: `${Math.max(8, Math.round(size * 0.26))}px`,
+            height: `${Math.max(8, Math.round(size * 0.26))}px`,
             borderRadius: '50%',
             backgroundColor: isOnline ? '#10B981' : '#F59E0B',
-            border: '1.5px solid #FFFFFF'
+            border: '2px solid #FFFFFF',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.15)'
           }}
-          title={isOnline ? 'Emma is online' : 'Local fallback'}
+          title={isOnline ? 'Emma is online & ready' : 'Local synthesis active'}
         />
       )}
     </div>

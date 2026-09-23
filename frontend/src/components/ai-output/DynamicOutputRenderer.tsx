@@ -202,7 +202,12 @@ export const DynamicOutputRenderer: React.FC<DynamicOutputRendererProps> = ({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--color-text-muted)' }}>
             <Clock size={11} />
-            <span>{response.metadata.processingTimeMs}ms • {response.metadata.model}</span>
+            <span>
+              {(response.metadata.processingTimeMs / 1000).toFixed(1)}s •{' '}
+              {response.metadata.model.includes('Bedrock') || response.metadata.model.includes('Claude')
+                ? 'Claude 3.5'
+                : 'Emma Core'}
+            </span>
           </div>
         </div>
 

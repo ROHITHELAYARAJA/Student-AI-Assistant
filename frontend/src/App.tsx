@@ -362,7 +362,6 @@ export const App: React.FC = () => {
         onClearChat={handleClearChat}
         onCaptureSelection={handleCapturePageText}
         isBackendOnline={isBackendOnline}
-        currentExpression={currentExpression}
       />
 
       <main
@@ -448,7 +447,9 @@ export const App: React.FC = () => {
                         border: '1px solid var(--color-border)'
                       }}
                     >
-                      {msg.response.metadata.model}
+                      {msg.response.metadata.model.includes('Bedrock') || msg.response.metadata.model.includes('Claude')
+                        ? 'Claude 3.5'
+                        : 'Emma AI'}
                     </span>
                   )}
                 </div>
