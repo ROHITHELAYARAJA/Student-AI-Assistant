@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
 import { BlastMascot } from './BlastMascot.js';
-import { ToolExecutionTrace } from './ToolExecutionTrace.js';
 import { getStudyPack, fetchStudyPack, saveStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack, TurboRoadmapMilestone, TurboRoadmapStage } from '../../types/turbo.js';
-import { validateClientStudyPrompt } from '../../utils/validation.js';
 import {
   Check,
   Lock,
@@ -21,8 +19,7 @@ import {
   CheckCircle2,
   ArrowRight,
   HelpCircle,
-  Loader2,
-  AlertTriangle
+  Loader2
 } from 'lucide-react';
 
 interface LearnRoadmapViewProps {
@@ -43,7 +40,6 @@ export const LearnRoadmapView: React.FC<LearnRoadmapViewProps> = ({
   const openBlastHandler = onOpenBlast || onOpenEmma;
   const [studyPack, setStudyPack] = useState<TurboStudyPack | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
   const [selectedMilestone, setSelectedMilestone] = useState<{
     stageIndex: number;
     milestoneIndex: number;
@@ -55,25 +51,12 @@ export const LearnRoadmapView: React.FC<LearnRoadmapViewProps> = ({
   useEffect(() => {
     const existing = getStudyPack(noteId) || getStudyPack(topicTitle);
     if (existing) {
-      const val = validateClientStudyPrompt(existing.topic);
-      if (!val.valid) {
-        setValidationError(val.reason || 'This study pack has an invalid topic and cannot be displayed.');
-        return;
-      }
       setStudyPack(existing);
     } else {
-      const val = validateClientStudyPrompt(topicTitle);
-      if (!val.valid) {
-        setValidationError(val.reason || 'This topic is not recognized as a valid study subject.');
-        return;
-      }
       setIsLoading(true);
       fetchStudyPack(topicTitle)
         .then((pack) => setStudyPack(pack))
-        .catch((err) => {
-          console.error('Failed to load study pack:', err);
-          setValidationError(err?.message || 'Could not load study pack.');
-        })
+        .catch((err) => console.error('Failed to load study pack:', err))
         .finally(() => setIsLoading(false));
     }
   }, [noteId, topicTitle]);
@@ -147,28 +130,6 @@ export const LearnRoadmapView: React.FC<LearnRoadmapViewProps> = ({
     saveStudyPack(updated);
     setSelectedMilestone(null);
   };
-
-  if (validationError) {
-    return (
-      <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col items-center justify-center p-6 text-center select-none font-body">
-        <div className="max-w-md p-6 rounded-3xl bg-[var(--color-surface)] border border-rose-500/30 space-y-4 shadow-xl">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
-            <AlertTriangle size={24} />
-          </div>
-          <h2 className="text-xl font-bold">Invalid Study Query</h2>
-          <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
-            {validationError}
-          </p>
-          <button
-            onClick={() => router.navigate('/dashboard')}
-            className="px-5 py-2.5 rounded-xl bg-[#FF5E00] text-white text-xs font-bold hover:bg-orange-600 transition-colors shadow-md shadow-orange-500/20"
-          >
-            Return to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] flex flex-col font-body select-none">
@@ -309,9 +270,6 @@ export const LearnRoadmapView: React.FC<LearnRoadmapViewProps> = ({
                 </div>
               )}
             </div>
-
-            {/* Tools & Connectors Execution Trace (matching Image 3) */}
-            <ToolExecutionTrace defaultExpanded={false} />
 
             {/* Stages Flow */}
             <div className="space-y-6">

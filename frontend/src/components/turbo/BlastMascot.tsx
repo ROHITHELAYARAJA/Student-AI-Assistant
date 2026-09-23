@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import gsap from 'gsap';
 
 export type BlastMascotState =
   | 'idle'
@@ -31,6 +30,8 @@ export interface BlastMascotProps {
 export const BlastMascot: React.FC<BlastMascotProps> = ({
   state = 'idle',
   size = 'md',
+  mood = 'neutral',
+  context = 'inline',
   className = '',
   onClick,
   interactive = true
@@ -39,127 +40,16 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
   const [isBlinking, setIsBlinking] = useState(false);
   const [mouthOpen, setMouthOpen] = useState(false);
   const [celebrating, setCelebrating] = useState(false);
-
-  // GSAP Animation Target Refs
-  const containerRef = useRef<HTMLDivElement>(null);
-  const flameHeadRef = useRef<SVGGElement>(null);
-  const leftArmWavingRef = useRef<SVGGElement>(null);
-  const handFlameRef = useRef<SVGGElement>(null);
-  const sparkleRef = useRef<SVGPathElement>(null);
-  const chestStarRef = useRef<SVGGElement>(null);
-  const auraRef = useRef<SVGCircleElement>(null);
-
   const blinkTimerRef = useRef<any>(null);
   const speechTimerRef = useRef<any>(null);
-  const animationsRef = useRef<gsap.core.Tween[]>([]);
 
   // Sync external state changes
   useEffect(() => {
     setInternalState(state);
     if (state === 'success') {
       triggerSuccessCelebration();
-    } else if (state === 'error' && containerRef.current) {
-      gsap.fromTo(
-        containerRef.current,
-        { x: -5 },
-        { x: 5, duration: 0.08, repeat: 4, yoyo: true, ease: 'none', onComplete: () => {
-          if (containerRef.current) gsap.set(containerRef.current, { x: 0 });
-        }}
-      );
     }
   }, [state]);
-
-  // GSAP 60fps SVG Core Animations
-  useEffect(() => {
-    animationsRef.current.forEach(t => t.kill());
-    animationsRef.current = [];
-
-    // 1. Dancing Flame on Head
-    if (flameHeadRef.current) {
-      const flameTween = gsap.to(flameHeadRef.current, {
-        scaleY: 1.09,
-        scaleX: 0.95,
-        rotation: 3,
-        transformOrigin: '50px 25px',
-        duration: 0.65,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
-      animationsRef.current.push(flameTween);
-    }
-
-    // 2. Continuous Waving Hand Paw
-    if (leftArmWavingRef.current) {
-      const waveTween = gsap.to(leftArmWavingRef.current, {
-        rotation: 12,
-        transformOrigin: '72px 63px',
-        duration: 0.9,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
-      animationsRef.current.push(waveTween);
-    }
-
-    // 3. Swirling Hand Flame
-    if (handFlameRef.current) {
-      const handFlameTween = gsap.to(handFlameRef.current, {
-        scale: 1.15,
-        rotation: 8,
-        transformOrigin: '82px 42px',
-        duration: 0.6,
-        repeat: -1,
-        yoyo: true,
-        ease: 'power1.inOut'
-      });
-      animationsRef.current.push(handFlameTween);
-    }
-
-    // 4. Sparkle Star in Hand Flame
-    if (sparkleRef.current) {
-      const sparkleTween = gsap.to(sparkleRef.current, {
-        rotation: 360,
-        transformOrigin: '85.5px 42.5px',
-        duration: 3,
-        repeat: -1,
-        ease: 'none'
-      });
-      animationsRef.current.push(sparkleTween);
-    }
-
-    // 5. Fire Star Badge on Chest
-    if (chestStarRef.current) {
-      const starTween = gsap.to(chestStarRef.current, {
-        scale: 1.22,
-        transformOrigin: '50px 68px',
-        duration: 1.1,
-        repeat: -1,
-        yoyo: true,
-        ease: 'power1.inOut'
-      });
-      animationsRef.current.push(starTween);
-    }
-
-    // 6. Ambient Aura Glow Pulse
-    if (auraRef.current) {
-      const auraTween = gsap.to(auraRef.current, {
-        scale: 1.08,
-        opacity: 0.8,
-        transformOrigin: '50px 50px',
-        duration: 1.4,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
-      animationsRef.current.push(auraTween);
-    }
-
-    return () => {
-      animationsRef.current.forEach(t => t.kill());
-      animationsRef.current = [];
-    };
-  }, []);
 
   // Periodic natural blinking
   useEffect(() => {
@@ -193,13 +83,6 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
   // Duolingo-style celebration sequence for success
   const triggerSuccessCelebration = () => {
     setCelebrating(true);
-
-    if (containerRef.current) {
-      gsap.timeline()
-        .to(containerRef.current, { y: -14, scale: 1.12, duration: 0.25, ease: 'back.out(2)' })
-        .to(containerRef.current, { y: 0, scale: 1, duration: 0.35, ease: 'bounce.out' });
-    }
-
     try {
       confetti({
         particleCount: 35,
@@ -246,22 +129,23 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
 
   const px = typeof size === 'number' ? size : sizeMap[size] || 52;
 
+  // Determine current active animation state
   const isThinking = internalState === 'thinking';
   const isProcessing = internalState === 'processing';
   const isSpeaking = internalState === 'speaking';
   const isHappy = internalState === 'happy' || celebrating;
   const isError = internalState === 'error';
   const isExcited = internalState === 'excited';
+  const isListening = internalState === 'listening';
   const isGreeting = internalState === 'greeting';
 
   return (
     <div
-      ref={containerRef}
       onClick={handleClick}
       onMouseEnter={handlePointerEnter}
       onMouseLeave={handlePointerLeave}
-      className={`relative inline-flex items-center justify-center shrink-0 select-none cursor-pointer transition-transform duration-200 ${
-        celebrating ? 'scale-110' : 'hover:scale-105 active:scale-95'
+      className={`relative inline-flex items-center justify-center shrink-0 select-none cursor-pointer transition-transform duration-300 ${
+        celebrating ? 'scale-110 -translate-y-2' : 'hover:scale-105 active:scale-95'
       } ${className}`}
       style={{ width: px, height: px }}
       title={`Blast Mascot (${internalState})`}
@@ -270,7 +154,7 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
         viewBox="0 0 100 100"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full drop-shadow-md overflow-visible"
+        className="w-full h-full drop-shadow-md"
       >
         <defs>
           {/* Flame Gradients */}
@@ -312,13 +196,13 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
           </radialGradient>
         </defs>
 
-        {/* Ambient Fire Aura Glow with GSAP */}
+        {/* Ambient Fire Aura Glow */}
         <circle
-          ref={auraRef}
           cx="50"
           cy="50"
           r="48"
           fill="url(#blastAuraGlow)"
+          className={isProcessing || celebrating ? 'animate-pulse' : ''}
         />
 
         {/* Floating Sparks / Embers for Celebration & Processing */}
@@ -340,8 +224,17 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
         <circle cx="72" cy="28" r="13" fill="url(#blastFurCrimson)" />
         <path d="M65 24 Q70 18 75 24 Q70 32 65 24 Z" fill="url(#blastFlameMain)" />
 
-        {/* Fiery Hair Crest on Head (GSAP Animated Moving Flame) */}
-        <g ref={flameHeadRef}>
+        {/* Fiery Hair Crest on Head (Living Moving Flame) */}
+        <g
+          className={
+            celebrating
+              ? 'animate-bounce'
+              : isThinking
+              ? 'animate-pulse'
+              : ''
+          }
+          style={{ transformOrigin: '50px 25px' }}
+        >
           {/* Back Flame Tongue */}
           <path
             d="M50 4 C40 14, 34 26, 42 34 C48 38, 56 36, 58 30 C64 22, 60 12, 50 4 Z"
@@ -374,8 +267,11 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
         {/* White Belly */}
         <ellipse cx="50" cy="70" rx="19" ry="17" fill="url(#blastBellyWhite)" />
 
-        {/* 4-Point Golden Fire Star Badge on Belly with GSAP */}
-        <g ref={chestStarRef}>
+        {/* 4-Point Golden Fire Star Badge on Belly */}
+        <g
+          className={isProcessing || celebrating ? 'animate-pulse' : ''}
+          style={{ transformOrigin: '50px 68px' }}
+        >
           <path
             d="M50 60 Q51 66 57 68 Q51 70 50 76 Q49 70 43 68 Q49 66 50 60 Z"
             fill="url(#blastChestStar)"
@@ -416,6 +312,7 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
             <path d="M59 34 Q64 36 70 34" stroke="#430713" strokeWidth="2.5" strokeLinecap="round" />
           </>
         ) : (
+          /* Confident, playful brows */
           <>
             <path d="M30 34 Q36 31 41 34" stroke="#430713" strokeWidth="2.5" strokeLinecap="round" />
             <path d="M59 34 Q64 31 70 34" stroke="#430713" strokeWidth="2.5" strokeLinecap="round" />
@@ -424,21 +321,26 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
 
         {/* Expressive Living Eyes */}
         {isBlinking ? (
+          /* Blinking closed line */
           <>
             <path d="M30 45 Q35 48 40 45" stroke="#1A0307" strokeWidth="2.5" strokeLinecap="round" />
             <path d="M60 45 Q65 48 70 45" stroke="#1A0307" strokeWidth="2.5" strokeLinecap="round" />
           </>
         ) : isHappy || celebrating ? (
+          /* Happy curved anime eyes */
           <>
             <path d="M29 45 Q35 39 41 45" stroke="#1A0307" strokeWidth="3" strokeLinecap="round" fill="none" />
             <path d="M59 45 Q65 39 71 45" stroke="#1A0307" strokeWidth="3" strokeLinecap="round" fill="none" />
           </>
         ) : (
+          /* Big bright eyes with pupil specular reflections */
           <>
+            {/* Left Eye White & Iris */}
             <circle cx="35" cy="44" r="6" fill="#1A0307" />
             <circle cx="34" cy="42.5" r="2.2" fill="#FFFFFF" />
             <circle cx="37" cy="45" r="1.1" fill="#FFFFFF" />
 
+            {/* Right Eye White & Iris */}
             <circle cx="65" cy="44" r="6" fill="#1A0307" />
             <circle cx="64" cy="42.5" r="2.2" fill="#FFFFFF" />
             <circle cx="67" cy="45" r="1.1" fill="#FFFFFF" />
@@ -451,41 +353,55 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
         {/* Expressive Mouth */}
         {isSpeaking ? (
           mouthOpen ? (
+            /* Open talking mouth */
             <path d="M45 53 Q50 61 55 53 Z" fill="#D90429" stroke="#671120" strokeWidth="1" />
           ) : (
+            /* Closed speaking line */
             <path d="M46 54 Q50 56 54 54" stroke="#671120" strokeWidth="1.8" strokeLinecap="round" />
           )
         ) : isHappy || celebrating || isGreeting ? (
+          /* Big joyful open smile */
           <g>
             <path d="M44 52 Q50 60 56 52" fill="#C9184A" stroke="#430713" strokeWidth="1.5" />
             <path d="M46 56 Q50 58 54 56" fill="#FF758F" />
           </g>
         ) : isError ? (
+          /* Confused small mouth */
           <path d="M46 56 Q50 53 54 55" stroke="#430713" strokeWidth="2" strokeLinecap="round" />
         ) : (
+          /* Cheerful default friendly curve */
           <path d="M46 53 Q50 57 54 53" stroke="#430713" strokeWidth="2" strokeLinecap="round" fill="none" />
         )}
 
         {/* Arms & Hands */}
-        {/* Right Arm (Resting) */}
-        <path d="M28 65 Q20 70 24 78" stroke="url(#blastFurCrimson)" strokeWidth="7" strokeLinecap="round" />
+        {/* Right Arm (Resting or Waving) */}
+        {isGreeting ? (
+          <g className="animate-bounce" style={{ transformOrigin: '22px 60px' }}>
+            <path d="M28 65 Q18 55 18 46" stroke="url(#blastFurCrimson)" strokeWidth="8" strokeLinecap="round" />
+            <circle cx="18" cy="44" r="5" fill="#430713" />
+          </g>
+        ) : (
+          <path d="M28 65 Q20 70 24 78" stroke="url(#blastFurCrimson)" strokeWidth="7" strokeLinecap="round" />
+        )}
 
-        {/* Left Arm Conjuring Fire Burst with GSAP Wave & Swirl */}
-        <g ref={leftArmWavingRef}>
+        {/* Left Arm Conjuring Fire Burst (Signature Blast Move) */}
+        <g>
           {/* Arm reaching out */}
           <path d="M72 63 Q82 56 80 48" stroke="url(#blastFurCrimson)" strokeWidth="7" strokeLinecap="round" />
           {/* Paw */}
           <circle cx="78" cy="48" r="5.5" fill="#430713" />
 
-          {/* Swirling Hand Flame Effect with GSAP */}
-          <g ref={handFlameRef}>
+          {/* Swirling Hand Flame Effect */}
+          <g
+            className={isProcessing || celebrating ? 'animate-spin' : ''}
+            style={{ transformOrigin: '82px 42px', animationDuration: '3s' }}
+          >
             <path
               d="M78 45 C84 32, 94 36, 88 44 C84 48, 92 54, 84 56 C78 54, 76 48, 78 45 Z"
               fill="url(#blastHandFire)"
             />
-            {/* Sparkle Star with GSAP Continuous Spin */}
+            {/* Sparkle Star in Hand Flame */}
             <path
-              ref={sparkleRef}
               d="M84 41 L85.5 37 L87 41 L91 42.5 L87 44 L85.5 48 L84 44 L80 42.5 Z"
               fill="#FFFFFF"
             />
@@ -495,5 +411,4 @@ export const BlastMascot: React.FC<BlastMascotProps> = ({
     </div>
   );
 };
-
 export default BlastMascot;

@@ -150,78 +150,37 @@ export function validateStudyPrompt(input: string): PromptValidationResult {
     };
   }
 
-  const lower = trimmed.toLowerCase();
-
-  // 1. Detect keyboard rows and sequence smashes (ANY length)
-  const keyboardMashes = [
-    'asdfgh', 'sdfghj', 'dfghjk', 'fghjkl', 'asdf',
-    'qwerty', 'wertyu', 'ertyui', 'rtyuio', 'tyuiop',
-    'zxcvbn', 'xcvbnm', 'lkjhgf', 'poiuyt', 'mnbvcx',
-    '123456', '234567', '345678', '456789', '987654', '876543',
-    '!@#$%', '@#$%^', '#$%^&', '$%^&*', '%^&*('
-  ];
-  for (const mash of keyboardMashes) {
-    if (lower.includes(mash)) {
-      return {
-        valid: false,
-        cleanTopic: '',
-        reason: 'Input contains random keyboard patterns or key sequences. Please enter a legitimate study topic or question.'
-      };
-    }
+  // Check for pure symbols / punctuation
+  const alphanumericCount = (trimmed.match(/[a-zA-Z0-9]/g) || []).length;
+  if (alphanumericCount < 2 || alphanumericCount / trimmed.length < 0.25) {
+    return {
+      valid: false,
+      cleanTopic: '',
+      reason: 'Input contains mostly non-text characters or symbols. Please enter a valid study topic.'
+    };
   }
 
-  // 2. Check for repeated characters (e.g., "aaaaa", "zzzzzz")
-  if (/(.)\1{4,}/i.test(trimmed)) {
+  // Check for keyboard smashes / repeated single chars (e.g. "aaaaaa", "asdfghjk", "qwerty")
+  if (/(.)\1{5,}/i.test(trimmed)) {
     return {
       valid: false,
       cleanTopic: '',
       reason: 'Input contains excessive repeated characters. Please enter a clear study topic or question.'
     };
   }
-
-  // 3. Check for symbol / punctuation overload
-  const symbols = trimmed.replace(/[a-zA-Z0-9\s]/g, '');
-  if (symbols.length > 4 && symbols.length / trimmed.length > 0.2) {
-    return {
-      valid: false,
-      cleanTopic: '',
-      reason: 'Input contains excessive punctuation or symbols. Please enter a text-based study topic.'
-    };
-  }
-
-  // 4. Check for smashed tokens without spaces that mix letters, numbers, and symbols (e.g., "asdfghjkl123456789!@#$%^")
-  const words = trimmed.split(/\s+/);
-  const knownAcronyms = new Set(['html', 'http', 'https', 'css', 'sql', 'nosql', 'xml', 'json', 'jwt', 'sdk', 'api', 'jvm', 'cpu', 'gpu', 'ram', 'rom', 'dns', 'tcp', 'udp', 'ip', 'ssh', 'ssl', 'tls', 'ai', 'ml', 'nlp', 'llm', 'dsa', 'dbms', 'os', 'oop', 'fp', 'aws', 'gcp', 'npm', 'git', 'ci', 'cd', 'ui', 'ux', 'cryptography', 'crypt', 'sync', 'async', 'rhythm', 'glyph', 'lynx', 'myth', 'psalm']);
-
-  for (const word of words) {
-    // Strip trailing/leading punctuation
-    const cleanWord = word.replace(/^[^\w]+|[^\w]+$/g, '').toLowerCase();
-    if (!cleanWord) continue;
-
-    // Mixed alphanumeric symbol smash > 12 chars without spaces (e.g. asdfghjkl123456789)
-    if (cleanWord.length > 12 && /[a-z]/i.test(cleanWord) && /[0-9]/.test(cleanWord) && !/^([a-z]+[0-9]+|[0-9]+[a-z]+)$/i.test(cleanWord)) {
+  const keyboardMashes = ['asdfgh', 'qwerty', 'zxcvbn', 'lkjhgf', 'poiuyt'];
+  const lower = trimmed.toLowerCase();
+  for (const mash of keyboardMashes) {
+    if (lower.includes(mash) && trimmed.length < 15) {
       return {
         valid: false,
         cleanTopic: '',
-        reason: 'Input appears to be a random string of numbers and letters. Please enter a readable study topic.'
+        reason: 'Input appears to be random keyboard keys. Please enter a valid topic to generate study materials.'
       };
-    }
-
-    // Alphabetic token of length >= 6 with zero vowels (e.g. "sdfghj", "qwrtyp", "asdfghjkl")
-    const lettersOnly = cleanWord.replace(/[^a-z]/g, '');
-    if (lettersOnly.length >= 6 && !knownAcronyms.has(lettersOnly)) {
-      const vowels = (lettersOnly.match(/[aeiouy]/g) || []).length;
-      if (vowels === 0 || (vowels / lettersOnly.length < 0.12 && lettersOnly.length >= 8)) {
-        return {
-          valid: false,
-          cleanTopic: '',
-          reason: 'Input contains unreadable consonant sequences. Please enter a valid academic subject or question.'
-        };
-      }
     }
   }
 
-  // 5. Parse requested question count if present (e.g., "10 quiz", "generate 10 questions on React", "15 mcqs")
+  // Parse requested question count if present (e.g., "10 quiz", "generate 10 questions on React", "15 mcqs")
   let requestedQuestionCount: number | undefined;
   const countMatch = trimmed.match(/(?:^|\b)(\d+)\s*(?:quiz|questions?|mcqs?|cards?|problems?)(?:\b|$)/i);
   if (countMatch && countMatch[1]) {
