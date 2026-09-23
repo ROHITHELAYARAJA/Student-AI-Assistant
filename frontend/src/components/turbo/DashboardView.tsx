@@ -1,21 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
 import { BlastMascot, BlastMascotState } from './BlastMascot.js';
+import { BlastMascotCard } from './BlastMascotCard.js';
+import { ToolExecutionTrace } from './ToolExecutionTrace.js';
+import { PluginsModal } from './PluginsModal.js';
 import { getSavedStudyPacks, fetchStudyPack, saveStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack } from '../../types/turbo.js';
+import { validateClientStudyPrompt } from '../../utils/validation.js';
 import {
   AiPromptInput,
   AiModelSelection,
   AiPromptSendStatus,
   DEFAULT_AI_MODELS
 } from '../ui/ai-prompt-input.js';
-import { VoicePoweredOrb } from '../ui/voice-powered-orb.js';
-import { Button } from '../ui/button.js';
 import {
-  Mic,
-  MicOff,
-  Upload,
-  Youtube,
   Sparkles,
   Sun,
   Moon,
@@ -30,7 +28,8 @@ import {
   X,
   AlertTriangle,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Puzzle
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -65,10 +64,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     thinking: true
   });
 
-  // Voice Interaction Modal with VoicePoweredOrb
-  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const [isOrbRecording, setIsOrbRecording] = useState(false);
-  const [orbVoiceDetected, setOrbVoiceDetected] = useState(false);
+  // Plugins & Connectors Modal State
+  const [isPluginsModalOpen, setIsPluginsModalOpen] = useState(false);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('blast_theme') as 'dark' | 'light') || 'dark';
@@ -101,6 +98,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const clean = topicToGenerate.trim();
     if (!clean) return;
 
+    // Strict client-side validation: reject random keys, symbols, or gibberish immediately
+    const clientVal = validateClientStudyPrompt(clean);
+    if (!clientVal.valid) {
+      setGenerationError(clientVal.reason || 'Input is not recognized as a valid study topic. Please enter a valid academic subject, syllabus concept, or question.');
+      setIsGenerating(false);
+      setPromptStatus('idle');
+      setMascotState('error');
+      return;
+    }
+
     setGenerationError(null);
     setIsGenerating(true);
     setPromptStatus('loading');
@@ -111,7 +118,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     try {
       // Parse question count if prompt specifies e.g. "10 quiz"
       const countMatch = clean.match(/(?:^|\b)(\d+)\s*(?:quiz|questions?|mcqs?|cards?|problems?)(?:\b|$)/i);
-      const requestedCount = countMatch ? parseInt(countMatch[1], 10) : undefined;
+      const requestedCount = clientVal.requestedQuestionCount || (countMatch ? parseInt(countMatch[1], 10) : undefined);
 
       const pack = await fetchStudyPack(clean, {
         questionCount: requestedCount,
@@ -192,17 +199,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
-          {/* Voice Mode Quick Launch */}
+          {/* Plugins & Connectors Manager */}
           <button
-            onClick={() => {
-              setIsVoiceModalOpen(true);
-              setIsOrbRecording(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-[#FF5E00] text-xs font-semibold transition-all"
-            title="Launch Voice-Powered Orb Talk Mode"
+            onClick={() => setIsPluginsModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-[#FF5E00] text-xs font-semibold transition-all hover:scale-105 active:scale-95"
+            title="Manage Connected Plugins & App Tools"
           >
-            <Mic size={14} />
-            <span className="hidden sm:inline">Voice Mode</span>
+            <Puzzle size={14} />
+            <span className="hidden sm:inline">Plugins</span>
           </button>
 
           {/* Upgrade Button */}
@@ -328,19 +332,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Main Scrolling Dashboard Content */}
         <main className="flex-1 max-w-4xl w-full mx-auto px-4 md:px-8 py-10 flex flex-col items-center overflow-visible">
-          {/* Animated Mascot & Hero Heading */}
+          {/* Animated Mascot Card (GSAP + SVG as in Image 1) */}
           <div className="mb-6 flex flex-col items-center text-center">
-            <div className="relative mb-3">
-              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#FF5E00] via-[#FFAA00] to-[#E11D48] p-1 flex items-center justify-center shadow-2xl shadow-orange-500/25">
-                <div className="w-full h-full rounded-3xl bg-[var(--color-surface)] flex items-center justify-center overflow-hidden">
-                  <BlastMascot size="lg" state={mascotState} />
-                </div>
-              </div>
-              <div className="absolute -top-2 -right-3 p-1 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md flex items-center gap-1 text-[11px]">
-                <span>🔥</span>
-                <span>⚡</span>
-              </div>
-            </div>
+            <BlastMascotCard
+              state={mascotState}
+              className="mb-4"
+              onClick={() => {
+                setMascotState('excited');
+                setTimeout(() => setMascotState('idle'), 2000);
+              }}
+            />
 
             <h1 className="font-headline text-3xl md:text-4xl font-extrabold tracking-tight">
               What do you want to learn?
@@ -374,23 +375,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               onModelSelectionChange={setModelSelection}
               status={promptStatus}
               disabled={isGenerating}
-              onVoiceChange={(talking) => {
-                if (talking) {
-                  setIsVoiceModalOpen(true);
-                  setIsOrbRecording(true);
-                }
-              }}
               onUploadFile={() => {
                 const text = window.prompt('Paste notes or syllabus text to analyze:');
                 if (text && text.trim()) handleGenerate(text.trim());
               }}
-              onSkills={() => {
-                setPromptValue('10 quiz questions on ');
-              }}
-              onConnectors={() => {
-                router.navigate('/notes/sources');
-              }}
+              onSkills={() => setIsPluginsModalOpen(true)}
+              onConnectors={() => setIsPluginsModalOpen(true)}
             />
+          </div>
+
+          {/* Tools & Plugins Execution Trace Component (matching Image 3) */}
+          <div className="w-full max-w-2xl mt-4">
+            <ToolExecutionTrace defaultExpanded={true} />
           </div>
 
           {/* Quick Prompt Starters (Active Only - No Default Hardcoded Packs) */}
@@ -522,92 +518,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </main>
       </div>
 
-      {/* Voice-Powered Orb Interactive Modal */}
-      {isVoiceModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 max-w-lg w-full flex flex-col items-center text-center space-y-6 shadow-2xl relative">
-            <button
-              onClick={() => {
-                setIsVoiceModalOpen(false);
-                setIsOrbRecording(false);
-              }}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#FF5E00]">
-                <Zap size={14} />
-                <span>BLAST VOICE ORB ENGINE</span>
-              </div>
-              <h2 className="font-headline text-xl font-bold text-white">
-                Live Voice Conversation with Blast
-              </h2>
-              <p className="text-xs text-[var(--color-text-muted)] max-w-sm">
-                Speak directly to Blast. The WebGL orb dynamically senses and visualizes your speech amplitude in real-time.
-              </p>
-            </div>
-
-            {/* WebGL VoicePoweredOrb */}
-            <div className="w-64 h-64 relative rounded-2xl overflow-hidden bg-black/40 border border-orange-500/20 shadow-inner">
-              <VoicePoweredOrb
-                enableVoiceControl={isOrbRecording}
-                hue={25}
-                voiceSensitivity={2.0}
-                className="w-full h-full"
-                onVoiceDetected={setOrbVoiceDetected}
-              />
-            </div>
-
-            {/* Voice Detection State */}
-            <div className="flex items-center gap-2 text-xs font-medium">
-              <span className={`w-2.5 h-2.5 rounded-full ${orbVoiceDetected ? 'bg-emerald-400 animate-ping' : isOrbRecording ? 'bg-amber-400' : 'bg-zinc-600'}`} />
-              <span className="text-[var(--color-text-muted)]">
-                {orbVoiceDetected ? 'Voice Detected — Synthesizing...' : isOrbRecording ? 'Listening for speech...' : 'Microphone Paused'}
-              </span>
-            </div>
-
-            {/* Controls */}
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={() => setIsOrbRecording(!isOrbRecording)}
-                variant={isOrbRecording ? "destructive" : "default"}
-                size="lg"
-                className="px-6 font-bold"
-              >
-                {isOrbRecording ? (
-                  <>
-                    <MicOff className="w-4 h-4 mr-2" />
-                    Pause Mic
-                  </>
-                ) : (
-                  <>
-                    <Mic className="w-4 h-4 mr-2" />
-                    Resume Mic
-                  </>
-                )}
-              </Button>
-
-              <Button
-                onClick={() => {
-                  const speechTopic = window.prompt('Confirm topic discussed to generate study pack:', 'Algorithms and Data Structures');
-                  if (speechTopic && speechTopic.trim()) {
-                    setIsVoiceModalOpen(false);
-                    setIsOrbRecording(false);
-                    handleGenerate(speechTopic.trim());
-                  }
-                }}
-                variant="outline"
-                size="lg"
-                className="px-6 font-bold border-orange-500/30 text-[#FF5E00] hover:bg-orange-500/10"
-              >
-                Generate Study Pack
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Plugins & Connectors Manager Modal */}
+      <PluginsModal
+        isOpen={isPluginsModalOpen}
+        onClose={() => setIsPluginsModalOpen(false)}
+      />
 
       {/* Floating Ask Blast AI Button */}
       <button

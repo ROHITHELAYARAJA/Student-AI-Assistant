@@ -168,7 +168,19 @@ const STORAGE_KEY = 'turbo_study_packs_v1';
 export function getSavedStudyPacks(): TurboStudyPack[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed: TurboStudyPack[] = JSON.parse(raw);
+    // Filter out any corrupted or gibberish packs (e.g. from tests)
+    const valid = parsed.filter(p => {
+      if (!p || !p.topic || typeof p.topic !== 'string') return false;
+      const lower = p.topic.toLowerCase();
+      if (lower.includes('asdfgh') || lower.includes('qwerty') || lower.includes('123456')) return false;
+      return true;
+    });
+    if (valid.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
+    }
+    return valid;
   } catch {
     return [];
   }
