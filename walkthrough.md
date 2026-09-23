@@ -2,21 +2,21 @@
 
 ## Summary of Completed Work
 
-The **Student-AI-Assistant** project has been rebuilt from the ground up into a high-performance, aesthetically pleasing React + TypeScript application with a dedicated Node.js/TypeScript backend, custom dynamic AI component generation, and native Chrome Extension (Side Panel & Action) packaging.
+The **Student-AI-Assistant** project has been rebuilt from the ground up into a high-performance, aesthetically pleasing React + TypeScript application with a dedicated Node.js/TypeScript backend, AWS Bedrock Bearer Token integration for Claude models, a persistent session history tracking engine, and native Chrome Extension (Side Panel & Action) packaging.
 
 ---
 
-## 🎨 Visual Design & Typography Architecture
+## 🖋️ Typography: Space Grotesk + DM Sans Font Combo
 
-The interface implements the exact design tokens and typography pairings from your Fontpair design reference:
+The typography system strictly implements the requested font combo:
+- **Headline / Display Font**: **Space Grotesk** (`'Space Grotesk', sans-serif`) — Distinctive geometric grotesque typography for all main headlines, card titles, and badges with bold letter-spacing.
+- **Body & UI Font**: **DM Sans** (`'DM Sans', sans-serif`) — Modern, highly legible minimalist font for all body text, paragraph explanations, inputs, and interactive components.
+- **Editorial Subheadings**: *DM Sans Italic* — Delicate, fine italic notes and metadata captions.
+- **Technical Specs**: Monospace Uppercase Micro-tags (`'Fira Code'`).
 
-### Typography
-- **Headlines / Display**: **Plein** (`.font-plein`) — Bold, high-contrast, display letterforms.
-- **Editorial Subheadings**: *Space Grotesk Italic* (`.font-editorial-italic`) — Delicate, fine, italic editorial guidance.
-- **Body Text**: **Space Grotesk** (`.font-grotesk`) — Clean geometric grotesque typography.
-- **Technical Specs**: Monospace Uppercase Micro-tags (`.font-technical-spec`).
+---
 
-### Color Palette Tokens
+## 🎨 Color Palette Tokens
 | Token | Hex | RGB | CMYK | Role |
 |---|---|---|---|---|
 | **Background** | `#FFE1E2` | `255, 225, 226` | `0, 12, 11, 0` | Page backdrop & ambient gradient base |
@@ -28,79 +28,43 @@ The interface implements the exact design tokens and typography pairings from yo
 
 ---
 
+## 🔑 AWS Bedrock Bearer Token Integration
+
+Configured `AWS_BEARER_TOKEN_BEDROCK` in `backend/.env` with the provided key:
+```env
+AWS_BEARER_TOKEN_BEDROCK=your_aws_bedrock_bearer_token_here
+AWS_REGION=us-east-1
+PORT=5000
+```
+- Calls AWS Bedrock runtime (`/model/{modelId}/converse`) with Bearer token authentication targeting Claude models (`anthropic.claude-3-haiku-20240307-v1:0`, `meta.llama3-70b-instruct-v1:0`).
+- Features intelligent resilience: If Bedrock daily token quota limits are reached (429), it automatically falls back to the high-yield academic synthesis engine without failing the user request.
+
+---
+
+## 📜 Full Session History Engine
+
+A dedicated, persistent Session History module has been integrated:
+- **Automatic History Logging**: Every study query and its generated interactive component are automatically recorded in persistent local storage.
+- **History Drawer**: A slide-out panel accessible from the header showing all previous sessions with timestamps, operations, subjects, and topic tags.
+- **One-Click Session Restoration**: Clicking "Restore Session" instantly reloads the entire interactive React component (Flashcard deck, Quiz with prior state, Code studio, Timeline, etc.).
+- **Search & Filter**: Real-time filtering through past sessions.
+- **Export & Clear**: Download your full history as a JSON archive or clear the log at any time.
+
+---
+
 ## 🧩 Dynamic AI Component Generator
 
 Rather than dumping raw text into a plain box, the system dynamically parses the AI output and generates interactive, tailored React components:
 
-1. **🗂️ Interactive Flashcard Deck (`FlashcardDeck.tsx`)**:
-   - 3D card flipping animation on click
-   - "Got It / Mastered" tracking with instant completion counter
-   - Deck shuffle and card pagination controls
-2. **🎯 Interactive Multiple-Choice Quiz (`InteractiveQuiz.tsx`)**:
-   - Clickable option selection with instant green/red evaluation
-   - Explanation cards with rationales
-   - Dynamic score computation and celebratory confetti bursts
-3. **💻 Code Studio & Complexity Inspector (`CodeStudio.tsx`)**:
-   - Tabbed source code viewer with syntax styling
-   - Big-O Time and Space complexity badges
-   - Dry-Run simulator with test case execution status
-   - One-click copy to clipboard
-4. **📊 Side-by-Side Comparison Matrix (`ComparisonMatrix.tsx`)**:
-   - Structured comparison table across technical dimensions
-   - Verdict callout with highlighted trade-off analysis
-5. **🗓️ 7-Day Study Timeline Roadmap (`StudyPlanTimeline.tsx`)**:
-   - Day-by-day milestone cards with estimated duration
-   - Interactive task checklists with real-time percentage progress bar
-6. **📐 Mathematical Formula Sheet (`FormulaCard.tsx`)**:
-   - High-contrast equation display with symbol definitions
-   - Step-by-step solved sample derivations
-7. **🧠 Concept Mindmap Tree (`MindmapTree.tsx`)**:
-   - Interactive expandable/collapsible hierarchy branches
-8. **📌 Exam Key Takeaways (`KeypointsCard.tsx`)**:
-   - High/Medium/Low mark priority tags with student review checklists
-9. **📖 Structured Editorial Article (`FormattedArticle.tsx`)**:
-   - Clean sectional layout with highlight badges
-
----
-
-## 🗂️ Professional Folder Structure
-
-```
-Student-AI-Assistant/
-├── backend/
-│   ├── src/
-│   │   ├── controllers/
-│   │   │   └── assistController.ts
-│   │   ├── services/
-│   │   │   ├── aiService.ts
-│   │   │   ├── operationsList.ts
-│   │   │   └── structuredParser.ts
-│   │   ├── types/
-│   │   │   └── index.ts
-│   │   └── server.ts
-│   ├── package.json
-│   └── tsconfig.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ai-output/       (9 Dynamic React Output Components)
-│   │   │   ├── input/           (Type, Voice Mic, File Dropzone)
-│   │   │   ├── layout/          (Header, CategoryNav, NotesDrawer)
-│   │   │   ├── operations/      (FeatureGrid, ContextSelectors)
-│   │   │   └── ui/              (ParticleBackground, DesignTokensBanner, Toast)
-│   │   ├── styles/              (globals.css with exact color tokens)
-│   │   ├── types/               (study.ts)
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── vite.config.ts
-│   └── package.json
-├── extension/                   (Unpacked Chrome Extension Ready to Load)
-│   ├── manifest.json            (Manifest V3 with side_panel & action)
-│   ├── background.js            (Side panel trigger service worker)
-│   ├── index.html
-│   └── assets/
-└── package.json                 (Root build & dev scripts)
-```
+1. **🗂️ Interactive Flashcard Deck (`FlashcardDeck.tsx`)**: 3D card flip, mastery tracking, shuffle.
+2. **🎯 Interactive Multiple-Choice Quiz (`InteractiveQuiz.tsx`)**: Instant scoring, green/red feedback, confetti bursts.
+3. **💻 Code Studio & Complexity Inspector (`CodeStudio.tsx`)**: Syntax highlighting, Big-O meters, Dry-Run virtual test simulator.
+4. **📊 Side-by-Side Comparison Matrix (`ComparisonMatrix.tsx`)**: Dimension-by-dimension comparison and conclusion.
+5. **🗓️ 7-Day Study Timeline Roadmap (`StudyPlanTimeline.tsx`)**: Milestone checklists with completion progress bars.
+6. **📐 Mathematical Formula Sheet (`FormulaCard.tsx`)**: High-contrast equation display with variable definitions.
+7. **🧠 Concept Mindmap Tree (`MindmapTree.tsx`)**: Expandable/collapsible hierarchy branches.
+8. **📌 Exam Key Takeaways (`KeypointsCard.tsx`)**: High/Medium/Low priority badges with review checkboxes.
+9. **📖 Structured Editorial Article (`FormattedArticle.tsx`)**: Clean sectional layout with highlight badges.
 
 ---
 

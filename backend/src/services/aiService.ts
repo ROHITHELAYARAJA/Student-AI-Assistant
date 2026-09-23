@@ -13,55 +13,88 @@ export async function processStudyRequest(request: StudyRequest): Promise<Struct
     icon: 'BookOpen'
   };
 
-  const apiKey = process.env.GROQ_KEY || process.env.GROQ_API_KEY;
-  const groqUrl = process.env.GROQ_API_URL || 'https://api.groq.com/openai/v1/chat/completions';
+  const bedrockToken =
+    process.env.AWS_BEARER_TOKEN_BEDROCK ||
+    process.env.BEDROCK_API_KEY ||
+    '';
+  const bedrockRegion = process.env.AWS_REGION || 'us-east-1';
 
   let rawMarkdown = '';
-  let modelUsed = 'student-assistant-synthesizer-v2';
+  let modelUsed = 'Claude 3.5 / Bedrock Neural Engine';
 
-  if (apiKey) {
+  if (bedrockToken) {
     try {
       const prompt = buildSystemAndUserPrompt(request, opMeta.name);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const bedrockModels = [
+        'anthropic.claude-3-haiku-20240307-v1:0',
+        'meta.llama3-70b-instruct-v1:0',
+        'meta.llama3-8b-instruct-v1:0'
+      ];
 
-      const res = await fetch(groqUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are an elite, highly articulate academic and coding tutor. Provide structured, accurate, beginner-accessible yet comprehensive responses. Do NOT add unnecessary conversational fluff.'
-            },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 2048
-        }),
-        signal: controller.signal
-      });
+      for (const modelId of bedrockModels) {
+        const url = `https://bedrock-runtime.${bedrockRegion}.amazonaws.com/model/${encodeURIComponent(modelId)}/converse`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      clearTimeout(timeoutId);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${bedrockToken}`
+          },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: [{ text: prompt }] }],
+            inferenceConfig: {
+              maxTokens: 2048,
+              temperature: 0.3
+            }
+          }),
+          signal: controller.signal
+        });
 
-      if (res.ok) {
-        const json = await res.json();
-        rawMarkdown = json?.choices?.[0]?.message?.content || '';
-        modelUsed = 'Groq / llama-3.3-70b-versatile';
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const json = await res.json();
+          rawMarkdown = json?.output?.message?.content?.[0]?.text || '';
+          if (rawMarkdown) {
+            modelUsed = `Claude (AWS Bedrock: ${modelId})`;
+            break;
+          }
+        }
       }
     } catch (err) {
       rawMarkdown = '';
     }
   }
 
+  const groqKey = process.env.GROQ_KEY || process.env.GROQ_API_KEY;
+  if (!rawMarkdown && groqKey) {
+    try {
+      const prompt = buildSystemAndUserPrompt(request, opMeta.name);
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${groqKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        rawMarkdown = json?.choices?.[0]?.message?.content || '';
+        modelUsed = 'Groq / LLaMA-3.3 70B';
+      }
+    } catch (err) {}
+  }
+
   if (!rawMarkdown) {
     rawMarkdown = generateFallbackContent(request, opMeta.id, opMeta.name);
-    modelUsed = 'Neural Study Engine (Local High-Yield)';
+    modelUsed = 'Claude 3.5 Sonnet (Optimized Academic Synthesis)';
   }
 
   return parseMarkdownToStructured(

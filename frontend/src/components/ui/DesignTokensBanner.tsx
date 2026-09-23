@@ -16,7 +16,7 @@ export const DesignTokensBanner: React.FC = () => {
   return (
     <div
       style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        backgroundColor: 'rgba(255, 255, 255, 0.72)',
         borderBottom: '1px solid var(--color-border-subtle)',
         padding: '6px 20px',
         fontSize: '11px',
@@ -35,17 +35,35 @@ export const DesignTokensBanner: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Palette size={13} color="var(--color-primary)" />
           <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>
-            Typography & Design Pair:
+            Font Combo:
           </span>
-          <span className="font-plein" style={{ fontWeight: 800, color: 'var(--color-accent)' }}>
-            Plein
-          </span>
-          <span style={{ color: 'var(--color-text-faint)' }}>+</span>
-          <span className="font-grotesk" style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+          <span
+            style={{
+              padding: '2px 10px',
+              borderRadius: '999px',
+              backgroundColor: 'rgba(81, 0, 0, 0.08)',
+              color: 'var(--color-accent)',
+              fontWeight: 700,
+              fontFamily: 'var(--font-headline)'
+            }}
+          >
             Space Grotesk
           </span>
+          <span style={{ color: 'var(--color-text-faint)', fontWeight: 700 }}>+</span>
+          <span
+            style={{
+              padding: '2px 10px',
+              borderRadius: '999px',
+              backgroundColor: 'rgba(81, 0, 0, 0.08)',
+              color: 'var(--color-text)',
+              fontWeight: 600,
+              fontFamily: 'var(--font-body)'
+            }}
+          >
+            DM Sans
+          </span>
           <span className="font-editorial-italic" style={{ color: 'var(--color-primary)' }}>
-            (Fine Minimalist Aesthetic)
+            (Clean Minimalist Studio)
           </span>
         </div>
 

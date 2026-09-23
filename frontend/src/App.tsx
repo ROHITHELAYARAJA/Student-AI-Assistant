@@ -8,12 +8,14 @@ import { InputModes } from './components/input/InputModes.js';
 import { FeatureGrid } from './components/operations/FeatureGrid.js';
 import { DynamicOutputRenderer } from './components/ai-output/DynamicOutputRenderer.js';
 import { NotesDrawer } from './components/layout/NotesDrawer.js';
+import { HistoryDrawer } from './components/layout/HistoryDrawer.js';
 import { Toast } from './components/ui/Toast.js';
 import {
   OperationCategory,
   OperationMeta,
   StructuredAiResponse,
   NoteItem,
+  HistoryItem,
   InputMode
 } from './types/study.js';
 import { fetchOperations, requestAiAssistance } from './services/api.js';
@@ -140,7 +142,9 @@ export const App: React.FC = () => {
   const [executingOpId, setExecutingOpId] = useState<string | null>(null);
   const [aiResponse, setAiResponse] = useState<StructuredAiResponse | null>(null);
   const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isBackendOnline, setIsBackendOnline] = useState(false);
   const [isCompactMode, setIsCompactMode] = useState(false);
@@ -152,6 +156,13 @@ export const App: React.FC = () => {
     if (savedNotes) {
       try {
         setNotes(JSON.parse(savedNotes));
+      } catch (e) {}
+    }
+
+    const savedHistory = localStorage.getItem('study_assistant_history');
+    if (savedHistory) {
+      try {
+        setHistory(JSON.parse(savedHistory));
       } catch (e) {}
     }
 
@@ -213,19 +224,68 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleDeleteHistoryItem = (id: string) => {
+    const updated = history.filter((h) => h.id !== id);
+    setHistory(updated);
+    localStorage.setItem('study_assistant_history', JSON.stringify(updated));
+    setToastMessage('History record removed.');
+  };
+
+  const handleClearAllHistory = () => {
+    if (confirm('Clear all session history?')) {
+      setHistory([]);
+      localStorage.removeItem('study_assistant_history');
+      setToastMessage('Session history cleared.');
+    }
+  };
+
+  const handleSelectHistoryItem = (item: HistoryItem) => {
+    setAiResponse(item.response);
+    setStudyTopic(item.topic);
+    if (item.subject) setSubject(item.subject);
+    setIsHistoryOpen(false);
+    setToastMessage(`Restored "${item.topic}" session.`);
+    setTimeout(() => {
+      outputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
   const handleExecuteOperation = async (op: OperationMeta) => {
     setExecutingOpId(op.id);
     try {
+      const activeTopic = studyTopic || op.name;
       const res = await requestAiAssistance({
-        content: content || studyTopic || subject || 'Core Study Fundamentals',
+        content: content || activeTopic || subject || 'Core Study Fundamentals',
         operation: op.id,
         subject,
-        studyTopic: studyTopic || op.name,
+        studyTopic: activeTopic,
         programmingLanguage
       });
 
       setAiResponse(res);
-      setToastMessage(`Synthesized ${res.componentType.toUpperCase()} Component!`);
+
+      const historyEntry: HistoryItem = {
+        id: `hist-${Date.now()}`,
+        timestamp: new Date().toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        operation: op.id,
+        operationName: op.name,
+        category: op.category,
+        topic: activeTopic,
+        subject,
+        contentSnippet: (content || activeTopic).slice(0, 100),
+        response: res
+      };
+
+      const updatedHist = [historyEntry, ...history.slice(0, 49)];
+      setHistory(updatedHist);
+      localStorage.setItem('study_assistant_history', JSON.stringify(updatedHist));
+
+      setToastMessage(`Synthesized ${res.componentType.toUpperCase()} Component via ${res.metadata.model}!`);
 
       setTimeout(() => {
         outputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -269,7 +329,9 @@ export const App: React.FC = () => {
 
       <Header
         notesCount={notes.length}
+        historyCount={history.length}
         onOpenNotes={() => setIsNotesOpen(true)}
+        onOpenHistory={() => setIsHistoryOpen(true)}
         isBackendOnline={isBackendOnline}
         isCompactMode={isCompactMode}
         onToggleCompactMode={() => setIsCompactMode(!isCompactMode)}
@@ -419,15 +481,15 @@ export const App: React.FC = () => {
           padding: '16px 20px',
           textAlign: 'center',
           backgroundColor: 'rgba(255, 225, 226, 0.75)',
-          fontSize: '11px',
+          fontSize: '12px',
           color: 'var(--color-text-muted)',
           zIndex: 10
         }}
       >
-        <span className="font-plein" style={{ fontWeight: 800, color: 'var(--color-accent)' }}>
-          Plein
+        <span className="font-headline" style={{ fontWeight: 700, color: 'var(--color-accent)' }}>
+          Space Grotesk
         </span>{' '}
-        & <span className="font-grotesk" style={{ fontWeight: 600 }}>Space Grotesk</span> Design System • 100 Operators • Side Panel & Extension Ready
+        + <span className="font-body" style={{ fontWeight: 600 }}>DM Sans</span> Typography Pair • 100 AI Operators • Side Panel & Extension Ready
       </footer>
 
       <NotesDrawer
@@ -436,6 +498,15 @@ export const App: React.FC = () => {
         notes={notes}
         onDeleteNote={handleDeleteNote}
         onClearAllNotes={handleClearAllNotes}
+      />
+
+      <HistoryDrawer
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        history={history}
+        onSelectHistoryItem={handleSelectHistoryItem}
+        onDeleteHistoryItem={handleDeleteHistoryItem}
+        onClearAllHistory={handleClearAllHistory}
       />
 
       {toastMessage && (

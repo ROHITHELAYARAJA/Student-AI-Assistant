@@ -136,4 +136,16 @@ export interface NoteItem {
   componentType: OutputComponentType;
 }
 
+export interface HistoryItem {
+  id: string;
+  timestamp: string;
+  operation: string;
+  operationName: string;
+  category: string;
+  topic: string;
+  subject?: string;
+  contentSnippet: string;
+  response: StructuredAiResponse;
+}
+
 export type InputMode = 'text' | 'voice' | 'file';

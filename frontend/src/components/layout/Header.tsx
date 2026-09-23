@@ -2,8 +2,7 @@ import React from 'react';
 import {
   Sparkles,
   StickyNote,
-  Activity,
-  Chrome,
+  History,
   Maximize2,
   Minimize2,
   MousePointerClick
@@ -11,7 +10,9 @@ import {
 
 interface HeaderProps {
   notesCount: number;
+  historyCount: number;
   onOpenNotes: () => void;
+  onOpenHistory: () => void;
   isBackendOnline: boolean;
   isCompactMode: boolean;
   onToggleCompactMode: () => void;
@@ -20,7 +21,9 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   notesCount,
+  historyCount,
   onOpenNotes,
+  onOpenHistory,
   isBackendOnline,
   isCompactMode,
   onToggleCompactMode,
@@ -65,14 +68,14 @@ export const Header: React.FC<HeaderProps> = ({
         <div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
             <span
-              className="font-plein"
+              className="font-headline"
               style={{
                 fontSize: isCompactMode ? '18px' : '22px',
                 color: 'var(--color-text)',
                 lineHeight: 1
               }}
             >
-              Plein
+              Study Assistant
             </span>
             <span
               className="font-editorial-italic"
@@ -82,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
                 fontWeight: 600
               }}
             >
-              Study Assistant
+              Space Grotesk + DM Sans
             </span>
             <span
               className="font-technical-spec"
@@ -108,14 +111,14 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             <span
-              className="font-grotesk"
+              className="font-body"
               style={{
                 fontSize: '11px',
                 color: 'var(--color-text-muted)',
                 fontWeight: 500
               }}
             >
-              Space Grotesk Core
+              Minimalist Clean UI
             </span>
             <span style={{ fontSize: '10px', color: 'var(--color-text-faint)' }}>•</span>
             <span
@@ -125,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
                 color: 'var(--color-accent)'
               }}
             >
-              100 Operators
+              100 Operators • Bedrock Active
             </span>
           </div>
         </div>
@@ -170,6 +173,40 @@ export const Header: React.FC<HeaderProps> = ({
         >
           {isCompactMode ? <Maximize2 size={12} /> : <Minimize2 size={12} />}
           <span>{isCompactMode ? 'Full View' : 'Side Panel'}</span>
+        </button>
+
+        <button
+          onClick={onOpenHistory}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--color-surface)',
+            border: '1.5px solid var(--color-border)',
+            color: 'var(--color-text)',
+            fontSize: '12px',
+            fontWeight: 700,
+            boxShadow: 'var(--shadow-sm)'
+          }}
+        >
+          <History size={14} color="var(--color-primary)" />
+          <span>History</span>
+          {historyCount > 0 && (
+            <span
+              style={{
+                backgroundColor: 'var(--color-primary)',
+                color: '#FFFFFF',
+                fontSize: '10px',
+                fontWeight: 800,
+                padding: '1px 6px',
+                borderRadius: '999px'
+              }}
+            >
+              {historyCount}
+            </span>
+          )}
         </button>
 
         <button
