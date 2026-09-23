@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { router } from '../../services/router.js';
 import { BlastMascot } from './BlastMascot.js';
+import { GlowingFireLogo } from './GlowingFireLogo.js';
 import { getStudyPack, fetchStudyPack, saveStudyPack, getSavedStudyPacks } from '../../services/turboApi.js';
 import { TurboStudyPack, TurboNotes } from '../../types/turbo.js';
 import {
@@ -256,11 +257,7 @@ export const NotesEditorView: React.FC<NotesEditorViewProps> = ({
       <header className="h-14 px-5 flex items-center justify-between border-b border-[var(--color-border,#272738)] bg-[var(--color-bg,#0C0C11)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <img
-              src="/blast-logo.png"
-              alt="Blast AI"
-              className="w-7 h-7 rounded-lg object-contain shadow-sm shadow-orange-500/30 bg-[#181824] p-0.5 border border-orange-500/20"
-            />
+            <GlowingFireLogo size={28} showGlow={true} />
             <span className="font-headline font-bold text-sm tracking-tight flex items-center gap-1">
               <span>blast</span>
               <span className="text-[#FF5E00]">ai</span>

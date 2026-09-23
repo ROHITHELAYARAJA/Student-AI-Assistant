@@ -51,11 +51,11 @@ export const BlastAvatar: React.FC<BlastAvatarProps> = ({
           height: '100%',
           borderRadius: '50%',
           overflow: 'hidden',
-          backgroundColor: '#1E1B4B',
-          border: '1.5px solid var(--color-border, #272738)',
+          backgroundColor: '#161622',
+          border: '1.5px solid rgba(255, 94, 0, 0.3)',
           boxShadow: isPulsing
-            ? '0 0 0 3px rgba(249, 115, 22, 0.25), 0 2px 8px rgba(249, 115, 22, 0.2)'
-            : '0 1px 4px rgba(0, 0, 0, 0.2)',
+            ? '0 0 0 3px rgba(249, 115, 22, 0.35), 0 2px 10px rgba(249, 115, 22, 0.25)'
+            : '0 2px 8px rgba(0, 0, 0, 0.4)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'

@@ -1,6 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="24" fill="#E11D48"/>
-  <path d="M50 20 L80 35 L50 50 L20 35 Z" fill="#FFFFFF"/>
-  <path d="M30 45 L50 55 L70 45 L70 65 C70 73 50 82 50 82 C50 82 30 73 30 65 Z" fill="#FFE1E2"/>
-  <circle cx="50" cy="50" r="6" fill="#9C0000"/>
+  <defs>
+    <linearGradient id="favFlameGrad" x1="50" y1="95" x2="50" y2="10" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#7A0000" />
+      <stop offset="25%" stopColor="#FF3300" />
+      <stop offset="65%" stopColor="#FFAA00" />
+      <stop offset="100%" stopColor="#FFEE55" />
+    </linearGradient>
+    <linearGradient id="favCoreGrad" x1="50" y1="90" x2="50" y2="45" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#FF8800" />
+      <stop offset="60%" stopColor="#FFEE66" />
+      <stop offset="100%" stopColor="#FFFFFF" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="24" fill="#0C0C11"/>
+  <path d="M50 10 C50 10 60 26 60 40 C60 46 57 51 54 54 C62 46 66 38 66 32 C76 46 80 64 77 78 C74 92 63 98 50 98 C37 98 26 92 23 78 C20 64 24 46 34 32 C34 38 38 46 46 54 C43 51 40 46 40 40 C40 26 50 10 50 10 Z" fill="url(#favFlameGrad)"/>
+  <path d="M50 48 C50 48 55 56 55 64 C55 68 53 71 52 73 C56 69 58 65 58 62 C62 69 64 78 62 85 C61 92 55 95 50 95 C45 95 39 92 38 85 C36 78 38 69 42 62 C42 65 44 69 48 73 C47 71 45 68 45 64 C45 56 50 48 50 48 Z" fill="url(#favCoreGrad)"/>
 </svg>

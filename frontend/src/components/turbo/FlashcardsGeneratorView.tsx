@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
 import { BlastMascot, MascotState } from './BlastMascot.js';
+import { GlowingFireLogo } from './GlowingFireLogo.js';
 import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack, TurboFlashcard } from '../../types/turbo.js';
 import {
@@ -126,11 +127,7 @@ export const FlashcardsGeneratorView: React.FC<FlashcardsGeneratorViewProps> = (
       <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <img
-              src="/blast-logo.png"
-              alt="Blast AI"
-              className="w-7 h-7 rounded-lg object-contain shadow-sm shadow-orange-500/30 bg-[#181824] p-0.5 border border-orange-500/20"
-            />
+            <GlowingFireLogo size={28} showGlow={true} />
             <span className="font-headline font-black text-sm tracking-tight text-white flex items-center gap-1">
               blast <span className="text-orange-500">ai</span>
             </span>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
 import { BlastMascot } from './BlastMascot.js';
+import { GlowingFireLogo } from './GlowingFireLogo.js';
 import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack, TurboSourceItem } from '../../types/turbo.js';
 import {
@@ -122,9 +123,7 @@ export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
       <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-orange-500/20 overflow-hidden">
-              <img src="/blast-mascot.png" alt="Blast AI" className="w-full h-full object-cover" />
-            </div>
+            <GlowingFireLogo size={28} showGlow={true} />
             <span className="font-headline font-black text-sm tracking-tight text-white flex items-center gap-1">
               blast <span className="text-orange-500">ai</span>
             </span>

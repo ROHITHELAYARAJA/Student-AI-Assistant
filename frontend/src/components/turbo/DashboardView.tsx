@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { router } from '../../services/router.js';
 import { BlastMascot, BlastMascotState } from './BlastMascot.js';
+import { GlowingFireLogo } from './GlowingFireLogo.js';
+import { RichMarkdown } from './RichMarkdown.js';
 import {
   getSavedStudyPacks,
   deleteStudyPack,
@@ -229,8 +231,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => router.navigate('/dashboard')}
             className="flex items-center gap-2 cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
-              <Zap className="w-4 h-4 text-white fill-white" />
+            <div className="w-8 h-8 rounded-xl bg-[#161622] border border-orange-500/30 flex items-center justify-center shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
+              <GlowingFireLogo size={28} showGlow={true} />
             </div>
             <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-orange-500 via-amber-500 to-purple-600 bg-clip-text text-transparent">
               blast ai
@@ -291,13 +293,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           /* Initial Hero Landing View */
           <div className="flex-1 flex flex-col items-center justify-center my-auto py-8">
             <div className="relative mb-5 flex flex-col items-center">
-              <BlastMascot
-                state={mascotState}
-                size="lg"
-              />
-              <div className="absolute -top-1 -right-1 flex gap-1 px-1.5 py-0.5 rounded-full bg-[var(--color-card)] border border-[var(--color-border)] text-[10px] text-orange-500 font-bold shadow-sm">
+              <GlowingFireLogo size="xl" showGlow={true} />
+              <div className="mt-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-xs text-orange-500 font-bold shadow-sm">
                 <span>🔥</span>
-                <span>⚡</span>
+                <span>Blast Realtime Neural Engine</span>
               </div>
             </div>
 
@@ -435,10 +434,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   }`}
                 >
                   {msg.sender === 'blast' && (
-                    <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 p-0.5 shadow-md shrink-0 flex items-center justify-center">
-                      <div className="w-full h-full bg-[var(--color-card)] rounded-[14px] flex items-center justify-center overflow-hidden">
-                        <BlastMascot state="speaking" size="sm" />
-                      </div>
+                    <div className="w-9 h-9 rounded-2xl bg-[#161622] border border-orange-500/30 p-0.5 shadow-md shadow-orange-500/20 shrink-0 flex items-center justify-center overflow-hidden">
+                      <GlowingFireLogo size={26} showGlow={true} />
                     </div>
                   )}
 
@@ -473,9 +470,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     )}
 
                     {/* Formatted Message Body */}
-                    <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                      {msg.text}
-                    </div>
+                    {msg.sender === 'blast' ? (
+                      <RichMarkdown content={msg.text} />
+                    ) : (
+                      <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                        {msg.text}
+                      </div>
+                    )}
 
                     {/* Structured Learning Suite for Study Topics */}
                     {msg.studyPack && (
@@ -635,10 +636,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {/* Generating / Loading Indicator */}
               {isGenerating && (
                 <div className="flex gap-3 sm:gap-4 justify-start items-center">
-                  <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 p-0.5 shadow-md shrink-0 flex items-center justify-center">
-                    <div className="w-full h-full bg-[var(--color-card)] rounded-[14px] flex items-center justify-center overflow-hidden">
-                      <BlastMascot state="thinking" size="sm" />
-                    </div>
+                  <div className="w-9 h-9 rounded-2xl bg-[#161622] border border-orange-500/30 p-0.5 shadow-md shadow-orange-500/20 shrink-0 flex items-center justify-center overflow-hidden">
+                    <GlowingFireLogo size={26} showGlow={true} />
                   </div>
                   <div className="p-4 rounded-2xl bg-[var(--color-card)] border border-[var(--color-border)] text-xs text-[var(--color-text-secondary)] flex items-center gap-2.5 shadow-sm">
                     <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
@@ -696,7 +695,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="text-center mb-6">
               <h3 className="text-xl font-bold text-[var(--color-text)] flex items-center justify-center gap-2">
-                <Sparkles className="w-5 h-5 text-orange-500" />
+                <GlowingFireLogo size={22} showGlow={true} />
                 Blast Voice Mode
               </h3>
               <p className="text-xs text-[var(--color-text-secondary)] mt-1">
