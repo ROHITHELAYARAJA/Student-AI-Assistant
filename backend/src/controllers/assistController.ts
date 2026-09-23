@@ -5,21 +5,48 @@ import { StudyRequest } from '../types/index.js';
 
 export async function handleAssist(req: Request, res: Response): Promise<void> {
   try {
+    const rawContent = req.body.content || req.body.query || '';
+    const trimmedContent = typeof rawContent === 'string' ? rawContent.trim() : '';
+
+    if (!trimmedContent) {
+      res.status(400).json({
+        error: 'EMPTY_INPUT',
+        message: 'No study message or topic entered. Please type a question, topic, or code snippet to analyze.'
+      });
+      return;
+    }
+
+    if (trimmedContent.length < 2) {
+      res.status(400).json({
+        error: 'INPUT_TOO_SHORT',
+        message: 'Input is too short. Please provide at least 2 characters for Emma to analyze.'
+      });
+      return;
+    }
+
+    if (trimmedContent.length > 50000) {
+      res.status(400).json({
+        error: 'INPUT_TOO_LARGE',
+        message: 'Input exceeds the maximum limit of 50,000 characters. Please shorten your content.'
+      });
+      return;
+    }
+
     const studyReq: StudyRequest = {
-      content: req.body.content || '',
+      content: trimmedContent,
       operation: req.body.operation || 'summarize',
       researchGoal: req.body.researchGoal,
       programmingLanguage: req.body.programmingLanguage || req.body.ProgrammingLanguage,
       subject: req.body.subject,
-      studyTopic: req.body.studyTopic
+      studyTopic: req.body.studyTopic || req.body.topic
     };
 
     const response = await processStudyRequest(studyReq);
     res.json(response);
   } catch (error: any) {
     res.status(500).json({
-      error: 'Failed to process request',
-      message: error?.message || 'Unknown processing error'
+      error: 'PROCESSING_ERROR',
+      message: error?.message || 'An unexpected error occurred while analyzing the study request.'
     });
   }
 }

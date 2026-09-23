@@ -182,7 +182,17 @@ export const App: React.FC = () => {
 
   const handleSendMessage = async (customPrompt?: string, customTool?: string) => {
     const queryToSend = (customPrompt ?? inputQuery).trim();
-    if (!queryToSend && !activeTabSnippet) return;
+    if (!queryToSend && !activeTabSnippet) {
+      showToast('Please enter a study topic, question, or paste code before sending.');
+      textareaRef.current?.focus();
+      return;
+    }
+
+    if (queryToSend.length < 2 && !activeTabSnippet) {
+      showToast('Input is too short. Please provide at least 2 characters.');
+      textareaRef.current?.focus();
+      return;
+    }
 
     const opToUse = customTool ?? selectedTool;
     const finalContent = activeTabSnippet
@@ -245,13 +255,19 @@ export const App: React.FC = () => {
       };
       setHistory((prev) => [historyItem, ...prev.slice(0, 49)]);
     } catch (err: any) {
+      const errorDetail =
+        err?.response?.data?.message ||
+        err?.message ||
+        'I ran into an issue connecting to the AI backend. Please verify http://localhost:5000 is active.';
+
       const errorMessage: ChatMessage = {
         id: 'err_' + Date.now(),
         sender: 'emma',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: 'I ran into an issue connecting to the AI backend. Please verify http://localhost:5000 is active.'
+        text: `⚠️ ${errorDetail}`
       };
       setMessages((prev) => [...prev, errorMessage]);
+      showToast(errorDetail);
     } finally {
       setIsGenerating(false);
     }

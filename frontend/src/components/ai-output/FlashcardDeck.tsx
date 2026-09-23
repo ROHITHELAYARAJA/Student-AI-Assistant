@@ -49,68 +49,93 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ cards, title }) =>
   };
 
   if (!cards || cards.length === 0) {
-    return <div>No flashcard items generated.</div>;
+    return (
+      <div style={{ padding: '16px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+        No flashcard items generated.
+      </div>
+    );
   }
 
   const isMastered = masteredIds.has(currentCard?.id);
+  const progressPct = Math.round(((currentIndex + 1) / deck.length) * 100);
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '10px 0' }}>
+    <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto' }}>
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '14px'
+          marginBottom: '10px',
+          flexWrap: 'wrap',
+          gap: '6px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Layers size={18} color="var(--color-primary)" />
-          <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--color-text)' }}>
-            {title}
-          </h3>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Layers size={15} color="var(--color-primary)" />
+          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text)' }}>
+            Card {currentIndex + 1} of {deck.length}
+          </span>
           <span
             style={{
-              fontSize: '12px',
-              fontWeight: 700,
-              color: 'var(--color-accent)',
-              backgroundColor: 'rgba(255, 225, 226, 0.8)',
-              padding: '4px 10px',
+              fontSize: '10px',
+              padding: '1px 6px',
               borderRadius: '999px',
-              border: '1px solid var(--color-border)'
+              backgroundColor: 'rgba(225, 29, 72, 0.1)',
+              color: 'var(--color-primary)',
+              fontWeight: 800
             }}
           >
-            {currentIndex + 1} / {deck.length} Cards
+            {masteredIds.size} Mastered
           </span>
-
-          <button
-            onClick={handleShuffle}
-            title="Shuffle Deck"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '4px 10px',
-              borderRadius: 'var(--radius-full)',
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              fontSize: '12px',
-              fontWeight: 600,
-              color: 'var(--color-text)'
-            }}
-          >
-            <Shuffle size={13} /> Shuffle
-          </button>
         </div>
+
+        <button
+          onClick={handleShuffle}
+          title="Shuffle Deck"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '3px 8px',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text)',
+            fontSize: '11px',
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          <Shuffle size={11} />
+          <span>Shuffle</span>
+        </button>
+      </div>
+
+      <div
+        style={{
+          width: '100%',
+          height: '4px',
+          backgroundColor: 'var(--color-border-subtle)',
+          borderRadius: '999px',
+          overflow: 'hidden',
+          marginBottom: '10px'
+        }}
+      >
+        <div
+          style={{
+            width: `${progressPct}%`,
+            height: '100%',
+            backgroundColor: 'var(--color-primary)',
+            transition: 'width 0.3s ease'
+          }}
+        />
       </div>
 
       <div
         onClick={() => setIsFlipped(!isFlipped)}
         style={{
-          minHeight: '260px',
+          minHeight: '160px',
           perspective: '1000px',
           cursor: 'pointer',
           position: 'relative'
@@ -119,18 +144,17 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ cards, title }) =>
         <div
           style={{
             width: '100%',
-            height: '100%',
-            minHeight: '260px',
+            minHeight: '160px',
             backgroundColor: isFlipped ? 'var(--color-surface-hover)' : 'var(--color-surface)',
             border: isMastered ? '2px solid #10B981' : '2px solid var(--color-primary)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '28px',
-            boxShadow: 'var(--shadow-lg)',
+            borderRadius: 'var(--radius-md)',
+            padding: '16px 14px',
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s',
-            transform: isFlipped ? 'scale(1.02)' : 'scale(1)'
+            transition: 'transform 0.3s ease, background-color 0.2s',
+            transform: isFlipped ? 'scale(1.01)' : 'scale(1)'
           }}
         >
           <div
@@ -142,36 +166,37 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ cards, title }) =>
           >
             <span
               style={{
-                fontSize: '11px',
-                fontWeight: 700,
+                fontSize: '10px',
+                fontWeight: 800,
                 textTransform: 'uppercase',
                 color: isFlipped ? 'var(--color-primary)' : 'var(--color-accent)',
-                letterSpacing: '0.06em'
+                letterSpacing: '0.05em'
               }}
             >
-              {isFlipped ? 'Reverse / Answer & Details' : 'Front / Concept Query'}
+              {isFlipped ? 'Answer & Explanation' : 'Concept Question'}
             </span>
 
             <span
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                fontSize: '12px',
+                gap: '3px',
+                fontSize: '11px',
                 color: 'var(--color-text-muted)'
               }}
             >
-              <RotateCw size={13} /> Click card to flip
+              <RotateCw size={11} /> Flip
             </span>
           </div>
 
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <div style={{ textAlign: 'center', padding: '14px 4px' }}>
             <p
               style={{
-                fontSize: isFlipped ? '16px' : '20px',
+                fontSize: isFlipped ? '13.5px' : '14.5px',
                 fontWeight: isFlipped ? 500 : 700,
                 color: 'var(--color-text)',
-                lineHeight: 1.6
+                lineHeight: 1.5,
+                margin: 0
               }}
             >
               {isFlipped ? currentCard.back : currentCard.front}
@@ -182,36 +207,12 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ cards, title }) =>
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              borderTop: '1px dashed var(--color-border-subtle)',
-              paddingTop: '12px'
+              justifyContent: 'center',
+              gap: '6px'
             }}
           >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleMastery(currentCard.id);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                fontWeight: 700,
-                color: isMastered ? '#10B981' : 'var(--color-accent)',
-                padding: '4px 10px',
-                borderRadius: 'var(--radius-full)',
-                backgroundColor: isMastered ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
-                border: '1px solid',
-                borderColor: isMastered ? '#10B981' : 'var(--color-border)'
-              }}
-            >
-              <CheckCircle size={14} />
-              {isMastered ? 'Mastered!' : 'Mark as Mastered'}
-            </button>
-
             <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
-              Mastered: {masteredIds.size} of {deck.length}
+              Card {currentIndex + 1} of {deck.length}
             </span>
           </div>
         </div>
@@ -221,67 +222,71 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ cards, title }) =>
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: '20px',
-          marginTop: '18px'
+          justifyContent: 'space-between',
+          marginTop: '12px',
+          gap: '8px'
         }}
       >
         <button
           onClick={handlePrev}
+          title="Previous Card"
           style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--color-surface)',
-            border: '1.5px solid var(--color-border)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: '4px',
+            padding: '6px 12px',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
             color: 'var(--color-text)',
-            boxShadow: 'var(--shadow-sm)',
-            transition: 'all var(--transition-fast)'
+            fontSize: '12px',
+            fontWeight: 700,
+            cursor: 'pointer'
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-          onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--color-border)')}
         >
-          <ChevronLeft size={22} />
+          <ChevronLeft size={14} />
+          <span>Prev</span>
         </button>
 
         <button
-          onClick={() => setIsFlipped(!isFlipped)}
+          onClick={() => toggleMastery(currentCard.id)}
           style={{
-            padding: '10px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '6px 12px',
             borderRadius: 'var(--radius-full)',
-            backgroundColor: 'var(--color-surface)',
-            border: '1.5px solid var(--color-primary)',
-            color: 'var(--color-primary)',
+            backgroundColor: isMastered ? 'rgba(16, 185, 129, 0.15)' : 'var(--color-surface)',
+            border: isMastered ? '1.5px solid #10B981' : '1px solid var(--color-border)',
+            color: isMastered ? '#059669' : 'var(--color-text)',
+            fontSize: '12px',
             fontWeight: 700,
-            fontSize: '13px',
-            boxShadow: 'var(--shadow-sm)'
+            cursor: 'pointer'
           }}
         >
-          Flip Card Space
+          {isMastered ? <CheckCircle size={13} color="#10B981" /> : <HelpCircle size={13} />}
+          <span>{isMastered ? 'Mastered' : 'Mark Learned'}</span>
         </button>
 
         <button
           onClick={handleNext}
+          title="Next Card"
           style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--color-surface)',
-            border: '1.5px solid var(--color-border)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--color-text)',
-            boxShadow: 'var(--shadow-sm)',
-            transition: 'all var(--transition-fast)'
+            gap: '4px',
+            padding: '6px 12px',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--color-primary)',
+            border: 'none',
+            color: '#FFFFFF',
+            fontSize: '12px',
+            fontWeight: 700,
+            cursor: 'pointer'
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--color-primary)')}
-          onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--color-border)')}
         >
-          <ChevronRight size={22} />
+          <span>Next</span>
+          <ChevronRight size={14} />
         </button>
       </div>
     </div>
