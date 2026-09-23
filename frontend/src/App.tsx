@@ -1,241 +1,176 @@
 import React, { useState, useEffect } from 'react';
-import { TurboTab, TurboRoadmap, TurboLesson, TurboNotes, TurboFlashcardDeck, TurboQuiz, TurboPodcastScript, IngestedDocument, TurboQuestion } from './types/turbo.js';
-import { TurboSidebar } from './components/turbo/TurboSidebar.js';
-import { TurboTopBar } from './components/turbo/TurboTopBar.js';
-import { RoadmapView } from './components/turbo/RoadmapView.js';
-import { LearnPlayer } from './components/turbo/LearnPlayer.js';
-import { NotesView } from './components/turbo/NotesView.js';
-import { QuizView } from './components/turbo/QuizView.js';
-import { FlashcardsView } from './components/turbo/FlashcardsView.js';
-import { PodcastView } from './components/turbo/PodcastView.js';
-import { RagSourcesView } from './components/turbo/RagSourcesView.js';
+import { router, RouteState } from './services/router.js';
+import { AuthView } from './components/turbo/AuthView.js';
+import { DashboardView } from './components/turbo/DashboardView.js';
+import { LearnRoadmapView } from './components/turbo/LearnRoadmapView.js';
+import { NotesEditorView } from './components/turbo/NotesEditorView.js';
+import { QuizPlayerView } from './components/turbo/QuizPlayerView.js';
+import { FlashcardsGeneratorView } from './components/turbo/FlashcardsGeneratorView.js';
+import { PodcastLectureView } from './components/turbo/PodcastLectureView.js';
+import { SourcesKnowledgeView } from './components/turbo/SourcesKnowledgeView.js';
 import { EmmaTutorDrawer } from './components/turbo/EmmaTutorDrawer.js';
-import { CreateTopicModal } from './components/turbo/CreateTopicModal.js';
-import {
-  fetchRoadmap,
-  fetchLesson,
-  fetchNotes,
-  fetchFlashcards,
-  fetchQuiz,
-  fetchPodcast,
-  ingestDocument,
-  fetchDocuments,
-  deleteDocument,
-  queryRag
-} from './services/turboApi.js';
+import { Sparkles, X, Check } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<TurboTab>('learn');
-  const [activeTopic, setActiveTopic] = useState<string>(() => {
-    return localStorage.getItem('turbo_active_topic') || 'Graph Algorithms & Dynamic Programming';
-  });
-  const [examDate, setExamDate] = useState<string>('In 2 Weeks');
-  const [streakCount, setStreakCount] = useState<number>(5);
-
-  const [roadmap, setRoadmap] = useState<TurboRoadmap | null>(null);
-  const [lesson, setLesson] = useState<TurboLesson | null>(null);
-  const [notes, setNotes] = useState<TurboNotes | null>(null);
-  const [deck, setDeck] = useState<TurboFlashcardDeck | null>(null);
-  const [quiz, setQuiz] = useState<TurboQuiz | null>(null);
-  const [podcast, setPodcast] = useState<TurboPodcastScript | null>(null);
-  const [documents, setDocuments] = useState<IngestedDocument[]>([]);
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [isEmmaOpen, setIsEmmaOpen] = useState(false);
-  const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
-  const [externalPrompt, setExternalPrompt] = useState<string>('');
-
-  const loadAllModules = async (topic: string, examTimeline: string = 'In 2 Weeks') => {
-    setIsLoading(true);
-    try {
-      localStorage.setItem('turbo_active_topic', topic);
-      setActiveTopic(topic);
-      setExamDate(examTimeline);
-
-      const [rMap, lsn, nts, fCards, qz, pCast, docs] = await Promise.allSettled([
-        fetchRoadmap(topic, examTimeline),
-        fetchLesson(topic),
-        fetchNotes(topic),
-        fetchFlashcards(topic),
-        fetchQuiz(topic),
-        fetchPodcast(topic),
-        fetchDocuments()
-      ]);
-
-      if (rMap.status === 'fulfilled') setRoadmap(rMap.value);
-      if (lsn.status === 'fulfilled') setLesson(lsn.value);
-      if (nts.status === 'fulfilled') setNotes(nts.value);
-      if (fCards.status === 'fulfilled') setDeck(fCards.value);
-      if (qz.status === 'fulfilled') setQuiz(qz.value);
-      if (pCast.status === 'fulfilled') setPodcast(pCast.value);
-      if (docs.status === 'fulfilled') setDocuments(docs.value);
-    } catch {
-      console.error('Error loading Turbo modules');
-    } finally {
-      setIsLoading(false);
+  const [routeState, setRouteState] = useState<RouteState>(() => router.getState());
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(() => {
+    const saved = localStorage.getItem('turbo_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return { name: 'Sarthak Dhawan', email: 'sarthak@example.com' };
+      }
     }
-  };
+    return { name: 'Sarthak Dhawan', email: 'sarthak@example.com' };
+  });
+
+  const [activeTopic, setActiveTopic] = useState('Roadmap: Resume to FAANG/MAANG SDE');
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isEmmaOpen, setIsEmmaOpen] = useState(false);
 
   useEffect(() => {
-    loadAllModules(activeTopic, examDate);
+    const unsubscribe = router.subscribe((state) => {
+      setRouteState(state);
+      window.scrollTo(0, 0);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const handleCreateNewTopic = async (newTopic: string, targetExam: string, sourceText?: string) => {
-    if (sourceText) {
-      try {
-        await ingestDocument(`${newTopic} Notes`, sourceText, 'notes');
-      } catch {}
-    }
-    await loadAllModules(newTopic, targetExam);
-    setCurrentTab('learn');
+  const handleAuthSuccess = (user: { name: string; email: string }) => {
+    setCurrentUser(user);
+    localStorage.setItem('turbo_user', JSON.stringify(user));
   };
 
-  const handleOpenEmmaWithPrompt = (prompt: string) => {
-    setExternalPrompt(prompt);
-    setIsEmmaOpen(true);
-  };
-
-  const handleExplainInChat = (q: TurboQuestion, studentAnswer: string, isCorrect: boolean) => {
-    const prompt = `Hi Emma! In the interactive lesson on ${activeTopic}, I was asked: "${q.question}". I answered: "${studentAnswer}" (which was ${isCorrect ? 'correct' : 'incorrect'}). Can you explain the underlying concept and the common exam traps associated with this?`;
-    handleOpenEmmaWithPrompt(prompt);
-  };
-
-  const handleToggleMilestone = (stageId: string, milestoneId: string) => {
-    if (!roadmap) return;
-    const updatedStages = roadmap.stages.map((stage) => {
-      if (stage.id !== stageId) return stage;
-      const updatedMilestones = stage.milestones.map((m) => {
-        if (m.id !== milestoneId) return m;
-        return { ...m, completed: !m.completed };
-      });
-      const finished = updatedMilestones.filter((m) => m.completed).length;
-      const progressPercent = Math.round((finished / updatedMilestones.length) * 100);
-      return {
-        ...stage,
-        milestones: updatedMilestones,
-        progressPercent
-      };
-    });
-
-    setRoadmap({
-      ...roadmap,
-      stages: updatedStages
-    });
-  };
-
-  const handleIngestDoc = async (title: string, content: string, sourceType: 'text' | 'pdf' | 'slides' | 'notes') => {
-    const res = await ingestDocument(title, content, sourceType);
-    setDocuments((prev) => [res.document, ...prev]);
-  };
-
-  const handleDeleteDoc = async (id: string) => {
-    await deleteDocument(id);
-    setDocuments((prev) => prev.filter((d) => d.id !== id));
+  const handleStartNewLesson = (prompt: string) => {
+    setActiveTopic(prompt);
+    router.navigate('/notes/new-lesson');
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0C0C11] text-zinc-100 font-sans">
-      <TurboSidebar
-        currentTab={currentTab}
-        onTabChange={(tab) => setCurrentTab(tab)}
-        activeTopic={activeTopic}
-        streakCount={streakCount}
-        examDate={examDate}
-        onOpenCreate={() => setIsTopicModalOpen(true)}
-        onToggleEmma={() => setIsEmmaOpen(!isEmmaOpen)}
-        isEmmaOpen={isEmmaOpen}
-      />
+    <div className="min-h-screen bg-[#111114] text-zinc-100 font-sans antialiased select-none relative">
+      {routeState.routeName === 'signup' && (
+        <AuthView initialMode="signup" onAuthSuccess={handleAuthSuccess} />
+      )}
 
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#0F0F14]">
-        <TurboTopBar
-          activeTopic={activeTopic}
-          onOpenTopicModal={() => setIsTopicModalOpen(true)}
-          onRefreshData={() => loadAllModules(activeTopic, examDate)}
-          isLoading={isLoading}
-          onToggleEmma={() => setIsEmmaOpen(!isEmmaOpen)}
-          isEmmaOpen={isEmmaOpen}
-          ragDocCount={documents.length}
+      {routeState.routeName === 'login' && (
+        <AuthView initialMode="login" onAuthSuccess={handleAuthSuccess} />
+      )}
+
+      {routeState.routeName === 'dashboard' && (
+        <DashboardView
+          userName={currentUser?.name || 'Sarthak'}
+          onStartNewLesson={handleStartNewLesson}
+          onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+          onOpenEmma={() => setIsEmmaOpen(true)}
         />
+      )}
 
-        <main className="flex-1 overflow-hidden flex flex-col relative">
-          {currentTab === 'learn' && (
-            <LearnPlayer
-              lesson={lesson}
-              isLoading={isLoading}
-              onExplainInChat={handleExplainInChat}
-              onRestartLesson={() => fetchLesson(activeTopic).then((l) => setLesson(l))}
-            />
-          )}
+      {routeState.routeName === 'notes_learn' && (
+        <LearnRoadmapView
+          noteId={routeState.noteId}
+          topicTitle={activeTopic}
+          onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+          onOpenEmma={() => setIsEmmaOpen(true)}
+        />
+      )}
 
-          {currentTab === 'roadmap' && (
-            <RoadmapView
-              roadmap={roadmap}
-              isLoading={isLoading}
-              onStartLesson={() => setCurrentTab('learn')}
-              onOpenEmmaWithPrompt={handleOpenEmmaWithPrompt}
-              onToggleMilestone={handleToggleMilestone}
-            />
-          )}
+      {routeState.routeName === 'notes_editor' && (
+        <NotesEditorView
+          noteId={routeState.noteId}
+          topicTitle={activeTopic}
+          onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+        />
+      )}
 
-          {currentTab === 'notes' && (
-            <NotesView
-              notes={notes}
-              isLoading={isLoading}
-              onOpenEmmaWithPrompt={handleOpenEmmaWithPrompt}
-            />
-          )}
+      {routeState.routeName === 'notes_quiz' && (
+        <QuizPlayerView
+          noteId={routeState.noteId}
+          topicTitle={activeTopic}
+          onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+          onOpenEmma={() => setIsEmmaOpen(true)}
+        />
+      )}
 
-          {currentTab === 'quiz' && (
-            <QuizView
-              quiz={quiz}
-              isLoading={isLoading}
-              onOpenEmmaWithPrompt={handleOpenEmmaWithPrompt}
-              onRetakeQuiz={() => fetchQuiz(activeTopic).then((q) => setQuiz(q))}
-            />
-          )}
+      {routeState.routeName === 'notes_flashcards' && (
+        <FlashcardsGeneratorView
+          noteId={routeState.noteId}
+          topicTitle={activeTopic}
+          onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+          onOpenEmma={() => setIsEmmaOpen(true)}
+        />
+      )}
 
-          {currentTab === 'flashcards' && (
-            <FlashcardsView
-              deck={deck}
-              isLoading={isLoading}
-              onOpenEmmaWithPrompt={handleOpenEmmaWithPrompt}
-            />
-          )}
+      {routeState.routeName === 'notes_podcast' && (
+        <PodcastLectureView
+          noteId={routeState.noteId}
+          topicTitle={activeTopic}
+          onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+          onOpenEmma={() => setIsEmmaOpen(true)}
+        />
+      )}
 
-          {currentTab === 'podcast' && (
-            <PodcastView
-              podcast={podcast}
-              isLoading={isLoading}
-              onOpenEmmaWithPrompt={handleOpenEmmaWithPrompt}
-            />
-          )}
-
-          {currentTab === 'rag' && (
-            <RagSourcesView
-              documents={documents}
-              isLoading={isLoading}
-              onIngest={handleIngestDoc}
-              onDelete={handleDeleteDoc}
-              onQueryRag={(q) => queryRag(q)}
-            />
-          )}
-        </main>
-      </div>
+      {routeState.routeName === 'notes_source' && (
+        <SourcesKnowledgeView
+          noteId={routeState.noteId}
+          topicTitle={activeTopic}
+          onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+          onOpenEmma={() => setIsEmmaOpen(true)}
+        />
+      )}
 
       <EmmaTutorDrawer
         isOpen={isEmmaOpen}
         onClose={() => setIsEmmaOpen(false)}
         activeTopic={activeTopic}
-        externalPrompt={externalPrompt}
-        onClearExternalPrompt={() => setExternalPrompt('')}
       />
 
-      <CreateTopicModal
-        isOpen={isTopicModalOpen}
-        onClose={() => setIsTopicModalOpen(false)}
-        onCreate={handleCreateNewTopic}
-        isLoading={isLoading}
-      />
+      {isUpgradeModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#181824] border border-[#2B2B40] rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 flex items-center justify-center text-black font-black text-xs">
+                  ★
+                </span>
+                <h2 className="text-lg font-bold text-white">Upgrade to Turbo Pro</h2>
+              </div>
+              <button
+                onClick={() => setIsUpgradeModalOpen(false)}
+                className="text-zinc-500 hover:text-white p-1 rounded-lg"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Unlock unlimited audio lectures, infinite RAG document uploads, automated quiz generation, and priority Bedrock AI inference.
+            </p>
+
+            <div className="space-y-2.5 text-xs text-zinc-300">
+              <div className="flex items-center gap-2.5">
+                <Check size={14} className="text-emerald-400" />
+                <span>Unlimited AI Podcasts & Lecture Transcripts</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Check size={14} className="text-emerald-400" />
+                <span>Multi-GB PDF, Slides, and Textbook RAG Indexing</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Check size={14} className="text-emerald-400" />
+                <span>Smart Spaced-Repetition Review Scheduling</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsUpgradeModalOpen(false)}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-extrabold text-xs shadow-lg shadow-amber-500/25 hover:from-amber-400 hover:to-yellow-400 transition-all active:scale-[0.98]"
+            >
+              Start 7-Day Free Trial
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
