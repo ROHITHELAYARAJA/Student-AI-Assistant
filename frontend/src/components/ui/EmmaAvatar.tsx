@@ -1,6 +1,6 @@
 import React from 'react';
 import { EmmaExpression } from '../../types/study.js';
-import { TurboMascot } from '../turbo/TurboMascot.js';
+import { BlastMascot, MascotState } from '../turbo/BlastMascot.js';
 
 interface EmmaAvatarProps {
   expression?: EmmaExpression;
@@ -11,6 +11,19 @@ interface EmmaAvatarProps {
   useOfficialLogo?: boolean;
   style?: React.CSSProperties;
 }
+
+const mapExpressionToState = (expr: string): MascotState => {
+  switch (expr) {
+    case 'waving': return 'greeting';
+    case 'celebrating': return 'success';
+    case 'thinking': return 'thinking';
+    case 'sleeping': return 'idle';
+    case 'teaching': return 'speaking';
+    case 'confused': return 'error';
+    case 'reading': return 'listening';
+    default: return 'idle';
+  }
+};
 
 export const EmmaAvatar: React.FC<EmmaAvatarProps> = ({
   expression = 'reading',
@@ -39,14 +52,14 @@ export const EmmaAvatar: React.FC<EmmaAvatarProps> = ({
           backgroundColor: '#1E1B4B',
           border: '1.5px solid var(--color-border, #272738)',
           boxShadow: isPulsing
-            ? '0 0 0 3px rgba(124, 58, 237, 0.25), 0 2px 8px rgba(124, 58, 237, 0.2)'
+            ? '0 0 0 3px rgba(249, 115, 22, 0.25), 0 2px 8px rgba(249, 115, 22, 0.2)'
             : '0 1px 4px rgba(0, 0, 0, 0.2)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}
       >
-        <TurboMascot size={size} expression={expression} />
+        <BlastMascot size={size} state={mapExpressionToState(expression)} />
       </div>
 
       {showStatus && (

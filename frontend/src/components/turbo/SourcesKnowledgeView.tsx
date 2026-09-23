@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { router } from '../../services/router.js';
-import { TurboMascot } from './TurboMascot.js';
+import { BlastMascot } from './BlastMascot.js';
 import { getStudyPack, fetchStudyPack } from '../../services/turboApi.js';
 import { TurboStudyPack, TurboSourceItem } from '../../types/turbo.js';
 import {
@@ -119,10 +119,12 @@ export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
       <header className="h-14 px-6 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.navigate('/dashboard')}>
-            <div className="w-6 h-6 rounded-lg bg-purple-600 flex items-center justify-center text-white text-xs font-bold">
-              ⚡
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-orange-500/20 overflow-hidden">
+              <img src="/blast-mascot.png" alt="Blast AI" className="w-full h-full object-cover" />
             </div>
-            <span className="font-headline font-bold text-sm tracking-tight">turbo ai</span>
+            <span className="font-headline font-black text-sm tracking-tight text-white flex items-center gap-1">
+              blast <span className="text-orange-500">ai</span>
+            </span>
           </div>
 
           <div className="h-4 w-[1px] bg-[var(--color-border)]" />
@@ -344,13 +346,13 @@ export const SourcesKnowledgeView: React.FC<SourcesKnowledgeViewProps> = ({
         </main>
       </div>
 
-      {/* Floating Ask Emma AI Button */}
+      {/* Floating Ask Blast AI Button */}
       <button
         onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
-        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40"
+        className="fixed right-6 bottom-8 py-2 px-4 rounded-full bg-[var(--color-surface)] border border-orange-500/30 shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40 group"
       >
-        <TurboMascot size="xs" expression="teaching" />
-        <span>Ask Emma AI</span>
+        <BlastMascot size="xs" state="idle" />
+        <span className="group-hover:text-orange-400 transition-colors">Ask Blast AI</span>
       </button>
     </div>
   );

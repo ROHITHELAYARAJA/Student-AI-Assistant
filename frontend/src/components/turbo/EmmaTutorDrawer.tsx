@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { EmmaExpression } from '../../types/study.js';
 import { requestAiAssistance } from '../../services/api.js';
 import {
   X,
@@ -7,13 +6,13 @@ import {
   RotateCcw,
   User
 } from 'lucide-react';
-import { TurboMascot } from './TurboMascot.js';
+import { BlastMascot, MascotState } from './BlastMascot.js';
 
 interface ChatEntry {
   id: string;
-  sender: 'user' | 'emma';
+  sender: 'user' | 'blast';
   text: string;
-  expression?: EmmaExpression;
+  mascotState?: MascotState;
   timestamp: string;
 }
 
@@ -35,17 +34,25 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
   const [messages, setMessages] = useState<ChatEntry[]>([
     {
       id: 'welcome',
-      sender: 'emma',
-      text: `Hi! I'm Emma, your Turbo AI study copilot. We're currently studying "${activeTopic}". Ask me anything—from concept breakdowns to exam mnemonics!`,
-      expression: 'waving',
+      sender: 'blast',
+      text: `Hi! I'm Blast, your Blast AI study copilot. We're currently studying "${activeTopic}". Ask me anything—from concept breakdowns to exam mnemonics!`,
+      mascotState: 'greeting',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
   const [inputText, setInputText] = useState('');
-  const [currentExpression, setCurrentExpression] = useState<EmmaExpression>('teaching');
+  const [mascotState, setMascotState] = useState<MascotState>('greeting');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMascotState('greeting');
+      const timer = setTimeout(() => setMascotState('idle'), 2200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -77,7 +84,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
     setMessages((prev) => [...prev, userMsg]);
     setInputText('');
     setIsLoading(true);
-    setCurrentExpression('thinking');
+    setMascotState('thinking');
 
     try {
       const response = await requestAiAssistance({
@@ -105,19 +112,22 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
         replyText = `Here is what you need to know about ${activeTopic}: Focus on maintaining strong fundamental boundaries, evaluating edge-case trade-offs, and memorizing the primary invariant constraints!`;
       }
 
-      const emmaMsg: ChatEntry = {
-        id: `e-${Date.now()}`,
-        sender: 'emma',
+      const blastMsg: ChatEntry = {
+        id: `b-${Date.now()}`,
+        sender: 'blast',
         text: replyText,
-        expression: 'teaching',
+        mascotState: 'speaking',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
-      setMessages((prev) => [...prev, emmaMsg]);
-      setCurrentExpression('teaching');
+      setMessages((prev) => [...prev, blastMsg]);
+      setMascotState('speaking');
+      setTimeout(() => setMascotState('happy'), 2200);
+      setTimeout(() => setMascotState('idle'), 4200);
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Unable to connect to Emma tutor.');
-      setCurrentExpression('sleeping');
+      setErrorMessage(err?.message || 'Unable to connect to Blast AI tutor.');
+      setMascotState('error');
+      setTimeout(() => setMascotState('idle'), 2500);
     } finally {
       setIsLoading(false);
     }
@@ -136,13 +146,13 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
       <div className="p-4 border-b border-[#242436] flex items-center justify-between bg-[#141420]">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <TurboMascot size="sm" expression={currentExpression} />
+            <BlastMascot size="sm" state={mascotState} />
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-2 ring-[#101017]" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="font-bold text-white text-xs tracking-wide">Emma AI Study Copilot</h3>
-              <span className="text-[9px] font-bold px-1 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
+              <h3 className="font-bold text-white text-xs tracking-wide">Blast AI Study Copilot</h3>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30 uppercase">
                 Active
               </span>
             </div>
@@ -152,17 +162,19 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
 
         <div className="flex items-center gap-1">
           <button
-            onClick={() =>
+            onClick={() => {
               setMessages([
                 {
                   id: 'reset',
-                  sender: 'emma',
+                  sender: 'blast',
                   text: `Chat cleared! How can I help you master ${activeTopic} today?`,
-                  expression: 'waving',
+                  mascotState: 'greeting',
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }
-              ])
-            }
+              ]);
+              setMascotState('greeting');
+              setTimeout(() => setMascotState('idle'), 2000);
+            }}
             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-[#1C1C2C] transition-colors"
             title="Clear Chat"
           >
@@ -188,7 +200,7 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
           <button
             key={idx}
             onClick={() => handleSendPrompt(pill)}
-            className="px-2.5 py-1 rounded-full bg-[#181826] hover:bg-purple-600/20 text-zinc-300 hover:text-purple-300 border border-[#26263A] whitespace-nowrap transition-all"
+            className="px-2.5 py-1 rounded-full bg-[#181826] hover:bg-orange-600/20 text-zinc-300 hover:text-orange-300 border border-[#26263A] whitespace-nowrap transition-all"
           >
             {pill}
           </button>
@@ -197,31 +209,33 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((msg) => {
-          const isEmma = msg.sender === 'emma';
+          const isBlast = msg.sender === 'blast';
           return (
             <div
               key={msg.id}
-              className={`flex gap-2.5 ${isEmma ? 'items-start' : 'items-end flex-row-reverse'}`}
+              className={`flex gap-2.5 ${isBlast ? 'items-start' : 'items-end flex-row-reverse'}`}
             >
-              {isEmma ? (
-                <TurboMascot size="xs" expression={msg.expression || 'teaching'} className="shrink-0 mt-0.5" />
+              {isBlast ? (
+                <div className="shrink-0 mt-0.5">
+                  <BlastMascot size="xs" state={msg.mascotState || 'idle'} />
+                </div>
               ) : (
-                <div className="w-7 h-7 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0">
+                <div className="w-7 h-7 rounded-full bg-orange-600/30 border border-orange-500/40 flex items-center justify-center text-orange-300 shrink-0">
                   <User size={13} />
                 </div>
               )}
 
               <div
                 className={`p-3 rounded-2xl max-w-[85%] text-xs leading-relaxed space-y-1 ${
-                  isEmma
+                  isBlast
                     ? 'bg-[#181826] border border-[#27273C] text-zinc-200 rounded-tl-sm'
-                    : 'bg-purple-600 text-white rounded-tr-sm shadow-md shadow-purple-600/20'
+                    : 'bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-tr-sm shadow-md shadow-orange-600/20'
                 }`}
               >
                 <div className="whitespace-pre-line">{msg.text}</div>
                 <div
                   className={`text-[9px] ${
-                    isEmma ? 'text-zinc-500 text-right' : 'text-purple-200 text-right'
+                    isBlast ? 'text-zinc-500 text-right' : 'text-orange-200 text-right'
                   }`}
                 >
                   {msg.timestamp}
@@ -233,10 +247,12 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
 
         {isLoading && (
           <div className="flex gap-2.5 items-start">
-            <TurboMascot size="xs" expression="thinking" className="shrink-0 mt-0.5 animate-pulse" />
+            <div className="shrink-0 mt-0.5">
+              <BlastMascot size="xs" state="processing" />
+            </div>
             <div className="p-3 rounded-2xl bg-[#181826] border border-[#27273C] text-xs text-zinc-400 rounded-tl-sm flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
-              <span>Emma is analyzing with Bedrock RAG...</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-ping" />
+              <span>Blast AI is analyzing with Bedrock RAG...</span>
             </div>
           </div>
         )}
@@ -255,14 +271,19 @@ export const EmmaTutorDrawer: React.FC<EmmaTutorDrawerProps> = ({
           <input
             type="text"
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={`Ask Emma about ${activeTopic}...`}
-            className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#181826] border border-[#2A2A40] text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-purple-500"
+            onChange={(e) => {
+              setInputText(e.target.value);
+              if (mascotState === 'idle') {
+                setMascotState('listening');
+              }
+            }}
+            placeholder={`Ask Blast AI about ${activeTopic}...`}
+            className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-[#181826] border border-[#2A2A40] text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-orange-500"
           />
           <button
             type="submit"
             disabled={isLoading || !inputText.trim()}
-            className="absolute right-1.5 top-1.5 p-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 transition-all shadow-md shadow-purple-600/30"
+            className="absolute right-1.5 top-1.5 p-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white disabled:opacity-40 transition-all shadow-md shadow-orange-600/30"
           >
             <Send size={13} />
           </button>

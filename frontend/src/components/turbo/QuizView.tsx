@@ -291,7 +291,7 @@ export const QuizView: React.FC<QuizViewProps> = ({
       </div>
 
       <div className="text-center text-[11px] text-zinc-400">
-        Turbo AI Assessment • Calibrated for Exam Success
+        Blast AI Assessment • Calibrated for Exam Success
       </div>
     </div>
   );

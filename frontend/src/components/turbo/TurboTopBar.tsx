@@ -81,7 +81,7 @@ export const TurboTopBar: React.FC<TurboTopBarProps> = ({
           }`}
         >
           <MessageSquare size={13} />
-          <span>Ask Emma</span>
+          <span>Ask Blast AI</span>
         </button>
       </div>
     </header>

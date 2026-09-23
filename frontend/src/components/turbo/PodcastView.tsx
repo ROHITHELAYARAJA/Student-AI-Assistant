@@ -10,7 +10,7 @@ import {
   User,
   Clock
 } from 'lucide-react';
-import { TurboMascot } from './TurboMascot.js';
+import { BlastMascot } from './BlastMascot.js';
 
 interface PodcastViewProps {
   podcast: TurboPodcastScript | null;
@@ -124,14 +124,14 @@ export const PodcastView: React.FC<PodcastViewProps> = ({
       <div className="p-6 rounded-3xl bg-gradient-to-br from-[#161626] to-[#0E0E18] border border-[#28283C] shadow-2xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0 p-1">
-              <TurboMascot size="md" expression="reading" />
+            <div className="w-16 h-16 rounded-2xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center shrink-0 p-1">
+              <BlastMascot size="md" state={isPlaying ? 'speaking' : 'listening'} />
             </div>
 
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold uppercase tracking-wider">
-                  Turbo Audio Session
+                <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30 text-[10px] font-bold uppercase tracking-wider">
+                  Blast Audio Session
                 </span>
                 <span className="flex items-center gap-1 text-[11px] text-zinc-400">
                   <Clock size={12} />
@@ -225,7 +225,7 @@ export const PodcastView: React.FC<PodcastViewProps> = ({
             >
               <div className="flex items-center gap-2.5 mb-1.5">
                 {isEmma ? (
-                  <TurboMascot size="xs" expression="teaching" />
+                  <BlastMascot size="xs" state={isCurrent && isPlaying ? 'speaking' : 'idle'} />
                 ) : (
                   <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
                     <User size={12} />

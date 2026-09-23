@@ -10,7 +10,7 @@ import {
   RotateCcw,
   BookOpenCheck
 } from 'lucide-react';
-import { TurboMascot } from './TurboMascot.js';
+import { BlastMascot } from './BlastMascot.js';
 
 interface LearnPlayerProps {
   lesson: TurboLesson | null;
@@ -133,8 +133,8 @@ export const LearnPlayer: React.FC<LearnPlayerProps> = ({
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-xl mx-auto w-full text-center">
         <div className="p-8 rounded-3xl bg-[#14141E] border border-[#2A2A3E] shadow-2xl w-full space-y-6">
-          <div className="w-20 h-20 mx-auto rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center p-1">
-            <TurboMascot size="lg" expression="celebrating" />
+          <div className="w-24 h-24 mx-auto flex items-center justify-center">
+            <BlastMascot size="lg" state="success" />
           </div>
 
           <div>

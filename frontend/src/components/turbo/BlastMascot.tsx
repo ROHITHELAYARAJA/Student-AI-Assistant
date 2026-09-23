@@ -15,6 +15,8 @@ export type BlastMascotState =
   | 'empty_state'
   | 'waiting';
 
+export type MascotState = BlastMascotState;
+
 export interface BlastMascotProps {
   state?: BlastMascotState;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | number;

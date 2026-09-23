@@ -261,18 +261,18 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
             <div className="p-6 md:p-8 rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl relative overflow-hidden space-y-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="flex items-center gap-2 text-xs text-purple-400 font-bold mb-1.5">
-                    <Radio size={14} className={isPlaying ? 'text-rose-400 animate-pulse' : 'text-purple-400'} />
-                    <span>TURBO AI AUDIO PODCAST • DUAL-VOICE</span>
+                  <div className="flex items-center gap-2 text-xs text-orange-400 font-bold mb-1.5">
+                    <Radio size={14} className={isPlaying ? 'text-red-400 animate-pulse' : 'text-orange-400'} />
+                    <span>BLAST AI AUDIO PODCAST • DUAL-VOICE</span>
                   </div>
                   <h1 className="font-headline text-2xl font-extrabold text-[var(--color-text)] tracking-tight">
                     {studyPack?.podcast?.title || `Deep Dive: ${activeTitle}`}
                   </h1>
                   <p className="text-xs text-[var(--color-text-muted)] mt-1.5 leading-relaxed max-w-lg">
-                    {studyPack?.podcast?.overview || `Emma and Alex dissect core principles, interview pitfalls, and practical study takeaways for ${activeTitle}.`}
+                    {studyPack?.podcast?.overview || `Blast AI and Alex dissect core principles, interview pitfalls, and practical study takeaways for ${activeTitle}.`}
                   </p>
                 </div>
-                <TurboMascot size="md" expression={isPlaying ? 'celebrating' : 'reading'} />
+                <BlastMascot size="md" state={isPlaying ? 'speaking' : 'listening'} />
               </div>
 
               {/* Animated Waveform Simulation */}
@@ -342,10 +342,10 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
-                          <TurboMascot size="xs" expression={isEmma ? 'teaching' : 'thinking'} />
+                          <BlastMascot size="xs" state={isCurrent && isPlaying ? 'speaking' : 'idle'} />
                           <span
                             className={`font-headline font-bold text-xs ${
-                              isEmma ? 'text-purple-400' : 'text-indigo-400'
+                              isEmma ? 'text-orange-400' : 'text-amber-300'
                             }`}
                           >
                             {seg.speaker}
@@ -353,7 +353,7 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
                         </div>
 
                         {isCurrent && isPlaying && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 animate-pulse">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30 animate-pulse">
                             Speaking
                           </span>
                         )}
@@ -371,13 +371,13 @@ export const PodcastLectureView: React.FC<PodcastLectureViewProps> = ({
         </main>
       </div>
 
-      {/* Floating Ask Emma AI Button */}
+      {/* Floating Ask Blast AI Button */}
       <button
         onClick={onOpenEmma || (() => router.navigate(`/notes/${noteId}/editor`))}
-        className="fixed right-6 bottom-8 py-2 px-3.5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40"
+        className="fixed right-6 bottom-8 py-2 px-4 rounded-full bg-[var(--color-surface)] border border-orange-500/30 shadow-xl text-xs font-bold text-[var(--color-text)] flex items-center gap-2 hover:scale-105 active:scale-95 transition-all z-40 group"
       >
-        <TurboMascot size="xs" expression="teaching" />
-        <span>Ask Emma AI</span>
+        <BlastMascot size="xs" state="idle" />
+        <span className="group-hover:text-orange-400 transition-colors">Ask Blast AI</span>
       </button>
     </div>
   );

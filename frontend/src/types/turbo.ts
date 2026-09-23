@@ -102,7 +102,7 @@ export interface TurboQuiz {
 }
 
 export interface TurboPodcastSegment {
-  speaker: 'Emma (Host)' | 'Alex (Student)';
+  speaker: 'Blast (AI Host)' | 'Emma (Host)' | 'Alex (Student)' | string;
   line: string;
 }
 

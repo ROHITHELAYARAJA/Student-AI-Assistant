@@ -13,7 +13,7 @@ import {
   Calendar,
   Sparkles
 } from 'lucide-react';
-import { TurboMascot } from './TurboMascot.js';
+import { BlastMascot } from './BlastMascot.js';
 
 interface TurboSidebarProps {
   currentTab: TurboTab;
@@ -52,20 +52,20 @@ export const TurboSidebar: React.FC<TurboSidebarProps> = ({
         <div className="flex items-center gap-3">
           <div className="relative">
             <img
-              src="/emma-logo.jpg"
-              alt="Emma AI Logo"
-              className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500/50 shadow-lg shadow-purple-500/20"
+              src="/blast-mascot.png"
+              alt="Blast AI Logo"
+              className="w-10 h-10 rounded-full object-cover ring-2 ring-orange-500/50 shadow-lg shadow-orange-500/20"
             />
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#0F0F14]" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-white tracking-wide text-sm">Turbo AI</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
+              <span className="font-bold text-white tracking-wide text-sm">Blast AI</span>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30">
                 PRO
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400">Emma Study Copilot</p>
+            <p className="text-[11px] text-zinc-400">Blast Study Copilot</p>
           </div>
         </div>
       </div>
@@ -142,13 +142,13 @@ export const TurboSidebar: React.FC<TurboSidebarProps> = ({
           onClick={onToggleEmma}
           className={`w-full py-2 px-3 rounded-xl border flex items-center justify-between text-xs transition-all ${
             isEmmaOpen
-              ? 'bg-purple-600/25 border-purple-500/60 text-purple-200'
+              ? 'bg-orange-600/25 border-orange-500/60 text-orange-200'
               : 'bg-[#181826] border-[#2E2E42] text-zinc-300 hover:bg-[#1E1E30]'
           }`}
         >
           <div className="flex items-center gap-2">
-            <TurboMascot size="xs" expression="teaching" />
-            <span className="font-medium text-[11px]">Ask Emma Tutor</span>
+            <BlastMascot size="xs" state="idle" />
+            <span className="font-medium text-[11px]">Ask Blast Tutor</span>
           </div>
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         </button>
