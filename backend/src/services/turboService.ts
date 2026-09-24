@@ -1,4 +1,5 @@
 import { ragEngine, DocumentChunk } from './ragEngine.js';
+import { synthesizeDeepExplanation } from './deepKnowledgeEngine.js';
 
 export interface TurboRoadmapMilestone {
   id: string;
@@ -1197,20 +1198,27 @@ Structure your response clearly:
 Write in clean, well-formatted markdown.`;
 
   let explanation = await callBedrock(prompt, modelId);
+  let resolvedModel = modelId || 'Claude 3 Haiku';
+
   if (!explanation || explanation.trim().length < 50) {
-    explanation = `### Comprehensive Analysis of ${validation.cleanTopic}
+    const deepData = synthesizeDeepExplanation(validation.cleanTopic, message);
+    let formatted = `### ${deepData.title}\n\n${deepData.explanation}`;
 
-${validation.cleanTopic} is a core academic subject requiring structured understanding of principles, invariant rules, and trade-offs.
+    if (deepData.codeExample) {
+      const lang = deepData.codeExample.includes('git') ? 'bash' : (deepData.codeExample.includes('SELECT') ? 'sql' : 'python');
+      formatted += `\n\n### Practical Implementation Example\n\`\`\`${lang}\n${deepData.codeExample}\n\`\`\``;
+    }
 
-#### 1. Foundational Architecture & Core Rules
-• Establish clear conceptual boundaries: define what state transitions are valid and what guarantees the system maintains.
-• Understand execution dynamics: trace how inputs transform through the core operational pipeline.
+    if (deepData.keyPoints && deepData.keyPoints.length > 0) {
+      formatted += `\n\n### Core Key Takeaways for Mastery\n` + deepData.keyPoints.map(p => `• ${p}`).join('\n');
+    }
 
-#### 2. Key Mechanisms & Implementation Patterns
-• Analyze runtime characteristics: balance asymptotic time complexity against space overhead.
-• Verify edge-case stability: guard against degenerate inputs, race conditions, or unhandled boundary states.
+    if (deepData.examTip) {
+      formatted += `\n\n> 💡 **Exam & Technical Interview Tip**: ${deepData.examTip}`;
+    }
 
-I have generated your complete **Interactive Study Suite** below! You can dive straight into the **Learning Roadmap**, test your skills with the **Quiz**, study **Smart Notes**, flip **Flashcards**, or view **Google Sources**.`;
+    explanation = formatted;
+    resolvedModel = 'Blast Deep RAG Intelligence Engine';
   }
 
   const questionCount = validation.requestedQuestionCount || 5;
@@ -1224,7 +1232,7 @@ I have generated your complete **Interactive Study Suite** below! You can dive s
     isStudyTopic: true,
     topic: validation.cleanTopic,
     studyPack,
-    modelUsed: modelId || 'Claude 3 Haiku',
+    modelUsed: resolvedModel,
     latencyMs: Date.now() - startTime
   };
 }
