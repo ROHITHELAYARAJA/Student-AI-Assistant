@@ -10,7 +10,7 @@ import {
   DocumentChunk
 } from '../types/turbo.js';
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = '';
 
 export async function fetchRoadmap(topic: string, examDate?: string): Promise<TurboRoadmap> {
   const res = await fetch(`${API_BASE_URL}/api/turbo/generate-roadmap`, {
@@ -143,7 +143,7 @@ export async function deleteDocument(id: string): Promise<boolean> {
 
 export async function fetchStudyPack(
   topic: string,
-  options?: { questionCount?: number; modelId?: string }
+  options?: { questionCount?: number; modelId?: string; persist?: boolean }
 ): Promise<TurboStudyPack> {
   const res = await fetch(`${API_BASE_URL}/api/turbo/generate-study-pack`, {
     method: 'POST',
@@ -159,7 +159,7 @@ export async function fetchStudyPack(
     throw new Error(errorData?.message || 'Failed to generate full study pack');
   }
   const pack: TurboStudyPack = await res.json();
-  saveStudyPack(pack);
+  if (options?.persist !== false) saveStudyPack(pack);
   return pack;
 }
 
@@ -251,4 +251,3 @@ export function saveStudyPack(pack: TurboStudyPack): void {
     console.error('Failed to save study pack to localStorage:', err);
   }
 }
-

@@ -253,7 +253,7 @@ async function callBedrock(prompt: string, preferredModel?: string): Promise<str
   const bedrockRegion = process.env.AWS_REGION || 'us-east-1';
 
   if (!bedrockToken) {
-    return '';
+    throw new Error('AI generation is not configured yet. You can still import notes or explore the example notebook.');
   }
 
   const defaultModels = [
@@ -305,7 +305,7 @@ async function callBedrock(prompt: string, preferredModel?: string): Promise<str
     }
   }
 
-  return '';
+  throw new Error('The AI service could not complete your request. Please try again later. Your saved notes are safe.');
 }
 
 function extractJsonBlock(rawText: string): any {
@@ -1236,4 +1236,3 @@ Write in clean, well-formatted markdown.`;
     latencyMs: Date.now() - startTime
   };
 }
-

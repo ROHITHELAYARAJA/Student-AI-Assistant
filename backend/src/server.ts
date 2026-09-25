@@ -1,62 +1,26 @@
+import './config';
 import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { handleAssist, handleGetOperations, handleHealth } from './controllers/assistController.js';
-import {
-  handleGenerateRoadmap,
-  handleGenerateLesson,
-  handleGenerateNotes,
-  handleGenerateFlashcards,
-  handleGenerateQuiz,
-  handleGeneratePodcast,
-  handleGenerateStudyPack,
-  handleTurboChat,
-  handleRagIngest,
-  handleRagList,
-  handleRagQuery,
-  handleRagDelete
-} from './controllers/turboController.js';
-
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
-  res.setHeader('Access-Control-Allow-Private-Network', 'true');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
+import helmet from 'helmet';
+import path from 'node:path';
+import { existsSync } from 'node:fs';
+import { api } from './study/api';
+export const app = express();
+app.disable('x-powered-by');
+app.use(helmet({ contentSecurityPolicy: { directives: { 'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], 'font-src': ["'self'", 'https://fonts.gstatic.com'], 'img-src': ["'self'", 'data:', 'blob:'], 'script-src': ["'self'"], 'upgrade-insecure-requests': process.env.NODE_ENV === 'production' ? [] : null } } }));
+app.use(express.json({ limit: '2mb' }));
+app.use('/api', (req,res,next) => {
+  res.setHeader('Cache-Control','no-store');
+  if (!['GET','HEAD','OPTIONS'].includes(req.method) && req.headers.origin) {
+    const allowed = (process.env.APP_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000,http://127.0.0.1:5000').split(',');
+    if (!allowed.includes(req.headers.origin)) { res.status(403).json({message:'This request origin is not allowed.'}); return; }
   }
   next();
 });
-
-app.use(cors({ origin: '*' }));
-app.use(express.json({ limit: '25mb' }));
-app.use(express.urlencoded({ extended: true, limit: '25mb' }));
-
-app.get('/api/health', handleHealth);
-app.get('/api/operations', handleGetOperations);
-app.post('/api/assist', handleAssist);
-
-app.post('/api/turbo/chat', handleTurboChat);
-app.post('/api/turbo/generate-study-pack', handleGenerateStudyPack);
-app.post('/api/turbo/generate-roadmap', handleGenerateRoadmap);
-app.post('/api/turbo/generate-lesson', handleGenerateLesson);
-app.post('/api/turbo/generate-notes', handleGenerateNotes);
-app.post('/api/turbo/generate-flashcards', handleGenerateFlashcards);
-app.post('/api/turbo/generate-quiz', handleGenerateQuiz);
-app.post('/api/turbo/generate-podcast', handleGeneratePodcast);
-
-app.post('/api/rag/ingest', handleRagIngest);
-app.get('/api/rag/documents', handleRagList);
-app.post('/api/rag/query', handleRagQuery);
-app.delete('/api/rag/documents/:id', handleRagDelete);
-
-app.listen(PORT, () => {
-  process.stdout.write(`Turbo AI Study Assistant backend server running on http://localhost:${PORT}\n`);
-});
-
+app.get('/api/health',(_req,res)=>res.json({status:'healthy',service:'blast-study'}));
+app.use('/api',api);
+app.use('/api',(_req,res)=>res.status(404).json({message:'This endpoint is not available.'}));
+const frontend = path.resolve(__dirname,'../../frontend/dist');
+if (existsSync(frontend)) { app.use(express.static(frontend)); app.get('*',(_req,res)=>res.sendFile(path.join(frontend,'index.html'))); }
+app.use((err:any,_req:express.Request,res:express.Response,_next:express.NextFunction)=>res.status(400).json({message:'Invalid request body.'}));
+if (require.main === module) app.listen(Number(process.env.PORT || 5000),process.env.HOST || '127.0.0.1',()=>console.log('Blast AI study server is ready.'));
 export default app;

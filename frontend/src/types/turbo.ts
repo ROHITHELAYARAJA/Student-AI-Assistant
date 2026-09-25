@@ -54,6 +54,7 @@ export interface TurboLesson {
 }
 
 export interface TurboNotesSection {
+  sourceIds?: string[];
   heading: string;
   content: string;
   bulletPoints?: string[];
@@ -74,6 +75,7 @@ export interface TurboNotes {
 }
 
 export interface TurboFlashcard {
+  sourceIds?: string[];
   id: string;
   front: string;
   back: string;
@@ -87,6 +89,7 @@ export interface TurboFlashcardDeck {
 }
 
 export interface TurboQuizItem {
+  sourceIds?: string[];
   id: string;
   question: string;
   options: string[];
@@ -133,6 +136,9 @@ export interface IngestedDocument {
 }
 
 export interface TurboSourceItem {
+  documentId?: string;
+  page?: number;
+  excerpt?: string;
   id: string;
   title: string;
   category: string;
@@ -143,6 +149,10 @@ export interface TurboSourceItem {
 }
 
 export interface TurboStudyPack {
+  documentIds?: string[];
+  favorite?: boolean;
+  folder?: string;
+  metadata?: { modelId: string; generatedAt: string; difficulty?: string; language?: string };
   id: string;
   topic: string;
   createdAt: string;

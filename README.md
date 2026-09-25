@@ -1,185 +1,51 @@
-# ⚡ Blast AI — Master Study Platform
+# Blast AI
 
-> **Modern AI-Powered Study & Learning Web Application powered by AWS Bedrock**  
-> Complete with interactive roadmap tracks, live audio lecture podcasts, spaced-repetition flashcards, intelligent quizzes, RAG knowledge indexing, and Blast AI Tutor.
+A branded study workspace built with React, TypeScript, Express and AWS Bedrock. The active app turns source documents or topics into structured notes, flashcards, quizzes, learning milestones and an audio recap script. A document-aware tutor uses source excerpts and conversation history.
 
----
+Read [implementation status](docs/IMPLEMENTATION-STATUS.md) for verified capabilities, original defects, AWS quota blockage and release gaps. This is a working local implementation, not a certification of full Turbo AI parity or production readiness.
 
-## 🧭 System Overview
+## Run locally
 
-Blast AI is a full-stack, standalone web application that transforms lecture notes, syllabi, PDFs, and YouTube transcripts into dynamic, interactive study materials.
+Requires Node.js 24 or newer (uses built-in SQLite).
 
-```
-┌────────────────────────────────────────────────────────┐
-│               Frontend: React 18 + Vite                │
-│    Blast Dark UI • Client Router • Web Speech Audio    │
-├──────────────────────────┬─────────────────────────────┤
-│   Study Hub Modules      │   Blast AI Study Copilot    │
-│   • Learn Roadmaps       │   • Multi-State Mascot      │
-│   • Rich Notes Editor    │   • Context-Aware Chat      │
-│   • Interactive Quiz     │   • Instant Prompt Actions  │
-│   • 3D Flashcards Deck   │                             │
-│   • Audio Podcast Stream │                             │
-│   • Multi-Source RAG     │                             │
-└──────────────────────────┴─────────────────────────────┘
-                           │ HTTP / REST
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│            Backend: Node.js + TypeScript               │
-│    Express REST API • Semantic RAG • AWS Bedrock AI    │
-├────────────────────────────────────────────────────────┤
-│  • AWS Bedrock Converse API (Claude 3, LLaMA 3, Nova)   │
-│  • Local In-Memory BM25/Cosine Semantic RAG Engine    │
-│  • High-Yield Academic Fallback Synthesis Engine       │
-└────────────────────────────────────────────────────────┘
-```
+1. Run `npm --prefix backend ci` and `npm --prefix frontend ci`.
+2. Copy `backend/.env.example` to `backend/.env` only if no configuration exists. Set your selected AWS Region and Bedrock API key. Never place the key in frontend variables or commit it.
+3. In separate terminals, run `npm run dev:backend` and `npm run dev:frontend`.
+4. Open http://127.0.0.1:3000/dashboard.
 
----
+The local workspace starts with a private guest session. Register through profile settings to attach that guest's notebooks to an account. Production mode requires an account and HTTPS cookies. Keep the local session cookie or register before clearing browser data.
 
-## 🌟 Core Features & Modules
+## Build and test
 
-### 1. 🏠 Interactive Dashboard (`/dashboard`)
-- **Lecture Capture**: Record speech in real time with live microphone transcription.
-- **Multi-Modal Input**: Drop documents, paste syllabus notes, or import YouTube lectures.
-- **Progress Tracking**: View active courses, chapters, and recent completion percentages.
+- `npm run build` compiles both applications.
+- `npm test` builds the backend and tests the workflow using a temporary database and mocked AI. It does not spend AWS credits.
+- `npm run start:backend` serves the built API and frontend at http://127.0.0.1:5000. Build first.
+- `npm run preview` previews frontend assets only; use the backend server for an integrated built preview.
 
-### 2. 🗺️ Guided Learning Roadmap (`/notes/:id`)
-- Step-by-step sequential study checkpoints.
-- Chapter tracking with visual completion statuses (Completed, Current, Checkpoint, Locked).
-- Instant jump-in to resume studying where you left off.
+## Inputs and learning tools
 
-### 3. 📝 Smart Notes Studio (`/notes/:id/editor`)
-- Rich typography with Space Grotesk and DM Sans font pairings.
-- Built-in formatting toolbar (Font family, size, bold, italic, lists, formulas, tables).
-- Embedded side-drawer AI copilot to ask questions directly alongside your document.
+Searchable PDF (up to 10 MB / 80 pages), TXT and Markdown are supported. Scans are rejected when OCR is required. YouTube import depends on accessible public captions. Live lecture transcription depends on browser speech recognition. Uploaded audio transcription is not configured.
 
-### 4. 🎯 Interactive Quiz Player (`/notes/:id/quiz`)
-- Multiple-choice questions categorized by topic and difficulty.
-- Hints, real-time score tracking, and immediate feedback.
-- Settings modal to customize quiz parameters.
+Generated content is validated before saving. Notes, questions, cards and audio dialogue are rendered as separate study tools. The tutor displays a summary, explanation sections, source links and a check-your-understanding question. Audio playback uses browser speech synthesis.
 
-### 5. 🗂️ Active Recall Flashcards (`/notes/:id/flashcards`)
-- 3D card flipping for spaced-repetition memorization.
-- Flexible deck sizes: Quick review (10), Standard (20), Comprehensive (30), Deep dive (50).
-- Keyboard shortcuts and navigation.
+## Storage and deployment
 
-### 6. 🎧 Audio Podcast Lecture Stream (`/notes/:id/podcast`)
-- Dual-speaker dialogue format: Blast (Host) & Alex (Student).
-- **Web Speech Synthesis Audio Engine**: Play/pause voice playback, dynamic speaker switching, and synchronised audio node highlights.
+SQLite data is stored under `backend/data` by default. `BLAST_DATA_DIR` selects a persistent private directory. Back up the database consistently, including SQLite's WAL state; do not deploy to ephemeral filesystem storage. Current job execution assumes one backend process. An interrupted server job is marked failed and must be retried.
 
-### 7. 📚 Knowledge Sources & RAG Indexing (`/notes/:id/source`)
-- Ingest PDFs, slides, and notes into semantic chunk embeddings.
-- Full vector retrieval engine for grounded, hallucination-free AI answers.
+For deployment, configure HTTPS, `NODE_ENV=production`, an exact `APP_ORIGINS`, and appropriate `HOST` behind a trusted reverse proxy. Review backup, account recovery, monitoring, worker durability and storage needs in the implementation status before public release. Do not expose a development guest server publicly.
 
-### 8. 👩‍🏫 Global Blast AI Copilot
-- Available on every screen via the floating mascot button.
-- Dynamic reactions and context-aware study tutoring.
+## Model configuration
 
----
+The server allows in-Region Nova Pro, Nova Lite and OpenAI GPT OSS 120B IDs. Model catalog presence does not guarantee available invocation quotas. The supplied key is loaded only on the backend. No cross-Region inference profile is substituted.
 
-## 🚀 Getting Started
+During verification AWS rejected invocation with a daily token-quota error despite remaining promotional credits. Live generation quality remains unverified until that quota becomes available. The example notebook is explicitly labelled and is never presented as model-generated output.
 
-### Prerequisites
-- **Node.js**: v18.0.0 or higher
-- **npm**: v9.0.0 or higher
+## Code layout
 
-### Installation
+- `frontend/src/components/workspace`: active UI and study tools
+- `frontend/src/services/studyApi.ts`: authenticated requests and job reconnection
+- `backend/src/study`: sessions, SQLite, PDF ingestion, generation schemas, model calls and tutor
+- `scripts/study-integration.test.cjs`: current integration suite
+- `docs/TURBO-AI-AUDIT.md`: historical audit of the original code
 
-```bash
-# Clone the repository
-git clone https://github.com/ROHITHELAYARAJA/Student-AI-Assistant.git
-cd Student-AI-Assistant
-
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
-cd ..
-```
-
-### Environment Configuration
-
-In `backend/.env`:
-```env
-PORT=5000
-AWS_REGION=us-east-1
-AWS_BEARER_TOKEN_BEDROCK=your_bearer_token_here
-```
-*(Note: If no Bedrock token is provided or rate limits are reached, the system automatically runs with the built-in resilient academic synthesis engine.)*
-
----
-
-## 🏃 Running the Application
-
-### Option A: Run Both Servers Simultaneously
-```bash
-# Start backend server (port 5000)
-npm run dev:backend
-
-# In a second terminal, start frontend dev server (port 3000)
-npm run dev:frontend
-```
-
-Open **`http://localhost:3000/`** in your browser.
-
-### Option B: Build for Production
-```bash
-# Build both frontend and backend
-npm run build
-
-# Start backend
-npm run start:backend
-```
-
----
-
-## 📂 Project Structure
-
-```
-Student-AI-Assistant/
-├── backend/
-│   ├── src/
-│   │   ├── controllers/
-│   │   │   ├── assistController.ts     # Legacy & study assistant router
-│   │   │   └── turboController.ts      # Turbo AI endpoints (roadmap, quiz, notes, RAG)
-│   │   ├── services/
-│   │   │   ├── aiService.ts            # AWS Bedrock Claude integration
-│   │   │   ├── ragEngine.ts            # Semantic chunking and vector index
-│   │   │   └── turboService.ts         # High-yield study generation engine
-│   │   └── server.ts                   # Express application entry point
-│   ├── .env                            # Environment variables
-│   ├── package.json
-│   └── tsconfig.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   └── turbo/
-│   │   │       ├── AuthView.tsx                # Sign up & login screens
-│   │   │       ├── DashboardView.tsx           # Main Turbo study dashboard
-│   │   │       ├── LearnRoadmapView.tsx        # Structured learning roadmap
-│   │   │       ├── NotesEditorView.tsx         # Rich notes studio with copilot
-│   │   │       ├── QuizPlayerView.tsx          # Interactive quiz engine
-│   │   │       ├── FlashcardsGeneratorView.tsx # 3D flashcard player
-│   │   │       ├── PodcastLectureView.tsx      # Dual-speaker audio player
-│   │   │       ├── SourcesKnowledgeView.tsx    # RAG document management
-│   │   │       └── EmmaTutorDrawer.tsx         # Global AI mascot tutor drawer
-│   │   ├── services/
-│   │   │   ├── router.ts               # Client-side hashless URL router
-│   │   │   └── turboApi.ts             # API client connecting frontend to backend
-│   │   ├── App.tsx                     # Main application component
-│   │   └── main.tsx                    # React DOM entry
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.ts
-├── package.json                        # Root workspace scripts
-└── walkthrough.md                      # Architecture and design documentation
-```
-
----
-
-## 🛡️ License
-
-MIT License. Built for students, self-learners, and engineers everywhere.
+Legacy components and services remain for reference but their API routes are not mounted. Historical audit probes assert previous defects and are not the current test suite. Previously saved browser-local packs are left intact but not automatically imported into an account.

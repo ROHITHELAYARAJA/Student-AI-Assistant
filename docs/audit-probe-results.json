@@ -1,0 +1,51 @@
+{
+  "mode": "offline synthetic diagnostic",
+  "results": [
+    {
+      "name": "Chunk limit not enforced for long paragraphs",
+      "status": "issue reproduced",
+      "evidence": {
+        "chunks": 1,
+        "characters": 14999
+      }
+    },
+    {
+      "name": "Unavailable AI returns unrelated instructional content",
+      "status": "issue reproduced",
+      "evidence": {
+        "topic": "Photosynthesis",
+        "formulas": [
+          "Cost = O(n log n) average traversal bound"
+        ]
+      }
+    },
+    {
+      "name": "Generated sources are search URLs, not supporting citations",
+      "status": "issue reproduced",
+      "evidence": [
+        "https://www.google.com/search?q=Photosynthesis+documentation+tutorial",
+        "https://scholar.google.com/scholar?q=Photosynthesis",
+        "https://en.wikipedia.org/wiki/Special:Search?search=Photosynthesis",
+        "https://www.youtube.com/results?search_query=Photosynthesis+course+tutorial"
+      ]
+    },
+    {
+      "name": "Invalid quiz schema and wrong question count accepted",
+      "status": "issue reproduced",
+      "evidence": {
+        "requested": 5,
+        "returned": [
+          {}
+        ]
+      }
+    },
+    {
+      "name": "Chat history omitted from all provider prompts",
+      "status": "issue reproduced",
+      "evidence": {
+        "providerCalls": 6,
+        "historyIncluded": false
+      }
+    }
+  ]
+}

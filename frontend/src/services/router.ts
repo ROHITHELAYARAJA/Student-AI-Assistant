@@ -6,6 +6,7 @@ export type RouteName =
   | 'notes_flashcards'
   | 'notes_podcast'
   | 'notes_source'
+  | 'notes_chat'
   | 'signup'
   | 'login';
 
@@ -28,10 +29,11 @@ export function parsePath(pathname: string): RouteState {
     return { routeName: 'dashboard', fullPath: '/dashboard' };
   }
 
-  const notesMatch = cleanPath.match(/^\/notes\/([^/]+)(\/(editor|quiz|flashcards|podcast|source))?$/);
+  const notesMatch = cleanPath.match(/^\/notes\/([^/]+)(\/(editor|quiz|flashcards|podcast|sources?|chat))?$/);
   if (notesMatch) {
     const noteId = notesMatch[1];
     const sub = notesMatch[3];
+    if (sub === 'chat') return { routeName: 'notes_chat', noteId, fullPath: `/notes/${noteId}/chat` };
     if (sub === 'editor') {
       return { routeName: 'notes_editor', noteId, fullPath: `/notes/${noteId}/editor` };
     }
@@ -44,7 +46,7 @@ export function parsePath(pathname: string): RouteState {
     if (sub === 'podcast') {
       return { routeName: 'notes_podcast', noteId, fullPath: `/notes/${noteId}/podcast` };
     }
-    if (sub === 'source') {
+    if (sub === 'source' || sub === 'sources') {
       return { routeName: 'notes_source', noteId, fullPath: `/notes/${noteId}/source` };
     }
     return { routeName: 'notes_learn', noteId, fullPath: `/notes/${noteId}` };

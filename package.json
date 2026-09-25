@@ -10,6 +10,8 @@
     "build:frontend": "npm --prefix frontend run build",
     "build": "npm --prefix backend run build && npm --prefix frontend run build",
     "start:backend": "npm --prefix backend start",
-    "preview": "npm --prefix frontend run preview"
-  }
+    "preview": "npm --prefix frontend run preview",
+    "test": "npm run build:backend && node --test scripts/study-integration.test.cjs"
+  },
+  "engines": { "node": ">=24" }
 }
