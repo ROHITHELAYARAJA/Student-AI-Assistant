@@ -1,8 +1,12 @@
-# Blast AI
+# Blast AI 🚀
 
-A branded study workspace built with React, TypeScript, Express and AWS Bedrock. The active app turns source documents or topics into structured notes, flashcards, quizzes, learning milestones and an audio recap script. A document-aware tutor uses source excerpts and conversation history.
+[![Live Demo](https://img.shields.io/badge/AWS%20S3-Live%20Demo-orange?logo=amazon-aws)](http://blast-ai-by-rohith.s3-website-us-east-1.amazonaws.com)
 
-Read [implementation status](docs/IMPLEMENTATION-STATUS.md) for verified capabilities, original defects, AWS quota blockage and release gaps. This is a working local implementation, not a certification of full Turbo AI parity or production readiness.
+> 🌐 **Live Application:** [http://blast-ai-by-rohith.s3-website-us-east-1.amazonaws.com](http://blast-ai-by-rohith.s3-website-us-east-1.amazonaws.com)
+
+A modern, branded study workspace built with React, TypeScript, Express, and AI models. Blast AI turns source documents or study topics into structured notes, flashcards, quizzes, learning milestones, and document-aware AI tutoring.
+
+Read [implementation status](docs/IMPLEMENTATION-STATUS.md) for verified capabilities and architecture details.
 
 ## Run locally
 
