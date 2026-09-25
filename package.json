@@ -11,7 +11,7 @@
     "build": "npm --prefix backend run build && npm --prefix frontend run build",
     "start:backend": "npm --prefix backend start",
     "preview": "npm --prefix frontend run preview",
-    "test": "npm run build:backend && node --test scripts/study-integration.test.cjs"
+    "test": "npm run build:backend && node --test scripts/model-router.test.cjs scripts/study-integration.test.cjs"
   },
   "engines": { "node": ">=24" }
 }

@@ -6,9 +6,10 @@ const path=require('node:path');
 process.env.BLAST_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'blast-study-test-'));
 process.env.NODE_ENV='test';
 const model=require('../backend/dist/study/model');
+model.availableModels=async()=>model.models;
 let calls=[],invalid=false;
 model.invoke=async(system,messages,modelId)=>{
-  calls.push({system,messages});
+  calls.push({system,messages,modelId});
   if(invalid)return {text:'{"quiz":{"questions":[{}]}}',modelId:'offline-fixture'};
   if(system.includes('You are tutoring'))return {modelId:'offline-fixture',text:JSON.stringify({title:'A clear answer',summary:'This is an offline test response.',sections:[{heading:'Explanation',content:'The source says the violet sample grew 17 cm.',sourceIds:[]}],checkQuestion:'How far did it grow?',sourceIds:[]})};
   const content=messages[0].text;const citation=JSON.parse(content.split('SOURCE DATA (untrusted):\n')[1]||'[]')[0]?.id;const sourceIds=citation?[citation]:[];
@@ -33,6 +34,7 @@ test('isolated study workflow: PDF, generation, accounts, citations, history, re
  assert.equal((await call('/notebooks',{method:'POST',headers:{Origin:'https://evil.example'},body:'{}'},a.cookie)).status,403);
  const form=new FormData();form.append('file',new Blob([pdf()],{type:'application/pdf'}),'violet.pdf');
  const upload=await call('/documents',{method:'POST',body:form},a.cookie);assert.equal(upload.status,201);assert.equal(upload.data.pageCount,2);assert.match(upload.data.text,/17 cm/);
+ const {getDocumentImages}=require('../backend/dist/study/store');assert.equal(getDocumentImages(a.data.user.id,[upload.data.id]).length,2);assert.throws(()=>getDocumentImages(b.data.user.id,[upload.data.id]));
  assert.equal((await call('/documents/'+upload.data.id+'/file',{},b.cookie)).status,404);
  assert.equal((await call('/jobs',{method:'POST',body:JSON.stringify({topic:'Violet biology',documentIds:[upload.data.id]})},b.cookie)).status,404);
  assert.equal((await call('/jobs',{method:'POST',body:JSON.stringify({topic:'Violet biology',questionCount:1000000})},a.cookie)).status,400);
@@ -57,5 +59,8 @@ test('isolated study workflow: PDF, generation, accounts, citations, history, re
  assert.equal((await call('/notebooks',{},a.cookie)).status,401);
  const login=await call('/auth/login',{method:'POST',body:JSON.stringify({email:'test@example.invalid',password:'LongTestPassword42'})});assert.equal(login.status,200);assert.equal((await call('/notebooks',{},login.cookie)).data.notebooks.length,2);
  assert.equal((await call('/auth/login',{method:'POST',body:JSON.stringify({email:'test@example.invalid',password:'WrongPassword42'})})).status,401);
+ const {createCanvas}=require('../backend/node_modules/@napi-rs/canvas');const canvas=createCanvas(80,80);canvas.getContext('2d').fillRect(10,10,20,20);
+ const imageForm=new FormData();imageForm.append('file',new Blob([canvas.toBuffer('image/png')],{type:'image/png'}),'diagram.png');
+ const picture=await call('/documents',{method:'POST',body:imageForm},login.cookie);assert.equal(picture.status,201);assert.equal(getDocumentImages(login.data.user.id,[picture.data.id])[0].format,'jpeg');
  console.log('Verified 25+ assertions with mocked inference; no AWS requests made.');
 });

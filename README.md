@@ -8,6 +8,8 @@ A modern, branded study workspace built with React, TypeScript, Express, and AI 
 
 Read [implementation status](docs/IMPLEMENTATION-STATUS.md) for verified capabilities and architecture details.
 
+Latest local increment: [Blast Astra routing report](docs/ASTRA-ROUTING-REPORT.md). Automatic task routing and validated fallback now replace manual model selection. PNG/JPEG and short visual PDFs are supported. The selected Region is Mumbai; live inference is currently blocked by AWS project verification. This report supersedes older model-selection and input-limit details below. These changes have not been deployed to the live demo.
+
 ## Run locally
 
 Requires Node.js 24 or newer (uses built-in SQLite).

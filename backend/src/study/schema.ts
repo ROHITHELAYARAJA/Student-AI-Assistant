@@ -13,7 +13,7 @@ export const GeneratedSchema = z.object({
   roadmap: z.object({ targetGoal: text, stages: z.array(z.object({ id: text, stageName: text, description: text, milestones: z.array(milestone).min(1).max(6) })).min(1).max(6) }),
   podcast: z.object({ title: text, overview: text, audioDurationEstimate: text, segments: z.array(z.object({ speaker: text, line: text, sourceIds: refs })).min(2).max(24) })
 });
-export const GenerateRequest = z.object({ topic: z.string().trim().min(3).max(12000), documentIds: z.array(z.string().uuid()).max(8).default([]), questionCount: z.number().int().min(3).max(15).default(5), cardCount: z.number().int().min(4).max(20).default(8), difficulty: z.enum(['beginner', 'intermediate', 'advanced']).default('beginner'), language: z.string().trim().min(2).max(40).default('English'), modelId: z.string().max(150).optional() });
+export const GenerateRequest = z.object({ topic: z.string().trim().min(3).max(12000), documentIds: z.array(z.string().uuid()).max(8).default([]), questionCount: z.number().int().min(3).max(15).default(5), cardCount: z.number().int().min(4).max(20).default(8), difficulty: z.enum(['beginner', 'intermediate', 'advanced']).default('beginner'), language: z.string().trim().min(2).max(40).default('English') });
 export type GenerateInput = z.infer<typeof GenerateRequest>;
 export const TutorRequest = z.object({ message: z.string().trim().min(1).max(4000) });
 export const TutorAnswer = z.object({ title: text, summary: text, sections: z.array(z.object({ heading: text, content: text, sourceIds: refs })).min(1).max(6), checkQuestion: text, sourceIds: refs });

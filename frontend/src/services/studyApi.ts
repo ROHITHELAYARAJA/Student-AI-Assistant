@@ -6,7 +6,7 @@ export async function request<T=any>(url:string, options:RequestInit={}):Promise
   const data=await res.json().catch(()=>({message:'The study server is unavailable. Please try again.'}));
   if(!res.ok)throw new Error(data.message||'This action could not be completed.');return data;
 }
-export type StudySettings={modelId?:string;questionCount:number;cardCount:number;difficulty:'beginner'|'intermediate'|'advanced';language:string};
+export type StudySettings={questionCount:number;cardCount:number;difficulty:'beginner'|'intermediate'|'advanced';language:string};
 export async function createStudy(topic:string,documentIds:string[],settings:StudySettings,onProgress:(s:string)=>void):Promise<TurboStudyPack>{
   const {id}=await request('/jobs',{method:'POST',body:JSON.stringify({topic,documentIds,...settings})});
   // Store the job ID so a refresh can reconnect instead of losing a paid generation.

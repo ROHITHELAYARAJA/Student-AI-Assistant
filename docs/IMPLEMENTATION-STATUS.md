@@ -1,5 +1,7 @@
 # Blast AI implementation status
 
+Latest incremental update: [Blast Astra model-routing report](ASTRA-ROUTING-REPORT.md) supersedes the model selection, image/scanned-PDF support, input limits and AWS blocker described in this earlier snapshot.
+
 Updated 25 September 2026. This supersedes the initial findings in TURBO-AI-AUDIT.md for the active application. It is not a claim of complete Turbo AI parity or production certification.
 
 ## What changed
