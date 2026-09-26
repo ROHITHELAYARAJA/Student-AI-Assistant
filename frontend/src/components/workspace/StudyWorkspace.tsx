@@ -9,7 +9,7 @@ import { StudyTools, StudyTab, progress, readLocal } from './StudyTools';
 import './workspace.css';
 import './astra-layout.css';
 import './astra-theme.css';
-import { welcomeReply, isGreeting, isNotebookIntent } from './welcome';
+import { isNotebookIntent } from './welcome';
 import { RichMarkdown } from '../turbo/RichMarkdown';
 import { UserProfile, getStoredProfile, logInUser, logOutUser } from '../../services/auth';
 import { UserProfileMenu } from './UserProfileMenu';
@@ -35,9 +35,27 @@ const tabs: { id: StudyTab; label: string; icon: typeof BookOpen; suffix: string
 export function StudyWorkspace() {
   const [session, setSession] = useState<any>(null);
   const settings: StudySettings = { questionCount: 5, cardCount: 8, difficulty: 'beginner', language: 'English' };
-  const [conversation, setConversation] = useState<{ role: 'user' | 'assistant'; text: string; suggestedAction?: { type: 'create_notebook'; topic: string; label: string }; quickPrompts?: string[] }[]>([]);
+  const [conversation, setConversation] = useState<{
+    role: 'user' | 'assistant';
+    text: string;
+    suggestedAction?: { type: 'create_notebook'; topic: string; label: string };
+    quickPrompts?: string[];
+    studyPack?: TurboStudyPack;
+    isStreaming?: boolean;
+    thoughtTime?: number;
+    thoughtTopic?: string;
+  }[]>([]);
+  const streamTimerRef = useRef<any>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (conversation.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [conversation]);
   const [connectionError, setConnectionError] = useState('');
   const [generationPhase, setGenerationPhase] = useState('Getting started');
+  const [planningMode, setPlanningMode] = useState(false);
   const [documentIds, setDocumentIds] = useState<string[]>([]);
   const [attachedImage, setAttachedImage] = useState<{ id?: string; previewUrl: string; name: string } | null>(null);
   const [folder, setFolder] = useState('');
@@ -210,6 +228,7 @@ export function StudyWorkspace() {
   async function createNotebookForTopic(topic: string, title?: string) {
     const raw = topic.trim();
     if (!raw || generating) return;
+    setPlanningMode(true);
     setGenerating(true);
     setError('');
     setGenerationPhase('Planning your study pack');
@@ -219,12 +238,22 @@ export function StudyWorkspace() {
       setPacks(prev => [pack, ...prev.filter(p => p.id !== pack.id)]);
       setPrompt('');
       setAttachedImage(null);
-      openPack(pack, 'notes');
+      
+      // Provide an interactive Study Pack Component with direct links to notes, flashcards, quiz, podcast, and plan
+      setConversation(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: `I've created your study pack on **${pack.topic}**! You can open notes, flashcards, or take a practice quiz below:`,
+          studyPack: pack
+        }
+      ]);
       setToast('Your study notebook is ready.');
     } catch (e: any) {
       setError(e.message || 'Study generation is temporarily unavailable. Please try again.');
     } finally {
       setGenerating(false);
+      setPlanningMode(false);
     }
   }
 
@@ -232,7 +261,7 @@ export function StudyWorkspace() {
     const raw = topic.trim() || (attachedImage ? 'Explain and analyze this attached image, summarizing its core concepts, formulas, and diagrams.' : '');
     if (!raw || generating) return;
 
-    if (title || (isNotebookIntent(raw) && !isGreeting(raw)) || (documentIds.length > 0 && isNotebookIntent(raw))) {
+    if (title || isNotebookIntent(raw) || (documentIds.length > 0 && isNotebookIntent(raw))) {
       await createNotebookForTopic(raw, title);
       return;
     }
@@ -245,45 +274,82 @@ export function StudyWorkspace() {
     const currentHistory = conversation.map(c => ({ role: c.role, text: c.text }));
     setConversation(prev => [...prev, { role: 'user', text: raw }]);
     setPrompt('');
+    setPlanningMode(false);
     setGenerating(true);
     setError('');
-    setGenerationPhase('Analyzing question and reasoning');
+    setGenerationPhase('Thinking');
+    const startTime = Date.now();
 
     try {
       const chatRes = await sendChat(raw, currentHistory);
+      const elapsedSec = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+      setGenerating(false);
+
+      // Start word-by-word streaming typewriter effect (like ChatGPT, Gemini & Claude)
+      const replyText = chatRes.reply || '';
+      const tokens = replyText.match(/(\s+|\S+)/g) || [replyText];
+
+      // Append initial streaming assistant message
       setConversation(prev => [
         ...prev,
         {
           role: 'assistant',
-          text: chatRes.reply,
-          suggestedAction: chatRes.suggestedAction,
-          quickPrompts: chatRes.quickPrompts
+          text: '',
+          isStreaming: true,
+          thoughtTime: elapsedSec,
+          thoughtTopic: raw
         }
       ]);
-    } catch (e: any) {
-      const fallback = welcomeReply(raw);
-      if (fallback) {
-        setConversation(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            text: fallback,
-            suggestedAction: {
-              type: 'create_notebook',
-              topic: 'Flask commands',
-              label: 'Create notebook on Flask commands'
-            },
-            quickPrompts: [
-              'Create study notebook on Flask commands',
-              'Explain Flask routes and decorators',
-              'How do I run a Flask app in debug mode?'
-            ]
+
+      // Progressive typewriter streaming
+      await new Promise<void>(resolve => {
+        let currentIdx = 0;
+        const tokensPerTick = tokens.length > 500 ? 3 : tokens.length > 200 ? 2 : 1;
+        const tickInterval = 20;
+
+        if (streamTimerRef.current) clearInterval(streamTimerRef.current);
+
+        streamTimerRef.current = setInterval(() => {
+          currentIdx += tokensPerTick;
+          if (currentIdx >= tokens.length) {
+            currentIdx = tokens.length;
+            clearInterval(streamTimerRef.current);
+            streamTimerRef.current = null;
+
+            setConversation(prev => {
+              const copy = [...prev];
+              const lastIdx = copy.length - 1;
+              if (lastIdx >= 0 && copy[lastIdx].role === 'assistant') {
+                copy[lastIdx] = {
+                  ...copy[lastIdx],
+                  text: replyText,
+                  isStreaming: false,
+                  suggestedAction: chatRes.suggestedAction,
+                  quickPrompts: chatRes.quickPrompts
+                };
+              }
+              return copy;
+            });
+            resolve();
+          } else {
+            const partial = tokens.slice(0, currentIdx).join('');
+            setConversation(prev => {
+              const copy = [...prev];
+              const lastIdx = copy.length - 1;
+              if (lastIdx >= 0 && copy[lastIdx].role === 'assistant') {
+                copy[lastIdx] = {
+                  ...copy[lastIdx],
+                  text: partial,
+                  isStreaming: true
+                };
+              }
+              return copy;
+            });
           }
-        ]);
-      } else {
-        setError('A response could not be reached right now. Please try again shortly.');
-      }
-    } finally {
+        }, tickInterval);
+      });
+    } catch (e: any) {
+      setError('Could not reach Blast AI right now. Please try again shortly.');
       setGenerating(false);
     }
   }
@@ -461,10 +527,196 @@ export function StudyWorkspace() {
                     <div className="welcome-message-body">
                       {m.role === 'assistant' ? (
                         <div className="assistant-rich-text">
-                          <RichMarkdown content={m.text} />
+                          {m.thoughtTime ? (
+                            <div className="thought-summary-badge" title="Reasoning trace">
+                              <Sparkles size={13} />
+                              <span>Thought for {m.thoughtTime}s</span>
+                            </div>
+                          ) : null}
+                          <RichMarkdown content={m.text} isStreaming={m.isStreaming} />
                         </div>
                       ) : (
                         <p>{m.text}</p>
+                      )}
+                      {m.studyPack && (
+                        <div
+                          className="study-pack-card"
+                          style={{
+                            marginTop: '16px',
+                            padding: '18px 20px',
+                            borderRadius: '20px',
+                            background: 'var(--canvas, #f1f2f3)',
+                            border: '1.5px solid var(--line, #e2e4e8)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                            maxWidth: '560px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{
+                                width: '38px',
+                                height: '38px',
+                                borderRadius: '10px',
+                                background: 'var(--purple, #6650b5)',
+                                color: '#ffffff',
+                                display: 'grid',
+                                placeItems: 'center',
+                                flexShrink: 0
+                              }}>
+                                <BookOpen size={20} />
+                              </div>
+                              <div>
+                                <h4 style={{ margin: 0, fontSize: '15.5px', fontWeight: 650, color: 'var(--ink, #1f2124)' }}>
+                                  {m.studyPack.topic}
+                                </h4>
+                                <span style={{ fontSize: '12px', color: 'var(--ink-2, #62656b)' }}>
+                                  {m.studyPack.notes.sections.length} Notes · {m.studyPack.flashcards.cards.length} Cards · {m.studyPack.quiz.questions.length} Quiz Qs
+                                </span>
+                              </div>
+                            </div>
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: 650,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                              padding: '3px 8px',
+                              borderRadius: '8px',
+                              background: 'var(--green, #189a4d)',
+                              color: '#ffffff'
+                            }}>
+                              Ready
+                            </span>
+                          </div>
+
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
+                            gap: '8px',
+                            marginTop: '4px'
+                          }}>
+                            <button
+                              type="button"
+                              onClick={() => openPack(m.studyPack!, 'notes')}
+                              className="study-tab-link-btn"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '9px 12px',
+                                borderRadius: '12px',
+                                background: 'var(--surface, #ffffff)',
+                                border: '1px solid var(--line, #e2e4e8)',
+                                color: 'var(--ink, #1f2124)',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <FileText size={15} color="var(--purple, #6650b5)" />
+                              <span>Open Notes</span>
+                              <ArrowRight size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => openPack(m.studyPack!, 'cards')}
+                              className="study-tab-link-btn"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '9px 12px',
+                                borderRadius: '12px',
+                                background: 'var(--surface, #ffffff)',
+                                border: '1px solid var(--line, #e2e4e8)',
+                                color: 'var(--ink, #1f2124)',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <Layers size={15} color="var(--accent, #0285ff)" />
+                              <span>Flashcards</span>
+                              <ArrowRight size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => openPack(m.studyPack!, 'quiz')}
+                              className="study-tab-link-btn"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '9px 12px',
+                                borderRadius: '12px',
+                                background: 'var(--surface, #ffffff)',
+                                border: '1px solid var(--line, #e2e4e8)',
+                                color: 'var(--ink, #1f2124)',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <HelpCircle size={15} color="var(--orange, #ef720c)" />
+                              <span>Start Quiz</span>
+                              <ArrowRight size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => openPack(m.studyPack!, 'audio')}
+                              className="study-tab-link-btn"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '9px 12px',
+                                borderRadius: '12px',
+                                background: 'var(--surface, #ffffff)',
+                                border: '1px solid var(--line, #e2e4e8)',
+                                color: 'var(--ink, #1f2124)',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <Headphones size={15} color="var(--green, #189a4d)" />
+                              <span>Listen Recap</span>
+                              <ArrowRight size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => openPack(m.studyPack!, 'learn')}
+                              className="study-tab-link-btn"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '9px 12px',
+                                borderRadius: '12px',
+                                background: 'var(--surface, #ffffff)',
+                                border: '1px solid var(--line, #e2e4e8)',
+                                color: 'var(--ink, #1f2124)',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <Compass size={15} color="var(--purple, #6650b5)" />
+                              <span>View Plan</span>
+                              <ArrowRight size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                            </button>
+                          </div>
+                        </div>
                       )}
                       {m.suggestedAction && (
                         <div className="suggested-action-box" style={{ marginTop: '14px' }}>
@@ -498,20 +750,55 @@ export function StudyWorkspace() {
                     </div>
                   </div>
                 ))}
-                {generating && (
-                  <div className="welcome-assistant blast-thinking-card" role="status" style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', margin: '20px 0', padding: '16px 20px', borderRadius: '18px', background: 'var(--canvas, #f1f2f3)', border: '1px solid var(--line, #e2e4e8)' }}>
-                    <div style={{ flexShrink: 0, marginTop: '4px' }}>
-                      <BlastMascot pose="working" size="small" decorative />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <ThinkingState
-                        variant="Steps"
-                        phase={generationPhase}
-                        topic={conversation.filter(m => m.role === 'user').slice(-1)[0]?.text}
-                      />
+                {generating && planningMode && (
+                  <div className="welcome-assistant blast-thinking-container" role="status">
+                    <div className="thinking-bubble">
+                      <div className="thinking-header-row">
+                        <BlastMascot pose="working" size="small" decorative />
+                        <div className="thinking-title-text">
+                          <span>AI Blast is planning study pack</span>
+                          <span className="thinking-dots-anim" aria-label="...">
+                            <span className="dot-1">.</span>
+                            <span className="dot-2">.</span>
+                            <span className="dot-3">.</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="thinking-starter-wrapper">
+                        <ThinkingState
+                          variant="Steps"
+                          phase={generationPhase}
+                          topic={conversation.filter(m => m.role === 'user').slice(-1)[0]?.text}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
+                {generating && !planningMode && (
+                  <div className="welcome-assistant blast-thinking-container" role="status">
+                    <div className="thinking-bubble">
+                      <div className="thinking-header-row">
+                        <BlastMascot pose="reading" size="small" decorative />
+                        <div className="thinking-title-text">
+                          <span>AI Blast is thinking</span>
+                          <span className="thinking-dots-anim" aria-label="...">
+                            <span className="dot-1">.</span>
+                            <span className="dot-2">.</span>
+                            <span className="dot-3">.</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="thinking-starter-wrapper">
+                        <ThinkingState
+                          variant="Reasoning"
+                          topic={conversation.filter(m => m.role === 'user').slice(-1)[0]?.text}
+                          phase="Analyzing concepts and formulating answer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
                 {error && (
                   <div className="conversation-error" role="alert">
                     <p>{error}</p>

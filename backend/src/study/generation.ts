@@ -586,26 +586,7 @@ export async function tutor(owner: string, id: string, message: string) {
 
 export async function handleChat(owner: string, message: string, history: { role: 'user' | 'assistant'; text: string }[] = []): Promise<ChatResponse> {
   const norm = message.trim().toLowerCase().replace(/[!.?,👋\s]+$/gu, '');
-  const isGreeting = /^(hi+|hey+|hello+|hello there|good (morning|afternoon|evening)|greetings|namaste|vanakkam|வணக்கம்|नमस्ते|blast|blast ai|who are you|what can you do)/i.test(norm);
-  const isFlaskQuery = /\bflask\b/i.test(norm);
-
-  if (isGreeting) {
-    return {
-      reply: "Hey! I'm Blast AI, your personal learning assistant. What would you like to explore today? Tell me a topic—like **Flask commands**, Python web development, or Data Structures—or bring a file, lecture recording, or YouTube link. We can chat through ideas, or I can generate a complete study notebook with notes, flashcards, and quizzes.",
-      modelId: 'xai.grok-4.6',
-      suggestedTopic: 'Flask commands',
-      suggestedAction: {
-        type: 'create_notebook',
-        topic: 'Flask commands',
-        label: 'Create notebook on Flask commands'
-      },
-      quickPrompts: [
-        'Create study notebook on Flask commands',
-        'Explain Flask routes and decorators',
-        'How do I run a Flask app in debug mode?'
-      ]
-    };
-  }
+  const isFlaskQuery = /\b(flask\s+commands?|what\s+is\s+flask|flask\s+routes?|flask\s+app)\b/i.test(norm);
 
   if (isFlaskQuery) {
     return {
@@ -625,8 +606,19 @@ export async function handleChat(owner: string, message: string, history: { role
     };
   }
 
-  const chatSystem = `You are Blast AI, a warm, knowledgeable personal learning assistant and study companion powered by NVIDIA Nemotron. Respond clearly, accurately, and conversationally in markdown. If the question relates to an educational subject, explain it intuitively with a practical example. Return valid JSON only with this shape:
-{"reply":"friendly conversational answer in markdown","suggestedTopic":"concise 2-4 word topic or empty string","quickPrompts":["follow up question 1","follow up question 2"]}`;
+  const chatSystem = `You are Blast AI — a sharp, warm, and witty personal learning assistant powered by NVIDIA Nemotron. You help students understand difficult concepts, create study packs, generate quizzes, flashcards, and study plans.
+
+When someone greets you (hi, hey, hello, etc.), respond in your own natural, friendly voice — keep it short, warm, and genuine. Do NOT use a generic script. Mention you're Blast AI and hint at what you can help with (studying, quizzes, notes, etc.).
+
+For all other messages: respond clearly, accurately, and in structured markdown tailored for students:
+- Structure comparisons or learning options cleanly with distinct emoji section headers (e.g. "🧭 Striver...", "🎓 Kunal...").
+- Use key-value labels like "Format:", "Strengths:", "Best for:".
+- Use checkmarks (✅) for ideal student profiles or key prerequisites.
+- For comparisons or verdicts, include a clean markdown comparison table with "| Goal | Pick | Notes |" and a clear "🧠 Verdict".
+- Keep text concise, high-retention, and easy to read — avoid unstructured walls of text.
+
+Always return valid JSON only with this exact shape:
+{"reply":"your response in markdown","suggestedTopic":"concise 2-4 word topic or empty string","quickPrompts":["follow up question 1","follow up question 2"]}`;
 
   const nvidiaKey = process.env.NVIDIA_API_KEY;
   const nvidiaBase = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
@@ -647,7 +639,7 @@ export async function handleChat(owner: string, message: string, history: { role
           temperature: 0.4,
           max_tokens: 1500
         }),
-        signal: AbortSignal.timeout(20000)
+        signal: AbortSignal.timeout(45000)
       });
       if (res.ok) {
         const json = await res.json() as any;
