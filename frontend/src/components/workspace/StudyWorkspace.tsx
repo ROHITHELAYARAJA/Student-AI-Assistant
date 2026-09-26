@@ -9,8 +9,9 @@ import { StudyTools, StudyTab, progress, readLocal } from './StudyTools';
 import './workspace.css';
 import './astra-layout.css';
 import './astra-theme.css';
-import { isNotebookIntent } from './welcome';
+import { isNotebookIntent, shouldShowStudyWizard } from './welcome';
 import { RichMarkdown } from '../turbo/RichMarkdown';
+import { cleanModelOutput } from '../turbo/GeneratedWebPage';
 import { UserProfile, getStoredProfile, logInUser, logOutUser } from '../../services/auth';
 import { UserProfileMenu } from './UserProfileMenu';
 import { SettingsModal } from './SettingsModal';
@@ -291,7 +292,7 @@ export function StudyWorkspace() {
       setGenerating(false);
 
       // Start word-by-word streaming typewriter effect (like ChatGPT, Gemini & Claude)
-      const replyText = chatRes.reply || '';
+      const replyText = cleanModelOutput(chatRes.reply || '');
       const tokens = replyText.match(/(\s+|\S+)/g) || [replyText];
 
       // Append initial streaming assistant message
@@ -723,7 +724,7 @@ export function StudyWorkspace() {
                           </div>
                         </div>
                       )}
-                      {m.role === 'assistant' && !m.studyPack && !m.isStreaming && (
+                      {m.role === 'assistant' && !m.studyPack && !m.isStreaming && shouldShowStudyWizard(conversation[i - 1]?.text || '', m.suggestedAction) && (
                         <StudyNotebookWizard
                           defaultTopic={
                             m.suggestedAction?.topic ||
@@ -1024,29 +1025,31 @@ export function StudyWorkspace() {
               <button className="back-link" onClick={() => goHome('library')}>
                 <ArrowLeft size={15} />Back to library
               </button>
-              <div className="study-heading">
-                <div className="lesson-cat">
-                  <BlastMascot pose={progress(active) === 100 ? "graduate" : "explorer"} size="small" decorative />
+              {studyTab !== 'notes' && studyTab !== 'learn' && (
+                <div className="study-heading">
+                  <div className="lesson-cat">
+                    <BlastMascot pose={progress(active) === 100 ? "graduate" : "explorer"} size="small" decorative />
+                  </div>
+                  <div>
+                    <p className="eyebrow">YOUR STUDY NOTEBOOK</p>
+                    <h1>{active.topic}</h1>
+                    <p>Your interactive study workspace</p>
+                  </div>
+                  <div className="notebook-actions">
+                    <input
+                      aria-label="Notebook folder"
+                      placeholder="Add to folder…"
+                      value={active.folder || ''}
+                      maxLength={60}
+                      onChange={e => setPacks(prev => prev.map(p => p.id === active.id ? { ...p, folder: e.target.value } : p))}
+                      onBlur={() => { persist(active).catch(e => setToast(e.message)); }}
+                    />
+                    <button className="subtle-button" onClick={() => exportNotes(active)}>
+                      <Download size={16} />Export notes
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <p className="eyebrow">YOUR STUDY NOTEBOOK</p>
-                  <h1>{active.topic}</h1>
-                  <p>Your interactive study workspace</p>
-                </div>
-                <div className="notebook-actions">
-                  <input
-                    aria-label="Notebook folder"
-                    placeholder="Add to folder…"
-                    value={active.folder || ''}
-                    maxLength={60}
-                    onChange={e => setPacks(prev => prev.map(p => p.id === active.id ? { ...p, folder: e.target.value } : p))}
-                    onBlur={() => { persist(active).catch(e => setToast(e.message)); }}
-                  />
-                  <button className="subtle-button" onClick={() => exportNotes(active)}>
-                    <Download size={16} />Export notes
-                  </button>
-                </div>
-              </div>
+              )}
 
               <nav className="study-tabs duplicate-study-tabs" aria-label="Study tools">
                 {tabs.map(t => (
@@ -1061,23 +1064,8 @@ export function StudyWorkspace() {
                 ))}
               </nav>
 
-              {studyTab === 'learn' && active.roadmap.stages.length > 0 && (
-                <div className="lesson-continue">
-                  <button className="dark-button" onClick={() => openPack(active, 'notes')}>
-                    Continue <ArrowRight size={20} />
-                  </button>
-                  <div>
-                    <small>UP NEXT</small>
-                    <strong>
-                      {active.roadmap.stages.flatMap(s => s.milestones).find(m => !m.completed)?.title || 'Review what you’ve learned'}
-                    </strong>
-                  </div>
-                  <span>{progress(active)}% complete</span>
-                </div>
-              )}
-
               <motion.section key={`${active.id}-${studyTab}`} {...motionProps} className="study-panel">
-                <StudyTools key={`${active.id}-${studyTab}`} pack={active} tab={studyTab} save={persist} notify={setToast} />
+                <StudyTools key={`${active.id}-${studyTab}`} pack={active} tab={studyTab} save={persist} notify={setToast} onNavigateTab={t => openPack(active, t)} />
                 {!active.roadmap.stages.length && studyTab !== 'sources' && (
                   <div className="generate-tools">
                     <button

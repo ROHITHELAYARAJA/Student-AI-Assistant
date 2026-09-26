@@ -37,10 +37,10 @@ export type ChatResponse = {
   quickPrompts?: string[];
 };
 
-export async function sendChat(message: string, history: { role: string; text: string }[] = []): Promise<ChatResponse> {
+export async function sendChat(message: string, history: { role: string; text: string }[] = [], modelId?: string): Promise<ChatResponse> {
   return request<ChatResponse>('/chat', {
     method: 'POST',
-    body: JSON.stringify({ message, history })
+    body: JSON.stringify({ message, history, modelId })
   });
 }
 

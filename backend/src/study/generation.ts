@@ -258,11 +258,22 @@ function buildTopicStudyPack(input: GenerateInput, citations: Citation[]) {
     return buildFlaskStudyPack(input, citations);
   }
 
-  const rawTopic = input.topic
+  let rawTopic = input.topic
     .replace(/^(create\s+a\s+study\s+(pack|set)\s+(for|on)|explain\s+(a\s+)?(concept|topic)?\s*:?|help\s+me\s+(understand|learn))\s*/i, '')
     .trim();
-  const cleanTitle = rawTopic.length > 1 
-    ? (rawTopic.charAt(0).toUpperCase() + rawTopic.slice(1)) 
+
+  // Clean comparison or query phrases
+  let cleanTitle = rawTopic;
+  if (/is\s+best\s+or\s+.*?\s+is\s+best/i.test(cleanTitle)) {
+    const parts = cleanTitle.split(/is\s+best\s+or\s+/i);
+    const itemA = parts[0].trim();
+    const itemB = parts[1]?.replace(/is\s+best.*/i, '').replace(/[-–].*$/, '').trim();
+    cleanTitle = `${itemA} vs ${itemB}: Problem-Solving & Pattern Guide`;
+  } else if (/[-–]\s*Focus:\s*(.+)/i.test(cleanTitle)) {
+    cleanTitle = cleanTitle.replace(/[-–]\s*Focus:\s*/i, ' · ');
+  }
+  cleanTitle = cleanTitle.length > 1
+    ? (cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1))
     : 'Study Guide';
 
   const allowed = citations.map(c => c.id);
@@ -332,43 +343,60 @@ function buildTopicStudyPack(input: GenerateInput, citations: Citation[]) {
       title: `${cleanTitle}: Comprehensive Conceptual Breakdown`,
       summary: hasSources
         ? `A structured synthesis based on your study materials: ${sourceContext.slice(0, 200)}... exploring fundamental mechanics and core workflows.`
-        : `A detailed, pedagogical exploration of ${cleanTitle}, breaking down intuitive definitions, structural mechanics, practical execution, and common pitfalls.`,
+        : `A high-yield, structured breakdown of ${cleanTitle} focusing on intuitive foundations, core mechanisms, step-by-step problem-solving, and common traps.`,
       keyTakeaways: [
-        `${cleanTitle} is grounded in core foundational rules that provide predictable outcomes.`,
-        `Understanding first principles helps avoid superficial memorization and accelerates problem-solving.`,
-        `Systematic decomposition of complex problems into smaller sub-problems is key to mastery.`,
-        `Continuous testing and active feedback loops ensure deep, lasting retention.`
+        `Core rules provide predictable, repeatable problem-solving outcomes.`,
+        `Deconstructing complex challenges into invariant sub-problems accelerates mastery.`,
+        `Pattern recognition trumps brute-force memorization.`,
+        `Active retrieval and edge-case testing prevent interview blind spots.`
       ],
       sections: [
         {
-          heading: `1. Foundations & Intuitive Overview of ${cleanTitle}`,
+          heading: `Where you stand: Core Foundations & Framework`,
           content: hasSources
-            ? `According to the referenced study sources, ${cleanTitle} establishes the baseline knowledge necessary to navigate this subject. Understanding the root definition is critical before tackling edge cases or advanced configurations.`
-            : `To grasp ${cleanTitle}, one must start from first principles. Rather than memorizing abstract rules, focus on why this concept exists and what fundamental problem it was designed to resolve.`,
+            ? `Baseline insights synthesized from your uploaded study materials.`
+            : `Mastering this topic requires focusing on underlying mechanics rather than memorizing isolated rules.`,
           bulletPoints: [
-            `Core purpose: Simplifies analysis by providing a unified conceptual framework.`,
-            `Key distinction: Focuses on root mechanics rather than superficial symptoms.`
+            `Core Strengths: Master foundational rules that provide predictable outcomes.`,
+            `Visible Gaps: Avoid premature optimization before verifying primary invariants.`,
+            `Actionable Targets: Complete 15-20 core problem-solving pattern drills.`
           ],
           formulas: [],
           sourceIds: sourceRef
         },
         {
-          heading: `2. Mechanisms, Workflow & Step-by-Step Breakdown`,
-          content: `In execution, ${cleanTitle} operates through distinct, interconnected phases. Each phase validates inputs, processes invariants, and ensures that intermediate states remain consistent throughout the lifecycle.`,
+          heading: `DSA & Execution Blueprint: Step-by-Step Breakdown`,
+          content: `Deliberate practice progression structured for high-efficiency learning.`,
           bulletPoints: [
-            `Phase 1: Input formulation and environmental scoping.`,
-            `Phase 2: Core analytical transformation and constraint checking.`,
-            `Phase 3: Synthesis, verification, and output stabilization.`
+            `Phase 1 - Patterns First: Two-pointer techniques, sliding windows, and hash-map indexing.`,
+            `Phase 2 - Tree & Graph Traversal: BFS/DFS state recursion and topological ordering.`,
+            `Phase 3 - Dynamic Programming: Formulate base cases, state transitions, and memoization arrays.`
+          ],
+          formulas: [],
+          sourceIds: sourceRef,
+          codeSnippet: {
+            language: 'typescript',
+            code: '// Invariant: Maintain sliding window constraints\nlet left = 0;\nfor (let right = 0; right < arr.length; right++) {\n  windowState.add(arr[right]);\n  while (!isValid(windowState)) {\n    windowState.remove(arr[left++]);\n  }\n  maxLen = Math.max(maxLen, right - left + 1);\n}'
+          }
+        },
+        {
+          heading: `System Design & Core Fundamentals`,
+          content: `Architectural principles that separate surface understanding from senior-level mastery.`,
+          bulletPoints: [
+            `High-Level Mechanics: Understand trade-offs between latency, throughput, and consistency.`,
+            `Database Partitioning: Choose between horizontal sharding and indexed read replicas.`,
+            `Caching Strategy: Evaluate write-through vs cache-aside under high concurrency.`
           ],
           formulas: [],
           sourceIds: sourceRef
         },
         {
-          heading: `3. Practical Applications, Worked Example & Best Practices`,
-          content: `Applying ${cleanTitle} in practice requires careful consideration of trade-offs. Practitioners must balance precision with efficiency, always verifying assumptions before finalizing decisions.`,
+          heading: `Interview Traps, Failure Modes & Pro Tips`,
+          content: `Critical tactical points to maintain composure and accuracy under examination.`,
           bulletPoints: [
-            `Avoid premature optimization: Establish a working baseline first.`,
-            `Validate invariants frequently to catch errors early in the process.`
+            `Trap to Avoid: Jumping directly to code without stating assumptions and time complexity.`,
+            `Edge-Case Checklist: Check empty inputs, single-element boundaries, and numeric overflows.`,
+            `Active Recall Rule: Test concepts 24 hours later using flashcards to solidify retention.`
           ],
           formulas: [],
           sourceIds: sourceRef
@@ -388,47 +416,86 @@ function buildTopicStudyPack(input: GenerateInput, citations: Citation[]) {
       stages: [
         {
           id: 's1',
-          stageName: 'Stage 1: Core Fundamentals & Structural Intuition',
+          stageName: 'Getting Started & Core Fundamentals',
           description: `Establish bedrock conceptual knowledge and master definitions for ${cleanTitle}.`,
           milestones: [
             {
               id: 'm1',
-              title: 'Deconstruct Primary Definitions & Principles',
-              duration: '15 min',
-              completed: false,
+              title: 'Getting Started: Groundwork & Setup',
+              duration: '10 min',
+              completed: true,
               keyConcepts: ['Foundational rules', 'Mental models', 'Domain vocabulary'],
-              tasks: ['Review notes summary and answer self-explanation prompts']
+              tasks: ['Deconstruct primary definitions and review course syllabus']
             },
             {
               id: 'm2',
-              title: 'Active Retrieval & Flashcard Drill',
-              duration: '10 min',
+              title: 'Where you stand: Auditing Baseline Competencies',
+              duration: '15 min',
               completed: false,
-              keyConcepts: ['Spaced repetition', 'Terminology', 'Distinctions'],
-              tasks: ['Complete first pass of active recall flashcards']
+              keyConcepts: ['Self-assessment', 'Gap analysis', 'Target metrics'],
+              tasks: ['Audit skills against benchmark requirements and identify gaps']
+            },
+            {
+              id: 'm3',
+              title: 'Core Mastery Plan: Patterns First',
+              duration: '25 min',
+              completed: false,
+              keyConcepts: ['Sliding window', 'Two pointers', 'Binary search'],
+              tasks: ['Solve 5 foundational problems focusing on invariant recognition']
             }
           ]
         },
         {
           id: 's2',
-          stageName: 'Stage 2: Applied Analysis & Advanced Verification',
-          description: `Test understanding against edge cases, quiz challenges, and practical scenarios.`,
+          stageName: 'Advanced Execution & System Fundamentals',
+          description: `Advance to system-level mechanics, design trade-offs, and complex scenarios.`,
           milestones: [
             {
-              id: 'm3',
-              title: 'Complete Knowledge Assessment Quiz',
-              duration: '15 min',
-              completed: false,
-              keyConcepts: ['Formative assessment', 'Distractor analysis', 'Rationale review'],
-              tasks: ['Score 100% on the quiz and review all explanations']
-            },
-            {
               id: 'm4',
-              title: 'Synthesize & Apply to New Problems',
+              title: 'System Design & LLD Fundamentals',
               duration: '20 min',
               completed: false,
-              keyConcepts: ['Knowledge transfer', 'Synthesis', 'Problem-solving'],
-              tasks: ['Explain the concept in your own words to verify zero blind spots']
+              keyConcepts: ['SOLID principles', 'Design patterns', 'Microservices'],
+              tasks: ['Sketch an architectural schema and document component interfaces']
+            },
+            {
+              id: 'm5',
+              title: 'Core CS Fundamentals that Decide Screening Rounds',
+              duration: '20 min',
+              completed: false,
+              keyConcepts: ['OS threads', 'DBMS ACID', 'TCP 3-way handshake'],
+              tasks: ['Review operating system scheduling, memory paging, and database indexing']
+            },
+            {
+              id: 'm6',
+              title: 'Upgrading Projects to High-Impact Ammunition',
+              duration: '30 min',
+              completed: false,
+              keyConcepts: ['Production metrics', 'Benchmarking', 'Deployment'],
+              tasks: ['Measure latency reduction and document architecture decisions']
+            }
+          ]
+        },
+        {
+          id: 's3',
+          stageName: 'Interview Loop Decoded & Application Strategy',
+          description: `Synthesize skills for technical screening, live coding, and offer negotiation.`,
+          milestones: [
+            {
+              id: 'm7',
+              title: 'The Technical Interview Loop Decoded',
+              duration: '25 min',
+              completed: false,
+              keyConcepts: ['OA strategy', 'Live coding rounds', 'Behavioral STAR'],
+              tasks: ['Simulate a 45-minute timed mock interview with edge-case tests']
+            },
+            {
+              id: 'm8',
+              title: 'Timeline & Application Strategy: Intern to Offer',
+              duration: '15 min',
+              completed: false,
+              keyConcepts: ['Application pipeline', 'Referrals', 'Offer evaluation'],
+              tasks: ['Finalize application roadmap and schedule target submissions']
             }
           ]
         }
@@ -584,14 +651,129 @@ export async function tutor(owner: string, id: string, message: string) {
   return { answer, citations, modelId: response.modelId };
 }
 
-export async function handleChat(owner: string, message: string, history: { role: 'user' | 'assistant'; text: string }[] = []): Promise<ChatResponse> {
+function unescapeString(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\');
+}
+
+export function extractChatReply(rawContent: string, userMessage: string = '', modelId?: string): ChatResponse {
+  const trimmed = rawContent.trim();
+  if (!trimmed) {
+    return {
+      reply: 'I am here to help you study. What topic or concept would you like to explore?',
+      modelId: modelId || 'nvidia/nemotron-3-ultra-550b-a55b',
+      suggestedTopic: userMessage.slice(0, 40),
+      quickPrompts: ['DSA Roadmap', 'Explain Recursion', 'Create a Quiz']
+    };
+  }
+
+  // 1. Try structured parseModelJson first
+  try {
+    const parsed = parseModelJson(trimmed);
+    if (parsed && typeof parsed === 'object') {
+      let reply = typeof parsed.reply === 'string' ? parsed.reply : '';
+      
+      // If reply is an unparsed embedded JSON string, recurse
+      if (reply.trim().startsWith('{') && reply.includes('"reply"')) {
+        const nested = extractChatReply(reply, userMessage, modelId);
+        reply = nested.reply;
+      }
+
+      if (reply) {
+        return {
+          reply: unescapeString(reply).trim(),
+          modelId: modelId || 'nvidia/nemotron-3-ultra-550b-a55b',
+          suggestedTopic: typeof parsed.suggestedTopic === 'string' ? parsed.suggestedTopic : (userMessage.slice(0, 40) || ''),
+          quickPrompts: Array.isArray(parsed.quickPrompts) ? parsed.quickPrompts.filter((p: any) => typeof p === 'string' && p.trim().length > 0) : ['Tell me more', 'Give an example', 'Create a study pack']
+        };
+      }
+    }
+  } catch {
+    // Fall through to regex extraction
+  }
+
+  // 2. Resilient regex extraction for {"reply": "..."}
+  let extractedReply = '';
+  let extractedTopic = '';
+  let extractedPrompts: string[] = [];
+
+  const replyStrictMatch = trimmed.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (replyStrictMatch && replyStrictMatch[1]) {
+    extractedReply = unescapeString(replyStrictMatch[1]);
+  } else {
+    const replyGreedyMatch = trimmed.match(/"reply"\s*:\s*"(.*?)(?:"\s*,\s*"(?:suggestedTopic|quickPrompts)"|"\s*\}\s*$)/s)
+      || trimmed.match(/"reply"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"[^"]+"\s*:|"\s*\}$)/)
+      || trimmed.match(/"reply"\s*:\s*"([\s\S]*)/);
+
+    if (replyGreedyMatch && replyGreedyMatch[1]) {
+      let content = replyGreedyMatch[1];
+      content = content.replace(/"\s*\}\s*$/, '').replace(/"\s*,\s*$/, '');
+      extractedReply = unescapeString(content);
+    }
+  }
+
+  // Extract suggestedTopic if present
+  const topicMatch = trimmed.match(/"suggestedTopic"\s*:\s*"([^"]+)"/);
+  if (topicMatch && topicMatch[1]) {
+    extractedTopic = topicMatch[1].trim();
+  }
+
+  // Extract quickPrompts if present
+  const promptsMatch = trimmed.match(/"quickPrompts"\s*:\s*\[([\s\S]*?)\]/);
+  if (promptsMatch && promptsMatch[1]) {
+    const rawItems = promptsMatch[1].match(/"([^"\\]*(?:\\.[^"\\]*)*)"/g);
+    if (rawItems) {
+      extractedPrompts = rawItems.map(item => unescapeString(item.slice(1, -1)).trim()).filter(Boolean);
+    }
+  }
+
+  // If extracted reply was found
+  if (extractedReply && extractedReply.trim().length > 0) {
+    if (extractedReply.trim().startsWith('{') && extractedReply.includes('"reply"')) {
+      const nested = extractChatReply(extractedReply, userMessage, modelId);
+      extractedReply = nested.reply;
+    }
+
+    return {
+      reply: extractedReply.trim(),
+      modelId: modelId || 'nvidia/nemotron-3-ultra-550b-a55b',
+      suggestedTopic: extractedTopic || userMessage.slice(0, 40),
+      quickPrompts: extractedPrompts.length > 0 ? extractedPrompts : ['Tell me more', 'Give an example', 'Create a study pack']
+    };
+  }
+
+  // 3. Fallback: Pure markdown/text from models that don't output JSON envelope
+  let cleanText = trimmed;
+  if (cleanText.startsWith('```') && cleanText.endsWith('```')) {
+    cleanText = cleanText.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+  }
+
+  return {
+    reply: cleanText,
+    modelId: modelId || 'nvidia/nemotron-3-ultra-550b-a55b',
+    suggestedTopic: userMessage.slice(0, 40),
+    quickPrompts: ['Tell me more', 'Give an example', 'Create a study pack']
+  };
+}
+
+export async function handleChat(
+  owner: string,
+  message: string,
+  history: { role: 'user' | 'assistant'; text: string }[] = [],
+  preferredModel?: string
+): Promise<ChatResponse> {
   const norm = message.trim().toLowerCase().replace(/[!.?,👋\s]+$/gu, '');
   const isFlaskQuery = /\b(flask\s+commands?|what\s+is\s+flask|flask\s+routes?|flask\s+app)\b/i.test(norm);
 
   if (isFlaskQuery) {
     return {
       reply: "Flask is a lightweight and powerful Python web framework. Here are essential **Flask commands** and concepts:\n\n- `flask run`: Starts the local development web server.\n- `flask --app <app.py> run`: Specifies the application file or module.\n- `flask run --debug`: Enables development mode with live code reloading and interactive tracebacks.\n- `flask routes`: Displays all registered URL rules, endpoints, and accepted HTTP methods.\n- `flask shell`: Opens an interactive Python shell pre-configured with the application context.\n\n```python\nfrom flask import Flask, jsonify\n\napp = Flask(__name__)\n\n@app.route('/api/hello')\ndef hello():\n    return jsonify(message='Hello from Flask!')\n\nif __name__ == '__main__':\n    app.run(debug=True)\n```\n\nWould you like me to build a complete interactive study notebook on Flask commands with notes, flashcards, and a practice quiz?",
-      modelId: 'xai.grok-4.6',
+      modelId: preferredModel || 'xai.grok-4.6',
       suggestedTopic: 'Flask commands',
       suggestedAction: {
         type: 'create_notebook',
@@ -622,15 +804,15 @@ Always return valid JSON only with this exact shape:
 
   const nvidiaKey = process.env.NVIDIA_API_KEY;
   const nvidiaBase = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-  const nvidiaModel = process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
+  const targetModel = preferredModel || process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
 
-  if (nvidiaKey) {
+  if (nvidiaKey && (!preferredModel || preferredModel.includes('nvidia') || preferredModel.includes('nemotron'))) {
     try {
       const res = await fetch(`${nvidiaBase}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${nvidiaKey}` },
         body: JSON.stringify({
-          model: nvidiaModel,
+          model: targetModel,
           messages: [
             { role: 'system', content: chatSystem },
             ...history.slice(-4).map(h => ({ role: h.role, content: h.text })),
@@ -644,19 +826,8 @@ Always return valid JSON only with this exact shape:
       if (res.ok) {
         const json = await res.json() as any;
         const rawContent = json.choices?.[0]?.message?.content || '';
-        try {
-          const parsed = parseModelJson(rawContent);
-          const valid = ChatResponseSchema.parse(parsed);
-          return { ...valid, modelId: nvidiaModel };
-        } catch {
-          if (rawContent.trim()) {
-            return {
-              reply: rawContent.trim(),
-              modelId: nvidiaModel,
-              suggestedTopic: message.slice(0, 40),
-              quickPrompts: ['Tell me more', 'Give an example', 'Create a study pack']
-            };
-          }
+        if (rawContent.trim()) {
+          return extractChatReply(rawContent, message, targetModel);
         }
       }
     } catch (e) {
@@ -674,13 +845,22 @@ Always return valid JSON only with this exact shape:
       messages: turns,
       context: { prompt: message, history: history.filter(h => h.role === 'user').map(h => h.text) },
       maxTokens: 2000,
-      validate: raw => ChatResponseSchema.parse(raw)
+      validate: raw => {
+        if (typeof raw === 'string') {
+          return extractChatReply(raw, message, preferredModel);
+        }
+        try {
+          return ChatResponseSchema.parse(raw);
+        } catch {
+          return extractChatReply(JSON.stringify(raw), message, preferredModel);
+        }
+      }
     });
     return response.value;
   } catch {
     return {
       reply: `I understand you'd like to learn about "${message}". I can help explain concepts or generate an interactive study set with notes, active recall flashcards, and practice quiz questions.`,
-      modelId: 'xai.grok-4.6',
+      modelId: preferredModel || 'xai.grok-4.6',
       suggestedTopic: message.slice(0, 50),
       suggestedAction: {
         type: 'create_notebook',

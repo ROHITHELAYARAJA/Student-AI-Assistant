@@ -1,6 +1,6 @@
 import React from 'react';
 import { Copy, Check, CheckCircle2, Sparkles, Table as TableIcon, HelpCircle } from 'lucide-react';
-import { GeneratedWebPage } from './GeneratedWebPage';
+import { GeneratedWebPage, cleanModelOutput } from './GeneratedWebPage';
 
 interface RichMarkdownProps {
   content: string;
@@ -11,18 +11,20 @@ interface RichMarkdownProps {
 export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className = '', isStreaming = false }) => {
   const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
 
+  const cleanContent = React.useMemo(() => cleanModelOutput(content), [content]);
+
   // Automatically render as a generated React web page component when content has structure or depth
   const isStructuredDoc = React.useMemo(() => {
-    if (!content) return false;
-    if (content.includes('|') || content.includes('```')) return true;
-    if (/^\s*(?:###?|[🧭🎓🧠💡📌🚀⭐🎯🔥🏆📚])/m.test(content)) return true;
-    if (/(?:Format|Strengths|Best for|Verdict|Target language):/i.test(content)) return true;
-    if (content.length > 150) return true;
+    if (!cleanContent) return false;
+    if (cleanContent.includes('|') || cleanContent.includes('```')) return true;
+    if (/^\s*(?:###?|[-*_]{3,}|[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}])/mu.test(cleanContent)) return true;
+    if (/(?:Format|Strengths|Best for|Verdict|Target language|Pro tip|Must-do):/i.test(cleanContent)) return true;
+    if (cleanContent.length > 150) return true;
     return false;
-  }, [content]);
+  }, [cleanContent]);
 
   if (isStructuredDoc) {
-    return <GeneratedWebPage content={content} isStreaming={isStreaming} className={className} />;
+    return <GeneratedWebPage content={cleanContent} isStreaming={isStreaming} className={className} />;
   }
 
   const copyToClipboard = (text: string, index: number) => {
@@ -31,7 +33,7 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
     setTimeout(() => setCopiedIndex(null), 1800);
   };
 
-  const lines = content.split('\n');
+  const lines = cleanContent.split('\n');
   const elements: React.ReactNode[] = [];
 
   let inCodeBlock = false;

@@ -75,8 +75,20 @@ api.post('/documents',rateLimit({windowMs:60000,limit:10,keyGenerator:req=>req.u
     const scale=Math.min(1,1600/Math.max(img.width,img.height));const canvas=createCanvas(Math.max(1,Math.round(img.width*scale)),Math.max(1,Math.round(img.height*scale)));const ctx=canvas.getContext('2d');ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
     visuals=[{page:1,format:'jpeg',bytes:canvas.toBuffer('image/jpeg',85)}];mime=file.buffer[0]===137?'image/png':'image/jpeg';
     pages=[{page:1,text:'Visual study source. Read the attached image, including its labels and diagrams; no text has been extracted.'}];notice='Your image is ready to study.';
-  } else if(/\.(txt|md)$/i.test(file.originalname)){const text=file.buffer.toString('utf8');if(text.includes('\u0000'))throw new Error('This is not a readable text file.');pages=[{page:1,text:text.trim()}];}
-  else {res.status(415).json({message:'Supported files: PDF, TXT, Markdown, PNG, and JPEG.'});return;}
+  } else if(/\.(txt|md|csv|tsv|json)$/i.test(file.originalname)){
+    const text=file.buffer.toString('utf8');
+    if(text.includes('\u0000'))throw new Error('This is not a readable text file.');
+    pages=[{page:1,text:text.trim()}];
+    mime=/\.csv$/i.test(file.originalname)?'text/csv':/\.json$/i.test(file.originalname)?'application/json':'text/plain';
+    notice=`Your ${file.originalname} text is ready to study.`;
+  } else if(/\.(docx?|xlsx?)$/i.test(file.originalname)){
+    const raw = file.buffer.toString('utf8');
+    const clean = raw.replace(/<[^>]+>/g, ' ').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    const text = clean.length > 50 ? clean : `Uploaded study document: ${file.originalname}`;
+    pages=[{page:1,text:text.slice(0, 500000)}];
+    mime=/\.docx?$/i.test(file.originalname)?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    notice=`Extracted content from ${file.originalname} is ready to study.`;
+  } else {res.status(415).json({message:'Supported files: PDF, DOC, DOCX, XLS, XLSX, CSV, TXT, Markdown, PNG, and JPEG.'});return;}
   const text=pages.map(p=>p.text).join('\n\n');if(!text.trim()||text.length>600000)throw new Error('Choose readable notes with up to 600,000 extracted characters.');
   if(visuals.some(v=>v.bytes.length>3*1024*1024))throw new Error('A page image is too large. Import a lower-resolution copy.');
   if(visuals.reduce((n,v)=>n+v.bytes.length,0)>12*1024*1024)throw new Error('Please split this visual document into smaller sections.');
@@ -99,7 +111,7 @@ api.post('/documents/youtube',run(async(req,res)=>{
   const title=`YouTube lesson ${id}`;const doc=addDocument(req.user.id,title,[{page:1,text}]);res.status(201).json({...doc,title,text});
 }));
 const aiLimit=rateLimit({windowMs:60*60*1000,limit:30,keyGenerator:req=>req.user.id,standardHeaders:'draft-7',legacyHeaders:false,message:{message:'Study generation limit reached. Please try again later.'}});
-api.post('/chat',aiLimit,run(async(req,res)=>{const input=ChatRequest.parse(req.body);res.json(await handleChat(req.user.id,input.message,input.history));}));
+api.post('/chat',aiLimit,run(async(req,res)=>{const input=ChatRequest.parse(req.body);res.json(await handleChat(req.user.id,input.message,input.history,input.modelId));}));
 let activeJobs=0;
 api.post('/jobs',aiLimit,run((req,res)=>{
   const input=GenerateRequest.parse(req.body);getDocuments(req.user.id,input.documentIds);

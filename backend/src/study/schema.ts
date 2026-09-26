@@ -24,7 +24,8 @@ export const ChatRequest = z.object({
   history: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     text: z.string().max(8000)
-  })).max(20).default([])
+  })).max(20).default([]),
+  modelId: z.string().optional()
 });
 export type ChatInput = z.infer<typeof ChatRequest>;
 
@@ -41,6 +42,46 @@ export const ChatResponseSchema = z.object({
 });
 export type ChatResponse = z.infer<typeof ChatResponseSchema>;
 
+function sanitizeJsonStringLiterals(jsonStr: string): string {
+  let result = '';
+  let inString = false;
+  let isEscaped = false;
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const char = jsonStr[i];
+
+    if (inString) {
+      if (isEscaped) {
+        result += char;
+        isEscaped = false;
+      } else if (char === '\\') {
+        result += char;
+        isEscaped = true;
+      } else if (char === '"') {
+        inString = false;
+        result += char;
+      } else if (char === '\n') {
+        result += '\\n';
+      } else if (char === '\r') {
+        result += '\\r';
+      } else if (char === '\t') {
+        result += '\\t';
+      } else if (char.charCodeAt(0) < 0x20) {
+        result += ' ';
+      } else {
+        result += char;
+      }
+    } else {
+      if (char === '"') {
+        inString = true;
+      }
+      result += char;
+    }
+  }
+
+  return result;
+}
+
 export function repairJson(raw: string): string {
   let clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
   const firstBrace = clean.indexOf('{');
@@ -49,6 +90,7 @@ export function repairJson(raw: string): string {
     clean = clean.slice(firstBrace, lastBrace + 1);
   }
   clean = clean.replace(/,\s*([}\]])/g, '$1');
+  clean = sanitizeJsonStringLiterals(clean);
   return clean;
 }
 

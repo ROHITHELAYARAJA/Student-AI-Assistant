@@ -1,21 +1,14 @@
 import React, { useState } from 'react';
 import {
-  Sparkles,
-  ExternalLink,
   Copy,
   Check,
-  Download,
   Table as TableIcon,
   CheckCircle2,
-  Compass,
-  GraduationCap,
-  Brain,
+  Calendar,
+  Clock,
+  Sparkles,
   Lightbulb,
-  FileCode,
-  Laptop,
-  Maximize2,
-  X,
-  Layers
+  Target
 } from 'lucide-react';
 
 interface GeneratedWebPageProps {
@@ -25,198 +18,60 @@ interface GeneratedWebPageProps {
   className?: string;
 }
 
+export function cleanModelOutput(raw: string): string {
+  if (!raw) return '';
+  let text = raw.trim();
+
+  // 1. Unwrap code-fenced JSON ```json { "reply": ... }
+  if (text.startsWith('```json') && text.endsWith('```')) {
+    text = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+  }
+
+  // 2. Unwrap raw JSON envelope {"reply": "..."}
+  if (text.startsWith('{') && (text.includes('"reply"') || text.includes("'reply'"))) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === 'object' && typeof parsed.reply === 'string') {
+        text = parsed.reply;
+      }
+    } catch {
+      // Resilient regex extraction for JSON with unescaped newlines or truncated syntax
+      const match = text.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/)
+        || text.match(/"reply"\s*:\s*"(.*?)(?:"\s*,\s*"(?:suggestedTopic|quickPrompts)"|"\s*\}\s*$)/s)
+        || text.match(/"reply"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"[^"]+"\s*:|"\s*\}$)/)
+        || text.match(/"reply"\s*:\s*"([\s\S]*)/);
+      if (match && match[1]) {
+        let extracted = match[1];
+        extracted = extracted.replace(/"\s*\}\s*$/, '').replace(/"\s*,\s*$/, '');
+        text = extracted;
+      }
+    }
+  }
+
+  // 3. Unescape escaped control characters (\n, \r, \t, \") if newlines are escaped
+  if (text.includes('\\n')) {
+    text = text
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"');
+  }
+
+  // 4. Strip any dangling {"reply": prefix or "} suffix
+  text = text
+    .replace(/^\s*\{\s*"reply"\s*:\s*"/, '')
+    .replace(/"\s*\}\s*$/, '')
+    .trim();
+
+  return text;
+}
+
 export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
   content,
-  topic,
   isStreaming = false,
   className = ''
 }) => {
-  const [copiedHtml, setCopiedHtml] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedCodeIdx, setCopiedCodeIdx] = useState<number | null>(null);
-
-  // Extract clean title from topic or first heading or content
-  const pageTitle = React.useMemo(() => {
-    if (topic && topic.trim()) return topic;
-    const h1Match = content.match(/^#\s+(.+)$/m);
-    if (h1Match) return h1Match[1].trim();
-    const h2Match = content.match(/^##\s+(.+)$/m);
-    if (h2Match) return h2Match[1].trim();
-    const firstLine = content.split('\n').find(l => l.trim().length > 0) || '';
-    if (firstLine.includes('Striver') && firstLine.includes('Kunal')) {
-      return 'DSA Learning Roadmap: Striver vs Kunal Kushwaha';
-    }
-    if (firstLine.length < 60) {
-      return firstLine.replace(/^[#*•\s]+/, '').trim() || 'Blast AI Generated Study Guide';
-    }
-    return 'Blast AI Interactive Study Document';
-  }, [content, topic]);
-
-  // Generates standalone, self-contained HTML page
-  const generateStandaloneHtml = React.useCallback(() => {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escapeHtml(pageTitle)} - Blast AI</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: #0b0914;
-      color: #f1edf7;
-      line-height: 1.7;
-      padding: 40px 20px;
-      display: flex;
-      justify-content: center;
-    }
-    .page-container {
-      width: 100%;
-      max-width: 900px;
-      background: linear-gradient(180deg, #16112a 0%, #0d0b18 100%);
-      border: 1.5px solid rgba(168, 85, 247, 0.35);
-      border-radius: 24px;
-      overflow: hidden;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.8), 0 0 40px rgba(147, 51, 234, 0.2);
-    }
-    .page-header {
-      padding: 24px 30px;
-      background: rgba(17, 13, 32, 0.95);
-      border-bottom: 1.5px solid rgba(168, 85, 247, 0.25);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 5px 14px;
-      border-radius: 9999px;
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #c084fc;
-      background: rgba(147, 51, 234, 0.16);
-      border: 1px solid rgba(168, 85, 247, 0.35);
-    }
-    .page-title {
-      font-size: 26px;
-      font-weight: 800;
-      color: #ffffff;
-      margin: 20px 30px 10px;
-      letter-spacing: -0.02em;
-    }
-    .content-body {
-      padding: 20px 30px 40px;
-    }
-    .matrix-card {
-      margin: 24px 0;
-      border-radius: 18px;
-      overflow: hidden;
-      background: rgba(18, 14, 34, 0.9);
-      border: 1.5px solid rgba(168, 85, 247, 0.3);
-    }
-    .matrix-title {
-      padding: 13px 20px;
-      background: linear-gradient(90deg, rgba(88, 28, 135, 0.5) 0%, rgba(30, 27, 75, 0.5) 100%);
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: #e9d5ff;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-    th {
-      padding: 14px 18px;
-      font-size: 12px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: #d8b4fe;
-      background: rgba(30, 24, 52, 0.95);
-      border-bottom: 1.5px solid rgba(168, 85, 247, 0.28);
-    }
-    td {
-      padding: 14px 18px;
-      font-size: 14px;
-      color: #e2e0ea;
-      border-bottom: 1px solid rgba(168, 85, 247, 0.12);
-      vertical-align: middle;
-    }
-    tr:hover { background: rgba(168, 85, 247, 0.08); }
-    .badge-pick {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 12px;
-      border-radius: 9999px;
-      font-size: 12.5px;
-      font-weight: 750;
-    }
-    .striver { background: rgba(147, 51, 234, 0.25); border: 1px solid rgba(168, 85, 247, 0.5); color: #f3e8ff; }
-    .kunal { background: rgba(16, 185, 129, 0.22); border: 1px solid rgba(52, 211, 153, 0.5); color: #a7f3d0; }
-    .verdict-card {
-      margin: 24px 0;
-      background: linear-gradient(135deg, rgba(88, 28, 135, 0.26) 0%, rgba(20, 16, 38, 0.85) 100%);
-      border: 1.5px solid rgba(168, 85, 247, 0.42);
-      border-left: 5px solid #a855f7;
-      border-radius: 18px;
-      padding: 22px 24px;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      font-size: 12px;
-      color: #7e7594;
-      border-top: 1px solid rgba(168, 85, 247, 0.15);
-    }
-  </style>
-</head>
-<body>
-  <div class="page-container">
-    <div class="page-header">
-      <div class="badge">⚡ Blast AI • Generated Study Document</div>
-      <div style="font-size: 12px; color: #a19ab4;">Interactive Web Page</div>
-    </div>
-    <h1 class="page-title">${escapeHtml(pageTitle)}</h1>
-    <div class="content-body">
-      ${markdownToHtml(content)}
-    </div>
-    <div class="footer">Generated automatically by Blast AI Engine • Nemotron Multi-modal</div>
-  </div>
-</body>
-</html>`;
-  }, [content, pageTitle]);
-
-  const copyFullHtml = () => {
-    const fullHtml = generateStandaloneHtml();
-    navigator.clipboard.writeText(fullHtml);
-    setCopiedHtml(true);
-    setTimeout(() => setCopiedHtml(false), 2000);
-  };
-
-  const downloadHtmlFile = () => {
-    const fullHtml = generateStandaloneHtml();
-    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${pageTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-study-page.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
   const copyCode = (codeText: string, idx: number) => {
     navigator.clipboard.writeText(codeText);
@@ -224,8 +79,9 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
     setTimeout(() => setCopiedCodeIdx(null), 1800);
   };
 
-  // Parse sections
-  const lines = content.split('\n');
+  // Clean raw model output (defensively unpacks any JSON string)
+  const cleanContent = cleanModelOutput(content);
+  const lines = cleanContent.split('\n');
   const renderedElements: React.ReactNode[] = [];
 
   let inCode = false;
@@ -296,7 +152,63 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
       continue;
     }
 
-    // 3. Markdown Table detection
+    // 3. Horizontal Divider (--- or ***)
+    if (/^\s*[-*_]{3,}\s*$/.test(line)) {
+      renderedElements.push(<div key={`div-${i}`} className="blast-divider" />);
+      continue;
+    }
+
+    // 4. Roadmap Hero Banner Detection (e.g. 🗓️ 2-Month DSA Roadmap (Interview-Ready))
+    const roadmapHeroMatch = line.match(/^\s*(?:###?\s*)?🗓️\s*([0-9]+-(?:Month|Week|Day)\s+.*Roadmap.*)$/i)
+      || line.match(/^\s*(?:###?\s*)?([0-9]+-(?:Month|Week|Day)\s+.*Roadmap.*\(Interview-Ready\).*)$/i);
+    if (roadmapHeroMatch) {
+      renderedElements.push(
+        <div key={`roadmap-hero-${i}`} className="blast-roadmap-hero">
+          <div className="blast-roadmap-hero-top">
+            <span className="blast-roadmap-hero-badge">
+              <Calendar size={13} className="text-purple-300" />
+              <span>AI Study Curriculum</span>
+            </span>
+            <span style={{ fontSize: '11px', color: '#c084fc', fontWeight: 700, letterSpacing: '0.05em' }}>
+              INTERVIEW PREP
+            </span>
+          </div>
+          <h2 className="blast-roadmap-hero-title">
+            {formatInline(roadmapHeroMatch[1].replace(/^[🗓️\s]+/, ''))}
+          </h2>
+          <p className="blast-roadmap-hero-sub">
+            Structured week-by-week pattern progression, practice problem targets, and revision checkpoints.
+          </p>
+        </div>
+      );
+      continue;
+    }
+
+    // 5. Callouts (Pro tip:, Must-do:, Tip:, Note:)
+    const calloutMatch = line.match(/^\s*(?:[•\-*]\s*)?(Pro tip|Must-do|Tip|Note|Important|Recommendation):\s*(.*)$/i);
+    if (calloutMatch) {
+      const type = calloutMatch[1].toLowerCase();
+      const isMustDo = type === 'must-do';
+      const isProTip = type === 'pro tip' || type === 'tip';
+      const cardClass = isMustDo ? 'blast-callout-must' : 'blast-callout-pro';
+
+      renderedElements.push(
+        <div key={`callout-${i}`} className={`blast-callout-card ${cardClass}`}>
+          <div className="blast-callout-icon">
+            {isMustDo ? <CheckCircle2 size={18} /> : <Lightbulb size={18} />}
+          </div>
+          <div style={{ flex: 1 }}>
+            <span className="blast-callout-tag">
+              {calloutMatch[1].toUpperCase()}:
+            </span>
+            <span>{formatInline(calloutMatch[2])}</span>
+          </div>
+        </div>
+      );
+      continue;
+    }
+
+    // 6. Markdown Table detection
     if (line.includes('|') && i + 1 < lines.length && /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(lines[i + 1])) {
       const headerLine = line;
       const delimiterLine = lines[i + 1];
@@ -324,16 +236,31 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
           .map(c => c.trim());
       });
 
+      const isRoadmapTable = headers.some(h => /week|month|phase/i.test(h));
+      const isRoutineTable = headers.some(h => /time|hour|schedule|activity/i.test(h));
+      const tableTitle = isRoadmapTable ? 'Weekly Milestones & Practice Targets'
+        : isRoutineTable ? 'Daily Study Routine & Allocation'
+        : 'Summary Comparison Matrix';
+      const badgeText = isRoadmapTable ? 'ROADMAP GRID'
+        : isRoutineTable ? 'SCHEDULE'
+        : 'INTERACTIVE GRID';
+
       const tableKey = blockKey++;
       renderedElements.push(
         <div key={`matrix-${tableKey}`} className="blast-matrix-card">
           <div className="blast-matrix-topbar">
             <span className="blast-matrix-badge">
-              <TableIcon size={14} className="text-purple-400" />
-              Summary Comparison Matrix
+              {isRoadmapTable ? (
+                <Calendar size={14} className="text-purple-400" />
+              ) : isRoutineTable ? (
+                <Clock size={14} className="text-purple-400" />
+              ) : (
+                <TableIcon size={14} className="text-purple-400" />
+              )}
+              {tableTitle}
             </span>
             <span style={{ fontSize: '11px', color: '#c084fc', fontWeight: 600, letterSpacing: '0.04em' }}>
-              INTERACTIVE GRID
+              {badgeText}
             </span>
           </div>
           <div className="blast-matrix-scroll-wrapper">
@@ -341,14 +268,21 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
               <thead>
                 <tr>
                   {headers.map((h, hi) => {
-                    const isPickCol = h.toLowerCase().includes('pick') || h.toLowerCase().includes('recommend');
-                    const isGoalCol = h.toLowerCase().includes('goal') || h.toLowerCase().includes('criteria');
+                    let colWidth = 'auto';
+                    if (headers.length === 4) {
+                      if (hi === 0) colWidth = '12%';
+                      else if (hi === 1) colWidth = '24%';
+                      else if (hi === 2) colWidth = '40%';
+                      else if (hi === 3) colWidth = '24%';
+                    } else if (headers.length === 2) {
+                      colWidth = hi === 0 ? '30%' : '70%';
+                    }
                     return (
                       <th
                         key={hi}
                         style={{
-                          width: isGoalCol ? '38%' : isPickCol ? '24%' : '38%',
-                          textAlign: isPickCol ? 'left' : 'left'
+                          width: colWidth,
+                          textAlign: 'left'
                         }}
                       >
                         {formatInline(h)}
@@ -361,10 +295,25 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
                 {rows.map((row, ri) => (
                   <tr key={ri}>
                     {row.map((cell, ci) => {
-                      const isPickCol = headers[ci] && (headers[ci].toLowerCase().includes('pick') || headers[ci].toLowerCase().includes('recommend'));
+                      const headerName = (headers[ci] || '').toLowerCase();
+                      const isWeekCol = /week|step|no/i.test(headerName) && /^[0-9]+$/.test(cell.trim());
+                      const isTargetCol = /target|practice|goal/i.test(headerName) && /(easy|medium|hard|mock)/i.test(cell);
+                      const isPickCol = headerName.includes('pick') || headerName.includes('recommend');
+
                       return (
-                        <td key={ci} style={{ textAlign: isPickCol ? 'left' : 'left' }}>
-                          {isPickCol ? renderPickBadge(cell) : formatInline(cell)}
+                        <td key={ci} style={{ textAlign: 'left' }}>
+                          {isWeekCol ? (
+                            <span className="blast-week-badge">{cell.trim()}</span>
+                          ) : isTargetCol ? (
+                            <span className="blast-target-badge">
+                              <Target size={12} className="text-purple-300 shrink-0" />
+                              <span>{cell.trim()}</span>
+                            </span>
+                          ) : isPickCol ? (
+                            renderPickBadge(cell)
+                          ) : (
+                            formatInline(cell)
+                          )}
                         </td>
                       );
                     })}
@@ -380,53 +329,72 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
       continue;
     }
 
-    // 4. Section headers with emoji (e.g. 🧭 Striver..., 🎓 Kunal..., 🧠 Verdict)
-    const emojiSecMatch = line.match(/^\s*(?:###?\s*)?([🧭🎓🧠💡📌🚀⭐🎯🔥🏆📚])\s+(.+)$/);
+    // 7. Verdict detection (e.g. 🧠 Verdict:, **Verdict:**, etc.)
+    const verdictMatch = line.match(/^\s*(?:###?\s*)?(?:🧠\s*)?(?:\*\*)?Verdict(?:\*\*)?:?\s*(.*)$/i);
+    const emojiSecMatch = line.match(/^\s*(?:###?\s*)?([\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]\u{FE0F}?)\s*(.+)$/u);
+
+    if (verdictMatch || (emojiSecMatch && (emojiSecMatch[1].includes('🧠') || emojiSecMatch[2].toLowerCase().includes('verdict')))) {
+      const titleText = verdictMatch ? 'Final Verdict & Learning Strategy' : (emojiSecMatch ? emojiSecMatch[2] : 'Final Verdict');
+      const inlineVerdictText = (verdictMatch ? verdictMatch[1] : '').replace(/^>\s*/, '').trim();
+
+      const verdictLines: string[] = [];
+      if (inlineVerdictText) {
+        verdictLines.push(inlineVerdictText);
+      }
+
+      let k = i + 1;
+      while (
+        k < lines.length &&
+        !lines[k].trim().startsWith('#') &&
+        !lines[k].trim().startsWith('---') &&
+        !lines[k].trim().startsWith('***') &&
+        !lines[k].match(/^\s*(?:[•\-*]\s*)?(?:Pro tip|Must-do|Tip|Note|Important):/i) &&
+        !lines[k].match(/^\s*(?:###?\s*)?[\p{Extended_Pictographic}\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/u) &&
+        !lines[k].startsWith('```') &&
+        !lines[k].includes('|')
+      ) {
+        const trimmedK = lines[k].trim().replace(/^>\s*/, '');
+        if (trimmedK && trimmedK !== '--') {
+          verdictLines.push(trimmedK);
+        }
+        k++;
+      }
+
+      renderedElements.push(
+        <div key={`verdict-${i}`} className="blast-verdict-card">
+          <div className="blast-verdict-header">
+            <span className="blast-entity-icon" style={{ width: '34px', height: '34px', fontSize: '18px' }}>
+              🧠
+            </span>
+            <h3 className="blast-verdict-title">{formatInline(titleText)}</h3>
+          </div>
+          <div className="blast-verdict-body">
+            {verdictLines.map((vl, vli) => {
+              const isBullet = /^[•\-*]\s*/.test(vl);
+              const cleanVl = vl.replace(/^[•\-*]\s*/, '').replace(/^>\s*/, '');
+              return (
+                <div key={vli} style={{ margin: '8px 0', display: 'flex', alignItems: 'flex-start', gap: '9px' }}>
+                  {isBullet ? (
+                    <span style={{ color: '#c084fc', fontWeight: 800, fontSize: '16px', lineHeight: 1 }}>•</span>
+                  ) : null}
+                  <div style={{ flex: 1 }}>{formatInline(cleanVl)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+
+      if (k > i + 1) {
+        i = k - 1;
+      }
+      continue;
+    }
+
+    // 8. General Emoji Section Header
     if (emojiSecMatch) {
       const emoji = emojiSecMatch[1];
       const titleText = emojiSecMatch[2];
-      const isVerdict = emoji === '🧠' || titleText.toLowerCase().includes('verdict');
-
-      if (isVerdict) {
-        // Collect following lines until empty or next section for the verdict body
-        const verdictLines: string[] = [];
-        let k = i + 1;
-        while (k < lines.length && !lines[k].match(/^\s*(?:###?\s*)?[🧭🎓🧠💡📌🚀⭐🎯🔥🏆📚]\s+/) && !lines[k].startsWith('```') && !lines[k].includes('|')) {
-          if (lines[k].trim()) {
-            verdictLines.push(lines[k]);
-          }
-          k++;
-        }
-
-        renderedElements.push(
-          <div key={`verdict-${i}`} className="blast-verdict-card">
-            <div className="blast-verdict-header">
-              <span className="blast-entity-icon" style={{ width: '32px', height: '32px', fontSize: '16px' }}>
-                🧠
-              </span>
-              <h3 className="blast-verdict-title">{formatInline(titleText)}</h3>
-            </div>
-            <div className="blast-verdict-body">
-              {verdictLines.length > 0 ? (
-                verdictLines.map((vl, vli) => (
-                  <p key={vli} style={{ margin: '6px 0' }}>
-                    {formatInline(vl)}
-                  </p>
-                ))
-              ) : (
-                <p>{formatInline(titleText)}</p>
-              )}
-            </div>
-          </div>
-        );
-
-        if (verdictLines.length > 0) {
-          i = k - 1;
-        }
-        continue;
-      }
-
-      // Other emoji headers (like 🧭 Striver, 🎓 Kunal)
       renderedElements.push(
         <div key={`sec-head-${i}`} className="blast-entity-header" style={{ marginTop: '22px' }}>
           <span className="blast-entity-icon">{emoji}</span>
@@ -436,7 +404,7 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
       continue;
     }
 
-    // 5. Key-Value Badges (e.g. Format: ..., Strengths: ..., Best for: ...)
+    // 9. Key-Value Badges (e.g. Format: ..., Strengths: ..., Best for: ...)
     const kvMatch = line.match(/^\s*(Format|Strengths|Best for|Verdict|Ideal combo|Prerequisites|Target language):\s*(.*)$/i);
     if (kvMatch) {
       const label = kvMatch[1];
@@ -545,108 +513,9 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
   }
 
   return (
-    <>
-      <div className={`blast-webpage-canvas ${className}`}>
-        {/* Top Header Bar */}
-        <div className="blast-webpage-topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span className="blast-webpage-badge">
-              <Sparkles size={12} className="text-purple-400" />
-              Blast AI • Generated Web Page
-            </span>
-            <span className="blast-webpage-meta">
-              <Laptop size={13} />
-              Interactive Component
-            </span>
-          </div>
-          <div className="blast-webpage-actions">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(true)}
-              className="blast-action-btn"
-              title="View full standalone interactive web page"
-            >
-              <Maximize2 size={13} />
-              <span>Open Web Page</span>
-            </button>
-            <button
-              type="button"
-              onClick={copyFullHtml}
-              className={`blast-action-btn ${copiedHtml ? 'active' : ''}`}
-              title="Copy complete standalone HTML with CSS"
-            >
-              {copiedHtml ? <Check size={13} /> : <Copy size={13} />}
-              <span>{copiedHtml ? 'Copied HTML' : 'Copy HTML'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={downloadHtmlFile}
-              className="blast-action-btn"
-              title="Download as HTML file"
-            >
-              <Download size={13} />
-              <span>Export</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Content Body */}
-        <div className="blast-webpage-body">
-          {renderedElements}
-        </div>
-      </div>
-
-      {/* Fullscreen Standalone Web Page Modal */}
-      {isModalOpen && (
-        <div className="blast-fullscreen-modal" onClick={() => setIsModalOpen(false)}>
-          <div className="blast-modal-container" onClick={e => e.stopPropagation()}>
-            <div className="blast-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span className="blast-webpage-badge">
-                  <Sparkles size={12} />
-                  Standalone Web Page View
-                </span>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
-                  {pageTitle}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={downloadHtmlFile}
-                  className="blast-action-btn"
-                >
-                  <Download size={13} />
-                  <span>Download HTML</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: 'rgba(255,255,255,0.08)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: '#ffffff',
-                    display: 'grid',
-                    placeItems: 'center',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            </div>
-            <div className="blast-modal-content">
-              <div style={{ maxWidth: '820px', margin: '0 auto' }}>
-                {renderedElements}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    <div className={`blast-structured-response ${className}`}>
+      {renderedElements}
+    </div>
   );
 };
 
