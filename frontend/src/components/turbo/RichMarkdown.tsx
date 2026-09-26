@@ -1,5 +1,6 @@
 import React from 'react';
 import { Copy, Check, CheckCircle2, Sparkles, Table as TableIcon, HelpCircle } from 'lucide-react';
+import { GeneratedWebPage } from './GeneratedWebPage';
 
 interface RichMarkdownProps {
   content: string;
@@ -9,6 +10,20 @@ interface RichMarkdownProps {
 
 export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className = '', isStreaming = false }) => {
   const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
+
+  // Automatically render as a generated React web page component when content has structure or depth
+  const isStructuredDoc = React.useMemo(() => {
+    if (!content) return false;
+    if (content.includes('|') || content.includes('```')) return true;
+    if (/^\s*(?:###?|[🧭🎓🧠💡📌🚀⭐🎯🔥🏆📚])/m.test(content)) return true;
+    if (/(?:Format|Strengths|Best for|Verdict|Target language):/i.test(content)) return true;
+    if (content.length > 150) return true;
+    return false;
+  }, [content]);
+
+  if (isStructuredDoc) {
+    return <GeneratedWebPage content={content} isStreaming={isStreaming} className={className} />;
+  }
 
   const copyToClipboard = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
