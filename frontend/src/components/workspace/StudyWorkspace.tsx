@@ -20,6 +20,7 @@ import { UploadModal } from './UploadModal';
 import { YouTubeModal } from './YouTubeModal';
 import ModernLoginSignup from '../ui/modern-login-signup';
 import ThinkingState from '../ui/thinking';
+import { StudyNotebookWizard } from './StudyNotebookWizard';
 
 type Page = 'home' | 'library' | 'favorites';
 const tabs: { id: StudyTab; label: string; icon: typeof BookOpen; suffix: string }[] = [
@@ -225,7 +226,7 @@ export function StudyWorkspace() {
     setAttachedImage(null);
   }
 
-  async function createNotebookForTopic(topic: string, title?: string) {
+  async function createNotebookForTopic(topic: string, title?: string, customSettings?: Partial<StudySettings>) {
     const raw = topic.trim();
     if (!raw || generating) return;
     setPlanningMode(true);
@@ -234,7 +235,11 @@ export function StudyWorkspace() {
     setGenerationPhase('Planning your study pack');
     try {
       const ids = title ? active?.documentIds || [] : documentIds;
-      const pack = await createStudy(ids.length ? 'Create a study set for ' + (title || raw) : raw, ids, settings, setGenerationPhase);
+      const mergedSettings: StudySettings = {
+        ...settings,
+        ...(customSettings || {})
+      };
+      const pack = await createStudy(ids.length ? 'Create a study set for ' + (title || raw) : raw, ids, mergedSettings, setGenerationPhase);
       setPacks(prev => [pack, ...prev.filter(p => p.id !== pack.id)]);
       setPrompt('');
       setAttachedImage(null);
@@ -244,7 +249,7 @@ export function StudyWorkspace() {
         ...prev,
         {
           role: 'assistant',
-          text: `I've created your study pack on **${pack.topic}**! You can open notes, flashcards, or take a practice quiz below:`,
+          text: `I've created your personalized study notebook on **${pack.topic}** with **${pack.notes.sections.length} notes sections**, **${pack.flashcards.cards.length} flashcards**, and **${pack.quiz.questions.length} quiz questions**! You can explore them below:`,
           studyPack: pack
         }
       ]);
@@ -718,19 +723,18 @@ export function StudyWorkspace() {
                           </div>
                         </div>
                       )}
-                      {m.suggestedAction && (
-                        <div className="suggested-action-box" style={{ marginTop: '14px' }}>
-                          <button
-                            type="button"
-                            className="dark-button create-node-action"
-                            onClick={() => createNotebookForTopic(m.suggestedAction!.topic)}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 20px', borderRadius: '14px', fontWeight: 600, fontSize: '15px', cursor: 'pointer' }}
-                          >
-                            <Sparkles size={16} />
-                            <span>{m.suggestedAction.label}</span>
-                            <ArrowRight size={15} />
-                          </button>
-                        </div>
+                      {m.role === 'assistant' && !m.studyPack && !m.isStreaming && (
+                        <StudyNotebookWizard
+                          defaultTopic={
+                            m.suggestedAction?.topic ||
+                            (m.thoughtTopic
+                              ? m.thoughtTopic.replace(/^(is\s+(the\s+)?|what\s+is\s+|how\s+to\s+|can\s+you\s+explain\s+)/i, '').replace(/[?!.]+$/, '').trim()
+                              : '') ||
+                            'DSA Study Guide'
+                          }
+                          onGenerate={(customTopic, customSettings) => createNotebookForTopic(customTopic, undefined, customSettings)}
+                          isGenerating={generating}
+                        />
                       )}
                       {m.quickPrompts && m.quickPrompts.length > 0 && (
                         <div className="quick-prompts-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
