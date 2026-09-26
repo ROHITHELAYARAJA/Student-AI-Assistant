@@ -7,8 +7,8 @@ import { randomUUID } from 'node:crypto';
 import { rateLimit } from 'express-rate-limit';
 import { db, notebook, listNotebooks, saveNotebook, addDocument, getDocuments } from './store';
 import { issueSession, logout, passwordHash, readUser, requireUser, session, verifyPassword } from './auth';
-import { GenerateRequest, TutorRequest } from './schema';
-import { generate, tutor, sourceChunks } from './generation';
+import { GenerateRequest, TutorRequest, ChatRequest } from './schema';
+import { generate, tutor, sourceChunks, handleChat } from './generation';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 export const api = express.Router();
 const run = (fn: (req:Request,res:Response)=>Promise<void>|void) => (req:Request,res:Response,next:NextFunction) => Promise.resolve().then(()=>fn(req,res)).catch(next);
@@ -98,6 +98,7 @@ api.post('/documents/youtube',run(async(req,res)=>{
   const title=`YouTube lesson ${id}`;const doc=addDocument(req.user.id,title,[{page:1,text}]);res.status(201).json({...doc,title,text});
 }));
 const aiLimit=rateLimit({windowMs:60*60*1000,limit:30,keyGenerator:req=>req.user.id,standardHeaders:'draft-7',legacyHeaders:false,message:{message:'Study generation limit reached. Please try again later.'}});
+api.post('/chat',aiLimit,run(async(req,res)=>{const input=ChatRequest.parse(req.body);res.json(await handleChat(req.user.id,input.message,input.history));}));
 let activeJobs=0;
 api.post('/jobs',aiLimit,run((req,res)=>{
   const input=GenerateRequest.parse(req.body);getDocuments(req.user.id,input.documentIds);

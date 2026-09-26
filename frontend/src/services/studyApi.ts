@@ -24,3 +24,23 @@ export async function followStudy(id:string,onProgress:(s:string)=>void):Promise
   throw new Error('This task is still processing. Reload to reconnect to it.');
 }
 export async function saveRemote(pack:TurboStudyPack){return request<TurboStudyPack>(`/notebooks/${pack.id}`,{method:'PUT',body:JSON.stringify({notes:pack.notes,completed:pack.roadmap.stages.flatMap(s=>s.milestones.filter(m=>m.completed).map(m=>m.id)),favorite:pack.favorite,folder:pack.folder})});}
+
+export type ChatResponse = {
+  reply: string;
+  modelId?: string;
+  suggestedTopic?: string;
+  suggestedAction?: {
+    type: 'create_notebook';
+    topic: string;
+    label: string;
+  };
+  quickPrompts?: string[];
+};
+
+export async function sendChat(message: string, history: { role: string; text: string }[] = []): Promise<ChatResponse> {
+  return request<ChatResponse>('/chat', {
+    method: 'POST',
+    body: JSON.stringify({ message, history })
+  });
+}
+

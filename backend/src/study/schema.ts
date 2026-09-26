@@ -19,7 +19,48 @@ export const TutorRequest = z.object({ message: z.string().trim().min(1).max(400
 export const TutorAnswer = z.object({ title: text, summary: text, sections: z.array(z.object({ heading: text, content: text, sourceIds: refs })).min(1).max(6), checkQuestion: text, sourceIds: refs });
 export type SourcePage = { page: number; text: string };
 export type Citation = { id: string; documentId: string; title: string; page: number; excerpt: string };
-export function parseModelJson(raw: string) { const clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''); try { return JSON.parse(clean); } catch { throw new Error('The model returned incomplete study material. Please retry.'); } }
+export const ChatRequest = z.object({
+  message: z.string().trim().min(1).max(4000),
+  history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    text: z.string().max(8000)
+  })).max(20).default([])
+});
+export type ChatInput = z.infer<typeof ChatRequest>;
+
+export const ChatResponseSchema = z.object({
+  reply: z.string().min(1),
+  modelId: z.string().optional(),
+  suggestedTopic: z.string().optional(),
+  suggestedAction: z.object({
+    type: z.literal('create_notebook'),
+    topic: z.string(),
+    label: z.string()
+  }).optional(),
+  quickPrompts: z.array(z.string()).default([])
+});
+export type ChatResponse = z.infer<typeof ChatResponseSchema>;
+
+export function repairJson(raw: string): string {
+  let clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  const firstBrace = clean.indexOf('{');
+  const lastBrace = clean.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    clean = clean.slice(firstBrace, lastBrace + 1);
+  }
+  clean = clean.replace(/,\s*([}\]])/g, '$1');
+  return clean;
+}
+
+export function parseModelJson(raw: string) {
+  const clean = repairJson(raw);
+  try {
+    return JSON.parse(clean);
+  } catch {
+    throw new Error('The model returned incomplete study material. Please retry.');
+  }
+}
+
 export function validateGenerated(raw: unknown, input: GenerateInput, citations: Citation[]) {
   const parsed = GeneratedSchema.parse(raw);
   if (parsed.quiz.questions.length !== input.questionCount || parsed.flashcards.cards.length !== input.cardCount) throw new Error('The model did not produce the requested number of questions and cards.');
@@ -30,3 +71,4 @@ export function validateGenerated(raw: unknown, input: GenerateInput, citations:
   if (citations.length && parsed.notes.sections.some(s => !s.sourceIds.length)) throw new Error('Some generated notes are missing source references.');
   return parsed;
 }
+

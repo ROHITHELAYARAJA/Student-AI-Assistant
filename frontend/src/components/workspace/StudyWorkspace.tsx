@@ -5,13 +5,14 @@ import { Mic, Youtube, ArrowUp, ArrowUpRight, ArrowRight, ArrowLeft, Plus, Searc
 import { router, RouteState } from '../../services/router';
 import { TurboStudyPack } from '../../types/turbo';
 import { AccountPanel } from './AccountPanel';
-import { request, createStudy, followStudy, saveRemote, StudySettings } from '../../services/studyApi';
+import { request, createStudy, followStudy, saveRemote, StudySettings, sendChat, ChatResponse } from '../../services/studyApi';
 import { examplePack } from './example';
 import { StudyTools, StudyTab, progress, readLocal } from './StudyTools';
 import './workspace.css';
 import './astra-theme.css';
 import './astra-layout.css';
-import { welcomeReply } from './welcome';
+import { welcomeReply, isGreeting, isNotebookIntent } from './welcome';
+import { RichMarkdown } from '../turbo/RichMarkdown';
 
 type Page = 'home' | 'library' | 'favorites';
 const tabs: { id: StudyTab; label: string; icon: typeof BookOpen; suffix: string }[] = [
@@ -26,7 +27,7 @@ export function StudyWorkspace() {
   const [session,setSession]=useState<any>(null);
 
   const settings:StudySettings={questionCount:5,cardCount:8,difficulty:'beginner',language:'English'};
-  const [conversation,setConversation]=useState<{role:'user'|'assistant';text:string}[]>([]);
+  const [conversation,setConversation]=useState<{role:'user'|'assistant';text:string;suggestedAction?:{type:'create_notebook';topic:string;label:string};quickPrompts?:string[]}[]>([]);
   const [connectionError,setConnectionError]=useState('');
   const [generationPhase,setGenerationPhase]=useState('Getting started');
   const [documentIds,setDocumentIds]=useState<string[]>([]);
@@ -90,15 +91,83 @@ export function StudyWorkspace() {
     const saved=await saveRemote(pack);setPacks(prev=>[saved,...prev.filter(p=>p.id!==saved.id)]);
   }
   async function toggleFavorite(id:string){const p=allPacks.find(p=>p.id===id);if(!p)return;const favorite=!favorites.includes(id);try{await persist({...p,favorite});setFavorites(prev=>favorite?[...prev,id]:prev.filter(x=>x!==id));}catch(e:any){setToast(e.message);}}
-  async function generate(topic:string,title?:string){
-    if(!topic.trim()||generating)return;
-    const welcome=!title?welcomeReply(topic):null;
-    if(welcome){setConversation(prev=>[...prev,{role:'user',text:topic.trim()},{role:'assistant',text:welcome}]);setPrompt('');setError('');return;}
-    if(topic.trim().length<3){setError('Tell me a little more about what you’d like to learn.');return;}
-    if(!title)setConversation(prev=>[...prev,{role:'user',text:topic.trim()}]);
-    setGenerating(true);setError('');
-    try{const ids=title?active?.documentIds||[]:[];const pack=await createStudy(ids.length?'Create a study set for '+title:topic,ids,settings,setGenerationPhase);setPacks(prev=>[pack,...prev.filter(p=>p.id!==pack.id)]);setPrompt('');openPack(pack,'notes');setToast('Your study notebook is ready.');}
-    catch(e:any){setError(e.message);}finally{setGenerating(false);}
+  async function createNotebookForTopic(topic: string, title?: string) {
+    const raw = topic.trim();
+    if (!raw || generating) return;
+    setGenerating(true);
+    setError('');
+    setGenerationPhase('Connecting to model');
+    try {
+      const ids = title ? active?.documentIds || [] : documentIds;
+      const pack = await createStudy(ids.length ? 'Create a study set for ' + (title || raw) : raw, ids, settings, setGenerationPhase);
+      setPacks(prev => [pack, ...prev.filter(p => p.id !== pack.id)]);
+      setPrompt('');
+      openPack(pack, 'notes');
+      setToast('Your study notebook is ready.');
+    } catch (e: any) {
+      setError(e.message || 'Study generation is temporarily unavailable. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  }
+  async function generate(topic: string, title?: string) {
+    const raw = topic.trim();
+    if (!raw || generating) return;
+
+    if (title || (isNotebookIntent(raw) && !isGreeting(raw)) || (documentIds.length > 0 && isNotebookIntent(raw))) {
+      await createNotebookForTopic(raw, title);
+      return;
+    }
+
+    if (raw.length < 2) {
+      setError('Tell me a little more about what you’d like to learn.');
+      return;
+    }
+
+    const currentHistory = conversation.map(c => ({ role: c.role, text: c.text }));
+    setConversation(prev => [...prev, { role: 'user', text: raw }]);
+    setPrompt('');
+    setGenerating(true);
+    setError('');
+    setGenerationPhase('Connecting to model');
+
+    try {
+      const chatRes = await sendChat(raw, currentHistory);
+      setConversation(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: chatRes.reply,
+          suggestedAction: chatRes.suggestedAction,
+          quickPrompts: chatRes.quickPrompts
+        }
+      ]);
+    } catch (e: any) {
+      const fallback = welcomeReply(raw);
+      if (fallback) {
+        setConversation(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: fallback,
+            suggestedAction: {
+              type: 'create_notebook',
+              topic: 'Flask commands',
+              label: 'Create notebook on Flask commands'
+            },
+            quickPrompts: [
+              'Create study notebook on Flask commands',
+              'Explain Flask routes and decorators',
+              'How do I run a Flask app in debug mode?'
+            ]
+          }
+        ]);
+      } else {
+        setError('A response could not be reached right now. Please try again shortly.');
+      }
+    } finally {
+      setGenerating(false);
+    }
   }
   async function importFile(file?:File){if(!file)return;setImportError('');setUploading(true);try{const body=new FormData();body.append('file',file);const doc=await request('/documents',{method:'POST',body});setDocumentIds([doc.id]);setImportTitle(file.name.replace(/\.[^.]+$/,''));setImportText(doc.text);setToast(doc.notice||doc.pageCount+' source pages ready.');}catch(e:any){setImportError(e.message);}finally{setUploading(false);}}
   async function saveImport(){if(!importTitle.trim()||!importText.trim())return;setUploading(true);try{const pack=await request<TurboStudyPack>('/notebooks',{method:'POST',body:JSON.stringify({topic:importTitle.trim(),text:importText.trim(),documentIds})});setPacks(prev=>[pack,...prev]);setModal(null);setImportText('');setImportTitle('');setDocumentIds([]);openPack(pack,'notes');setToast('Your source notebook is saved.');}catch(e:any){setImportError(e.message);}finally{setUploading(false);}}
@@ -114,7 +183,7 @@ export function StudyWorkspace() {
     <header className="astra-header"><button className="astra-brand" onClick={()=>goHome()} aria-label="Blast AI home"><BlastMascot size="avatar" decorative/><strong>blast ai</strong></button>{inStudy&&<div className="astra-breadcrumb"><button onClick={()=>goHome()}><Home size={16}/>Home</button><ChevronRight size={14}/><span>{active?.topic||'Lesson'}</span></div>}<div className="astra-header-actions"><button className="text-button" onClick={()=>goHome('library')}>My lessons</button><button className="topbar-avatar" aria-label="Open profile settings" onClick={()=>setModal('settings')}>{name?name[0].toUpperCase():'Y'}</button></div></header>
     {inStudy&&<aside className="lesson-rail"><nav aria-label="Study tools">{tabs.map(t=><button key={t.id} className={studyTab===t.id?'active':''} aria-current={studyTab===t.id?'page':undefined} onClick={()=>active&&openPack(active,t.id)}><t.icon size={23}/><span>{t.label}</span></button>)}</nav></aside>}
     <div className="studio-main">
-    <main className="studio-content">{!inStudy&&conversation.length>0?<div className="welcome-conversation"><button className="back-link" onClick={()=>goHome()}><ArrowLeft size={17}/>Back</button><div className="welcome-messages" aria-live="polite">{conversation.map((m,i)=><div key={i} className={m.role==='user'?'welcome-user':'welcome-assistant'}>{m.role==='assistant'&&<span className="reply-spark"><BlastMascot size="small" decorative/></span>}<p>{m.text}</p></div>)}{generating&&<div className="welcome-assistant generation-status" role="status"><BlastMascot pose="working" size="small" decorative/>{generationPhase}…</div>}{error&&<div className="conversation-error" role="alert"><p>{error}</p><button className="text-button" onClick={()=>{const last=conversation.filter(m=>m.role==='user').slice(-1)[0];if(last){setPrompt(last.text);setError('');promptRef.current?.focus();}}}>Edit and try again</button></div>}</div><div className="conversation-input">{composer}</div></div>:!inStudy ? <motion.div key={page} {...motionProps}>
+    <main className="studio-content">{!inStudy&&conversation.length>0?<div className="welcome-conversation"><button className="back-link" onClick={()=>goHome()}><ArrowLeft size={17}/>Back</button><div className="welcome-messages" aria-live="polite">{conversation.map((m,i)=><div key={i} className={m.role==='user'?'welcome-user':'welcome-assistant'}>{m.role==='assistant'&&<span className="reply-spark"><BlastMascot size="small" decorative/></span>}<div className="welcome-message-body">{m.role==='assistant'?<div className="assistant-rich-text"><RichMarkdown content={m.text}/></div>:<p>{m.text}</p>}{m.suggestedAction&&<div className="suggested-action-box" style={{marginTop:'14px'}}><button type="button" className="dark-button create-node-action" onClick={()=>createNotebookForTopic(m.suggestedAction!.topic)} style={{display:'inline-flex',alignItems:'center',gap:'8px',padding:'12px 20px',borderRadius:'14px',fontWeight:600,fontSize:'15px',cursor:'pointer'}}><Sparkles size={16}/><span>{m.suggestedAction.label}</span><ArrowRight size={15}/></button></div>}{m.quickPrompts&&m.quickPrompts.length>0&&<div className="quick-prompts-row" style={{display:'flex',flexWrap:'wrap',gap:'8px',marginTop:'12px'}}>{m.quickPrompts.map((qp,qi)=><button key={qi} type="button" className="subtle-button quick-prompt-pill" onClick={()=>isNotebookIntent(qp)?createNotebookForTopic(qp):generate(qp)} style={{fontSize:'13px',padding:'6px 14px',borderRadius:'20px',cursor:'pointer'}}>{qp}</button>)}</div>}</div></div>)}{generating&&<div className="welcome-assistant generation-status" role="status"><BlastMascot pose="working" size="small" decorative/>{generationPhase}…</div>}{error&&<div className="conversation-error" role="alert"><p>{error}</p><button className="text-button" onClick={()=>{const last=conversation.filter(m=>m.role==='user').slice(-1)[0];if(last){setPrompt(last.text);setError('');promptRef.current?.focus();}}}>Edit and try again</button></div>}</div><div className="conversation-input">{composer}</div></div>:!inStudy ? <motion.div key={page} {...motionProps}>
       {page==='home'?<section className="astra-welcome"><div className="astra-start"><span className="workspace-kicker"><span/> YOUR PERSONAL LEARNING SPACE</span><h1>Make room for<br/><em>your next idea.</em></h1><p className="astra-intro">Bring your curiosity. Turn a question, a document, or a lecture into something you understand.</p>{composer}{error&&<p className="conversation-error" role="alert">{error}</p>}<div className="prompt-starters"><span>Try a starting point</span>{['Explain a difficult concept','Help me prepare for an exam','Create a study plan'].map(text=><button key={text} onClick={()=>{setPrompt(text);promptRef.current?.focus();}}>{text}<ArrowUpRight size={13}/></button>)}</div></div><aside className="astra-focus"><div className="focus-heading"><span>THE LEARNING STUDIO</span><Sparkles size={19}/></div><div className="focus-companion"><BlastMascot pose="reading" size="hero"/></div><h2>A little focus.<br/>A lasting difference.</h2><p>One place to understand, practise, and make it stick.</p><div className="study-methods"><span><FileText size={18}/><strong>Understand</strong><small>Notes with context</small></span><span><Layers size={18}/><strong>Remember</strong><small>Active recall</small></span><span><Headphones size={18}/><strong>Revisit</strong><small>Listen and reflect</small></span></div>{packs.length>0&&<button className="resume-lesson" onClick={()=>openPack(packs.find(p=>p.id!==examplePack.id)||examplePack)}><span className="resume-caption">PICK UP WHERE YOU LEFT OFF</span><strong>{(packs.find(p=>p.id!==examplePack.id)||examplePack).topic}</strong><span>Continue learning <ArrowRight size={16}/></span></button>}</aside></section>:<div className="page-heading"><h1>{page==='favorites'?'Your favorites':'Your lessons'}</h1><button className="subtle-button" onClick={()=>goHome()}>New lesson <Plus size={16}/></button></div>}
       <section className="library-section"><div className="section-heading"><h2>{page === 'favorites' ? 'Your favorites' : page === 'home' ? 'Your collection' : 'All lessons'}<span className="count-badge">{visiblePacks.length}</span></h2>{page === 'home' ? <button className="text-button" onClick={() => goHome('library')}>View library <ArrowRight size={14} /></button> : <button className="subtle-button" onClick={() => setModal('import')}><Plus size={15} /> Add notes</button>}</div><div className={`library-toolbar ${page==='home'?'home-library-toolbar':''}`}><div className="filter-tabs" aria-label="Filter notebooks">{(['all', 'progress', 'completed'] as const).map(f => <button key={f} aria-pressed={filter === f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>{f === 'all' ? 'All notebooks' : f === 'progress' ? 'In progress' : 'Completed'}</button>)}</div><div className="library-tools"><select aria-label="Filter by folder" value={folder} onChange={e=>setFolder(e.target.value)}><option value="">All folders</option>{[...new Set(packs.map(p=>p.folder).filter(Boolean))].map(f=><option key={f}>{f}</option>)}</select><label className="library-search"><Search size={15} /><input ref={searchRef} aria-label="Search notebooks" placeholder="Search notebooks" value={query} onChange={e => setQuery(e.target.value)} /></label><select aria-label="Sort notebooks" value={sort} onChange={e => setSort(e.target.value)}><option value="recent">Recent first</option><option value="name">A–Z</option></select></div></div><div className="notebook-grid astra-lesson-list">{visiblePacks.map((p, index) => <motion.article {...motionProps} key={p.id} className="notebook-card"><div className="notebook-card-top"><span className={`notebook-icon tone-${index % 3}`}><BookOpen size={21} /></span><button className={`favorite-button ${favorites.includes(p.id) ? 'is-favorite' : ''}`} onClick={() => toggleFavorite(p.id)} aria-label={`${favorites.includes(p.id) ? 'Unfavorite' : 'Favorite'} ${p.topic}`} aria-pressed={favorites.includes(p.id)}><Star size={17} fill={favorites.includes(p.id) ? 'currentColor' : 'none'} /></button></div><button className="notebook-open" onClick={() => openPack(p)}>{p.id === examplePack.id && <span className="sample-label">EXAMPLE NOTEBOOK</span>}<h3>{p.topic}</h3><p>{p.notes.summary || 'A fresh space for your next discovery.'}</p></button><div className="notebook-meta"><span><FileText size={12} />{p.notes.sections.length} sections</span><span><Layers size={12} />{p.flashcards.cards.length} cards</span></div><div className="card-progress"><span style={{ width: `${progress(p)}%` }} /></div><div className="notebook-footer"><span>{progress(p) ? `${progress(p)}% explored` : 'Ready when you are'}</span><button aria-label={`Open ${p.topic}`} onClick={() => openPack(p)}><ArrowUpRight size={17} /></button></div></motion.article>)}{!query && page !== 'favorites' && filter === 'all' && <button className="new-card" onClick={() => setModal('import')}><span><Plus size={23} /></span><strong>Room for your next idea</strong><p>Add your notes and make<br />something of them.</p></button>}</div>{visiblePacks.length === 0 && <div className="empty-state"><Search size={28} /><h3>{page === 'favorites' ? 'Your favorites start here' : 'Nothing here just yet'}</h3><p>{page === 'favorites' ? 'Tap the star on a notebook to keep it close.' : 'Try another search or add a new notebook.'}</p><button className="subtle-button" onClick={() => goHome('library')}>See all notebooks</button></div>}</section>{connectionError&&<p className="connection-note">Your saved lessons couldn’t be loaded. <button onClick={()=>refreshWorkspace()}>Reconnect</button></p>}
     </motion.div> : !active ? <div className="empty-state"><BookOpen size={32} /><h1>Notebook not found</h1><p>This notebook isn’t saved on this device.</p><button className="dark-button" onClick={() => goHome()}>Back to your workspace</button></div> : <motion.div key={active.id} {...motionProps}>
