@@ -70,7 +70,7 @@ export async function invoke(system:string,messages:Turn[],selected?:string,maxT
  if (nvidiaKey) {
    try {
      const controller = new AbortController();
-     const timeoutId = setTimeout(() => controller.abort(), Math.min(timeoutMs, 40000));
+     const timeoutId = setTimeout(() => controller.abort(), Math.max(timeoutMs, 85000));
      const res = await fetch(`${nvidiaBase}/chat/completions`, {
        method: 'POST',
        headers: {
@@ -84,7 +84,7 @@ export async function invoke(system:string,messages:Turn[],selected?:string,maxT
            ...messages.map(m => ({ role: m.role, content: m.text }))
          ],
          temperature: 0.3,
-         max_tokens: Math.min(maxTokens, 4000)
+         max_tokens: Math.min(maxTokens, 8192)
        }),
        signal: controller.signal
      });
@@ -104,10 +104,17 @@ export async function invoke(system:string,messages:Turn[],selected?:string,maxT
            latencyMs: undefined
          };
        }
+     } else {
+       const errBody = await res.text().catch(() => '');
+       console.warn(`NVIDIA call returned status ${res.status}:`, errBody.slice(0, 300));
      }
    } catch (e) {
      console.warn('NVIDIA call failed in invoke, falling back to Bedrock:', e);
    }
+ }
+ const hasBedrockConfig = process.env.AWS_REGION && (process.env.AWS_BEARER_TOKEN_BEDROCK || process.env.BEDROCK_API_KEY);
+ if (!hasBedrockConfig) {
+   throw new ModelFailure('unavailable', true);
  }
  const {region,token}=configuration();const spec=models.find(m=>m.id===selected);
  // No arbitrary IDs, inference profiles, external endpoints or cross-Region routing.
