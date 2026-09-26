@@ -19,6 +19,7 @@ import { RecordModal } from './RecordModal';
 import { UploadModal } from './UploadModal';
 import { YouTubeModal } from './YouTubeModal';
 import ModernLoginSignup from '../ui/modern-login-signup';
+import ThinkingState from '../ui/thinking';
 
 type Page = 'home' | 'library' | 'favorites';
 const tabs: { id: StudyTab; label: string; icon: typeof BookOpen; suffix: string }[] = [
@@ -211,7 +212,7 @@ export function StudyWorkspace() {
     if (!raw || generating) return;
     setGenerating(true);
     setError('');
-    setGenerationPhase('Connecting to model');
+    setGenerationPhase('Planning your study pack');
     try {
       const ids = title ? active?.documentIds || [] : documentIds;
       const pack = await createStudy(ids.length ? 'Create a study set for ' + (title || raw) : raw, ids, settings, setGenerationPhase);
@@ -246,7 +247,7 @@ export function StudyWorkspace() {
     setPrompt('');
     setGenerating(true);
     setError('');
-    setGenerationPhase('Connecting to model');
+    setGenerationPhase('Analyzing question and reasoning');
 
     try {
       const chatRes = await sendChat(raw, currentHistory);
@@ -498,9 +499,17 @@ export function StudyWorkspace() {
                   </div>
                 ))}
                 {generating && (
-                  <div className="welcome-assistant generation-status" role="status">
-                    <BlastMascot pose="working" size="small" decorative />
-                    {generationPhase}…
+                  <div className="welcome-assistant blast-thinking-card" role="status" style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', margin: '20px 0', padding: '16px 20px', borderRadius: '18px', background: 'var(--canvas, #f1f2f3)', border: '1px solid var(--line, #e2e4e8)' }}>
+                    <div style={{ flexShrink: 0, marginTop: '4px' }}>
+                      <BlastMascot pose="working" size="small" decorative />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <ThinkingState
+                        variant="Steps"
+                        phase={generationPhase}
+                        topic={conversation.filter(m => m.role === 'user').slice(-1)[0]?.text}
+                      />
+                    </div>
                   </div>
                 )}
                 {error && (
@@ -534,6 +543,11 @@ export function StudyWorkspace() {
                       Bring your curiosity. Turn a question, a document, or a lecture into something you understand.
                     </p>
                     {composer}
+                    {generating && (
+                      <div className="blast-thinking-card" style={{ marginTop: '20px', padding: '16px 20px', borderRadius: '18px', background: 'var(--canvas, #f1f2f3)', border: '1px solid var(--line, #e2e4e8)' }}>
+                        <ThinkingState variant="Steps" phase={generationPhase} />
+                      </div>
+                    )}
                     {error && <p className="conversation-error" role="alert">{error}</p>}
                     <div className="prompt-starters">
                       <span>Try a starting point</span>

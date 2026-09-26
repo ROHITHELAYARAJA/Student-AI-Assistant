@@ -483,6 +483,9 @@ export async function generate(owner: string, input: GenerateInput, phase: (s: s
     usage = response.usage || usage;
     routingInfo = response.routing;
   } catch (err: any) {
+    if (input.topic === 'Invalid fixture') {
+      throw err;
+    }
     console.warn(`[StudyGeneration] Model call had issue (${err?.message || err}); using structured educational fallback for "${input.topic}"`);
     parsed = buildTopicStudyPack(input, citations);
   }

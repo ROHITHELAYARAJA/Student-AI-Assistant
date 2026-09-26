@@ -26,3 +26,114 @@ body[data-theme='dark'] ::-webkit-scrollbar-thumb,
 .dark ::-webkit-scrollbar-thumb {
   background: #39314c;
 }
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-inset: var(--inset);
+  --color-hover: var(--hover);
+  --color-hover-2: var(--hover-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-green: var(--green);
+  --color-orange: var(--orange);
+  --color-red: var(--red);
+  --radius-control: 8px;
+}
+
+:root {
+  --accent: #0285ff;
+  --page: #fafafb;
+  --canvas: #f1f2f3;
+  --surface: #ffffff;
+  --inset: #f7f8f9;
+  --hover: #f4f5f6;
+  --hover-2: #e7e9eb;
+  --ink: #1f2124;
+  --ink-2: #62656b;
+  --ink-3: #9a9da3;
+  --line: #ecedef;
+  --line-strong: #e0e2e5;
+  --green: #189a4d;
+  --orange: #ef720c;
+  --red: #e3474c;
+  --ease-link: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark,
+[data-theme='dark'] {
+  --accent: #3d9aff;
+  --page: #17181a;
+  --canvas: #1c1d1f;
+  --surface: #232427;
+  --inset: #1f2022;
+  --hover: #2a2b2e;
+  --hover-2: #313236;
+  --ink: #f2f3f4;
+  --ink-2: #a5a8ad;
+  --ink-3: #6c6f75;
+  --line: #2e3033;
+  --line-strong: #3a3c40;
+  --green: #3dbb72;
+  --orange: #f68f3c;
+  --red: #ee5c61;
+}
+
+.bg-canvas { background-color: var(--canvas); }
+.bg-surface { background-color: var(--surface); }
+.bg-inset { background-color: var(--inset); }
+.bg-hover { background-color: var(--hover); }
+.bg-hover-2 { background-color: var(--hover-2); }
+.text-ink { color: var(--ink); }
+.text-ink-2 { color: var(--ink-2); }
+.text-ink-3 { color: var(--ink-3); }
+.bg-line { background-color: var(--line); }
+.border-line { border-color: var(--line); }
+.border-line-strong { border-color: var(--line-strong); }
+.text-green { color: var(--green); }
+.bg-green { background-color: var(--green); }
+.text-orange { color: var(--orange); }
+.bg-orange { background-color: var(--orange); }
+.text-red { color: var(--red); }
+.bg-accent { background-color: var(--accent); }
+.rounded-control { border-radius: var(--radius-control, 8px); }
+.animated-underline { text-decoration: underline; text-underline-offset: 3px; }
+
+@keyframes shimmer-text {
+  0% {
+    background-position: 150%;
+  }
+  100% {
+    background-position: -50%;
+  }
+}
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(1turn);
+  }
+}
+
