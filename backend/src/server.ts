@@ -11,8 +11,10 @@ app.use(express.json({ limit: '2mb' }));
 app.use('/api', (req,res,next) => {
   res.setHeader('Cache-Control','no-store');
   if (!['GET','HEAD','OPTIONS'].includes(req.method) && req.headers.origin) {
+    const origin = req.headers.origin;
+    const isVercel = origin.endsWith('.vercel.app') || origin.endsWith('vercel.app');
     const allowed = (process.env.APP_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000,http://127.0.0.1:5000').split(',');
-    if (!allowed.includes(req.headers.origin)) { res.status(403).json({message:'This request origin is not allowed.'}); return; }
+    if (!allowed.includes(origin) && !isVercel) { res.status(403).json({message:'This request origin is not allowed.'}); return; }
   }
   next();
 });

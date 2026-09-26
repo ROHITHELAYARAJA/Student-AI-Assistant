@@ -22,7 +22,7 @@ export function parsePath(pathname: string): RouteState {
   if (cleanPath === '/signup') {
     return { routeName: 'signup', fullPath: '/signup' };
   }
-  if (cleanPath === '/login' || cleanPath === '/signin') {
+  if (cleanPath === '/login' || cleanPath === '/signin' || cleanPath === '/auth') {
     return { routeName: 'login', fullPath: '/login' };
   }
   if (cleanPath === '/dashboard' || cleanPath === '/') {

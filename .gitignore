@@ -13,3 +13,5 @@ backend/data/
 *.sqlite-shm
 *.sqlite-wal
 .firecrawl/
+.mcp.json
+.cursor/mcp.json

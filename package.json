@@ -2,6 +2,10 @@
   "name": "student-ai-assistant",
   "version": "2.0.0",
   "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "description": "Student AI Assistant — React, TypeScript, and Node AI Backend",
   "scripts": {
     "dev:backend": "npm --prefix backend run dev",
