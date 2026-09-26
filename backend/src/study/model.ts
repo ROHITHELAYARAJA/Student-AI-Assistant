@@ -16,7 +16,7 @@ export const models:ModelSpec[] = [
 export type StudyImage={format:'png'|'jpeg';bytes:Uint8Array;sourceId:string};
 export type Turn={role:'user'|'assistant';text:string;images?:StudyImage[]};
 export class ModelFailure extends Error {
-  constructor(public kind:'auth'|'quota'|'busy'|'unavailable'|'invalid'|'blocked'|'configuration',public retryable:boolean){super('The study service could not complete this response. Please try again shortly.');}
+  constructor(public kind:'auth'|'verification'|'quota'|'busy'|'unavailable'|'invalid'|'blocked'|'configuration',public retryable:boolean){super('The study service could not complete this response. Please try again shortly.');}
 }
 function configuration(){
  const region=process.env.AWS_REGION,token=process.env.AWS_BEARER_TOKEN_BEDROCK||process.env.BEDROCK_API_KEY;
@@ -44,7 +44,8 @@ export async function availableModels():Promise<ModelSpec[]>{
 export function classifyFailure(err:any):ModelFailure{
  if(err instanceof ModelFailure)return err;
  if(['UnrecognizedClientException','ExpiredTokenException','InvalidSignatureException'].includes(err?.name))return new ModelFailure('auth',false);
- if(err?.name==='AccessDeniedException'&&/currently being verified|account.*verif|invalid.*key|expired.*key/i.test(err.message||''))return new ModelFailure('auth',false);
+ if(err?.name==='AccessDeniedException'&&/currently being verified|account.*verif/i.test(err.message||''))return new ModelFailure('verification',false);
+ if(err?.name==='AccessDeniedException'&&/invalid.*key|expired.*key/i.test(err.message||''))return new ModelFailure('auth',false);
  if(err?.name==='ThrottlingException')return new ModelFailure(/tokens per day/i.test(err.message)?'quota':'busy',true);
  if(['AccessDeniedException','ResourceNotFoundException','ValidationException'].includes(err?.name))return new ModelFailure('unavailable',true);
  if(['AbortError','TimeoutError','ModelTimeoutException','ServiceUnavailableException','InternalServerException','ModelNotReadyException'].includes(err?.name)||err?.$metadata?.httpStatusCode>=500)return new ModelFailure('busy',true);

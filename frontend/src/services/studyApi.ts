@@ -2,8 +2,9 @@ import { TurboStudyPack } from '../types/turbo';
 export async function request<T=any>(url:string, options:RequestInit={}):Promise<T> {
   let res:Response;
   try { res=await fetch(`/api${url}`,{credentials:'same-origin',...options,headers: options.body instanceof FormData?options.headers:{'Content-Type':'application/json',...options.headers}}); }
-  catch { throw new Error('The study server is unavailable. Please try again when it is connected.'); }
-  const data=await res.json().catch(()=>({message:'The study server is unavailable. Please try again.'}));
+  catch { throw new Error('We couldn’t connect to your workspace. Check your connection and try again.'); }
+  if(!res.headers.get('content-type')?.includes('application/json'))throw new Error('This preview isn’t connected to Blast. Open the Blast workspace and try again.');
+  const data=await res.json().catch(()=>{throw new Error('We couldn’t read this response. Please try again.');});
   if(!res.ok)throw new Error(data.message||'This action could not be completed.');return data;
 }
 export type StudySettings={questionCount:number;cardCount:number;difficulty:'beginner'|'intermediate'|'advanced';language:string};

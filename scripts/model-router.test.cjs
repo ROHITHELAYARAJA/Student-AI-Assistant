@@ -24,5 +24,9 @@ test('catalog excludes cross-Region-only models and preserves in-Region IDs',asy
  finally{global.fetch=oldFetch;if(oldRegion===undefined)delete process.env.AWS_REGION;else process.env.AWS_REGION=oldRegion;if(oldKey===undefined)delete process.env.AWS_BEARER_TOKEN_BEDROCK;else process.env.AWS_BEARER_TOKEN_BEDROCK=oldKey;}
 });
 test('AWS verification restriction is account-wide and not retried',()=>{
- const {classifyFailure}=require('../backend/dist/study/model');const failure=classifyFailure({name:'AccessDeniedException',message:'Your account is currently being verified.'});assert.equal(failure.kind,'auth');assert.equal(failure.retryable,false);
+ const {classifyFailure}=require('../backend/dist/study/model');const failure=classifyFailure({name:'AccessDeniedException',message:'Your account is currently being verified.'});assert.equal(failure.kind,'verification');assert.equal(failure.retryable,false);
+});
+test('verification shows actionable sanitized message without trying other models',async()=>{
+ let calls=0;await assert.rejects(routeStructured(base,deps(async()=>{calls++;throw Object.assign(Error('Your account is currently being verified. private provider details'),{name:'AccessDeniedException'});})),error=>/service activation/.test(error.message)&&!error.message.includes('private'));
+ assert.equal(calls,1);
 });

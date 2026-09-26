@@ -61,3 +61,24 @@ Only three candidates can actually be invoked for one response. Visual input tak
 AWS's diagnostic says verification normally takes less than two hours and directs the owner to AWS verification support if it persists beyond that. No external message was sent. Once verification is complete, run `node scripts/check-routing-inference.cjs` for a bounded live connection check, then evaluate real study sets before release.
 
 Additional references: [Kimi K2.5 input limits](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-moonshot-ai-kimi-k2-5.html), [Kimi K3 cross-Region access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-moonshot-ai-kimi-k3.html), [new AWS experience restrictions](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html).
+
+## Study interface increment — 26 September 2026
+
+Provider constraint: AI inference and any new cloud services must use AWS only, in the confirmed selected Region ap-south-1. No alternate AI provider, gateway, hosting provider, or cloud speech service has been added. Existing browser read-aloud is device/browser functionality, not a generated AWS audio file.
+
+Implemented in the existing React workspace:
+- Dark home and lesson navigation, simplified composer, and local greeting onboarding without a model request.
+- Notes edits now preserve separate sections, bullet points, formulas, code, and source IDs instead of flattening the document.
+- Optional contextual notebook chat beside notes and sources, using the same authenticated tutor endpoint and AWS router.
+- Original uploaded document preview with document selection and an Open original fallback, using the owner-scoped file endpoint.
+- One-question-at-a-time quizzes with progress, question selection, previous/next navigation, and existing persisted answers and explanations.
+
+Files: StudyWorkspace.tsx, StudyTools.tsx, StudyChat.tsx, NotesEditor.tsx, SourceViewer.tsx, welcome.ts, reference-theme.css, studyApi.ts, vite.config.ts.
+
+The frontend production build passes. Browser checks cover quiz navigation and the notes editor against the example notebook. Live model generation remains unverified since the last AWS project-verification denial. This increment does not claim production readiness or complete Turbo feature parity. Custom per-tool generation settings, AWS-generated downloadable podcast audio, and end-to-end quality evaluation on real uploaded resources still need implementation or verification.
+
+### Generation error follow-up — 26 September 2026
+
+A new bounded Mumbai check (20 output tokens, no user documents) again returned HTTP 403 AccessDeniedException with AWS project verification pending. Preferred model priorities remain unchanged. Switching models cannot resolve this project-wide restriction.
+
+The backend now distinguishes verification from credential and transient failures. Learners receive a service-activation message without raw provider details or model names. Verification stops after one attempt. Backend build and all 19 local mocked tests passed, including an explicit verification-message/no-fallback regression test. AWS directs the project owner to aws-verification@amazon.com if the restriction persists beyond two hours. No support message was sent and no cloud settings were changed.

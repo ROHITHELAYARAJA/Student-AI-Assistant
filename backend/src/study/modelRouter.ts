@@ -52,6 +52,7 @@ export async function routeStructured<T>(req:RouteRequest<T>,deps={available:ava
   }catch(error){const failure=classifyFailure(error);failures.push(failure.kind);
    // Diagnostics contain no prompt, provider response, document, key or user identifier.
    console.warn(JSON.stringify({event:'study_model_attempt_failed',task,modelId:model.id,kind:failure.kind}));
+   if(failure.kind==='verification')throw new Error('Study generation is waiting for service activation. Your notes are saved. Please contact the workspace owner.');
    if(failure.kind==='blocked')throw new Error('This request could not be completed. Try rephrasing it as a study question.');
    if(!failure.retryable)throw new Error('The study service is unavailable. Your notes are saved; please try again later.');
    if(failure.kind!=='invalid')cooldown.set(key,deps.now()+(failure.kind==='unavailable'?300000:60000));
