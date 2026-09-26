@@ -11,3 +11,141 @@
 @media(min-width:1500px){.astra-studio .studio-content{max-width:1400px}.astra-studio.lesson-mode .studio-content{max-width:1450px}}
 @media(max-width:1100px){.astra-welcome{gap:30px;grid-template-columns:minmax(0,1.4fr) minmax(260px,1fr)}.astra-focus{padding:24px 21px}.astra-studio .astra-lesson-list{grid-template-columns:repeat(2,minmax(0,1fr))}.astra-studio.lesson-mode .studio-content{padding-left:185px;padding-right:25px}.astra-studio .lesson-rail{left:15px;width:145px}.astra-studio .notebook-actions{flex-direction:row;margin-left:0}.astra-studio .study-heading{flex-wrap:wrap}}
 @media(max-width:760px){.astra-header{height:73px;padding:0 22px}.astra-studio .studio-content{padding:32px 22px 45px}.astra-welcome{grid-template-columns:1fr;gap:28px;padding-bottom:36px}.astra-welcome h1{font-size:48px;letter-spacing:-1.8px;margin-bottom:18px}.workspace-kicker{margin-bottom:19px;font-size:9px}.astra-intro{font-size:14px}.astra-focus{padding:23px}.astra-focus h2{font-size:29px}.focus-heading{margin-bottom:18px}.study-methods{padding-bottom:20px}.astra-studio .astra-lesson-list{grid-template-columns:1fr}.astra-studio .new-card{min-height:175px!important}.astra-studio .lesson-rail{position:sticky;top:0;left:0;width:100%;background:#f7f7f2f5;padding:8px 12px;border-bottom:1px solid #e0e5d6}.lesson-rail nav{flex-direction:row;overflow:auto;gap:5px}.lesson-rail button{flex-direction:column;min-width:65px;width:auto;font-size:10px;gap:6px;padding:9px}.astra-studio.lesson-mode .studio-content{padding:23px 18px 45px}.astra-studio .study-heading h1{font-size:31px}.astra-studio .study-panel{padding:21px 17px}.astra-studio .milestone{margin-left:0}.astra-studio .lesson-hero-art{display:none}.astra-studio .notebook-actions{width:100%;flex-wrap:wrap}.astra-studio .notebook-actions input{max-width:180px}.astra-studio .panel-heading{flex-wrap:wrap}.astra-studio .quiz-navigation{gap:8px}.astra-studio .dark-button{padding:11px 15px}.astra-breadcrumb{display:none}.astra-studio .studio-toast{left:50%;right:auto}.resume-lesson>span:last-child{font-size:11px!important;gap:9px}.astra-studio .new-card p{display:block}.astra-studio .attachment-button{font-size:11px;padding:8px}.astra-studio .study-context-layout{display:block}.context-chat-panel{margin-top:20px}.astra-studio .study-flashcard{padding:25px 18px}.astra-studio .study-flashcard h3{font-size:23px}}
+
+
+/* =========================================================
+   Astra Layout Dark Theme Overrides
+   ========================================================= */
+html[data-theme='dark'] .astra-studio,
+body[data-theme='dark'] .astra-studio,
+[data-theme='dark'] .astra-studio,
+.astra-studio[data-theme='dark'],
+.astra-studio.dark {
+  background: #0f1015 !important;
+  color: #f0edf6 !important;
+}
+
+[data-theme='dark'] .astra-header,
+.astra-studio.dark .astra-header,
+.astra-studio[data-theme='dark'] .astra-header {
+  background: #0f1015 !important;
+  border-bottom: 1px solid #22202f !important;
+}
+
+[data-theme='dark'] .astra-focus,
+.astra-studio.dark .astra-focus,
+.astra-studio[data-theme='dark'] .astra-focus {
+  background: linear-gradient(145deg, #171624 0%, #1e1b30 100%) !important;
+  border: 1px solid #2f2945 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme='dark'] .focus-heading,
+.astra-studio.dark .focus-heading,
+.astra-studio[data-theme='dark'] .focus-heading {
+  color: #c5aaff !important;
+}
+
+[data-theme='dark'] .astra-focus h2,
+.astra-studio.dark .astra-focus h2,
+.astra-studio[data-theme='dark'] .astra-focus h2 {
+  color: #f0edf6 !important;
+}
+
+[data-theme='dark'] .astra-focus > p,
+.astra-studio.dark .astra-focus > p,
+.astra-studio[data-theme='dark'] .astra-focus > p {
+  color: #a7a1b6 !important;
+}
+
+[data-theme='dark'] .study-methods,
+.astra-studio.dark .study-methods,
+.astra-studio[data-theme='dark'] .study-methods {
+  border-top-color: #2c2742 !important;
+}
+
+[data-theme='dark'] .study-methods > span,
+.astra-studio.dark .study-methods > span,
+.astra-studio[data-theme='dark'] .study-methods > span {
+  color: #cebffa !important;
+}
+
+[data-theme='dark'] .study-methods small,
+.astra-studio.dark .study-methods small,
+.astra-studio[data-theme='dark'] .study-methods small {
+  color: #8c859d !important;
+}
+
+[data-theme='dark'] .resume-lesson,
+.astra-studio.dark .resume-lesson,
+.astra-studio[data-theme='dark'] .resume-lesson {
+  background: #1b1928 !important;
+  border: 1px solid #332d4b !important;
+}
+
+[data-theme='dark'] .resume-lesson strong,
+.astra-studio.dark .resume-lesson strong,
+.astra-studio[data-theme='dark'] .resume-lesson strong {
+  color: #f0edf6 !important;
+}
+
+[data-theme='dark'] .resume-caption,
+.astra-studio.dark .resume-caption,
+.astra-studio[data-theme='dark'] .resume-caption {
+  color: #bda4ff !important;
+}
+
+[data-theme='dark'] .resume-lesson > span:last-child,
+.astra-studio.dark .resume-lesson > span:last-child,
+.astra-studio[data-theme='dark'] .resume-lesson > span:last-child {
+  color: #ccb6fc !important;
+}
+
+[data-theme='dark'] .astra-studio .topic-composer,
+.astra-studio.dark .topic-composer,
+.astra-studio[data-theme='dark'] .topic-composer {
+  background: #171622 !important;
+  border: 1px solid #2d2940 !important;
+}
+
+[data-theme='dark'] .astra-studio .topic-composer textarea,
+.astra-studio.dark .topic-composer textarea,
+.astra-studio[data-theme='dark'] .topic-composer textarea {
+  color: #f0edf6 !important;
+}
+
+[data-theme='dark'] .astra-studio .notebook-card,
+.astra-studio.dark .notebook-card,
+.astra-studio[data-theme='dark'] .notebook-card {
+  background: #171622 !important;
+  border: 1px solid #2a263d !important;
+}
+
+[data-theme='dark'] .astra-studio .notebook-open h3,
+.astra-studio.dark .notebook-open h3,
+.astra-studio[data-theme='dark'] .notebook-open h3 {
+  color: #f0edf6 !important;
+}
+
+[data-theme='dark'] .astra-studio .notebook-open p,
+.astra-studio.dark .notebook-open p,
+.astra-studio[data-theme='dark'] .notebook-open p {
+  color: #9c96ab !important;
+}
+
+[data-theme='dark'] .astra-studio .study-panel,
+.astra-studio.dark .study-panel,
+.astra-studio[data-theme='dark'] .study-panel {
+  background: #161522 !important;
+  border: 1px solid #2b273e !important;
+  color: #f0edf6 !important;
+}
+
+[data-theme='dark'] .lesson-continue,
+.astra-studio.dark .lesson-continue,
+.astra-studio[data-theme='dark'] .lesson-continue {
+  background: #191728 !important;
+  border: 1px solid #2e2848 !important;
+  color: #f0edf6 !important;
+}
+

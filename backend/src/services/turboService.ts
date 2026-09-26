@@ -246,13 +246,52 @@ export function validateStudyPrompt(input: string): PromptValidationResult {
 }
 
 async function callBedrock(prompt: string, preferredModel?: string): Promise<string> {
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+  const nvidiaBase = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
+  const nvidiaModel = process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
+
+  if (nvidiaKey) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 35000);
+      const res = await fetch(`${nvidiaBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${nvidiaKey}`
+        },
+        body: JSON.stringify({
+          model: nvidiaModel,
+          messages: [
+            { role: 'system', content: 'You are an expert AI study assistant. Respond accurately and follow all requested formats and instructions.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 3000
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const json = await res.json() as any;
+        const text = json?.choices?.[0]?.message?.content;
+        if (text && text.trim().length > 0) {
+          return text.trim();
+        }
+      }
+    } catch (err) {
+      console.warn('NVIDIA API call failed in turboService, attempting Bedrock fallback:', err);
+    }
+  }
+
   const bedrockToken =
     process.env.AWS_BEARER_TOKEN_BEDROCK ||
     process.env.BEDROCK_API_KEY ||
     '';
   const bedrockRegion = process.env.AWS_REGION || 'us-east-1';
 
-  if (!bedrockToken) {
+  if (!bedrockToken && !nvidiaKey) {
     throw new Error('AI generation is not configured yet. You can still import notes or explore the example notebook.');
   }
 

@@ -11,3 +11,18 @@ button { touch-action: manipulation; }
 ::selection { background: #dfd0ef; color: #392344; }
 ::-webkit-scrollbar { width: 6px; height: 5px; }
 ::-webkit-scrollbar-thumb { background: #d2c5dd; border-radius: 8px; }
+
+html[data-theme='dark'],
+body[data-theme='dark'],
+html.dark,
+body.dark {
+  background-color: #0f1015 !important;
+  color: #f0edf6 !important;
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb,
+body[data-theme='dark'] ::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb {
+  background: #39314c;
+}

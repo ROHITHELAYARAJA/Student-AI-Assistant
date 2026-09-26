@@ -52,6 +52,51 @@ export function classifyFailure(err:any):ModelFailure{
  return new ModelFailure('unavailable',false);
 }
 export async function invoke(system:string,messages:Turn[],selected?:string,maxTokens=6000,timeoutMs=65000){
+ const nvidiaKey = process.env.NVIDIA_API_KEY;
+ const nvidiaBase = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
+ const nvidiaModel = process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
+ if (nvidiaKey) {
+   try {
+     const controller = new AbortController();
+     const timeoutId = setTimeout(() => controller.abort(), Math.min(timeoutMs, 40000));
+     const res = await fetch(`${nvidiaBase}/chat/completions`, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         Authorization: `Bearer ${nvidiaKey}`
+       },
+       body: JSON.stringify({
+         model: nvidiaModel,
+         messages: [
+           ...(system ? [{ role: 'system', content: system }] : []),
+           ...messages.map(m => ({ role: m.role, content: m.text }))
+         ],
+         temperature: 0.3,
+         max_tokens: Math.min(maxTokens, 4000)
+       }),
+       signal: controller.signal
+     });
+     clearTimeout(timeoutId);
+     if (res.ok) {
+       const json = await res.json() as any;
+       const text = json?.choices?.[0]?.message?.content || '';
+       if (text.trim()) {
+         return {
+           text,
+           modelId: nvidiaModel,
+           usage: {
+             inputTokens: json?.usage?.prompt_tokens || 0,
+             outputTokens: json?.usage?.completion_tokens || 0,
+             totalTokens: json?.usage?.total_tokens || 0
+           },
+           latencyMs: undefined
+         };
+       }
+     }
+   } catch (e) {
+     console.warn('NVIDIA call failed in invoke, falling back to Bedrock:', e);
+   }
+ }
  const {region,token}=configuration();const spec=models.find(m=>m.id===selected);
  // No arbitrary IDs, inference profiles, external endpoints or cross-Region routing.
  if(!spec)throw new ModelFailure('configuration',false);

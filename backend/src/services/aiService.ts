@@ -25,7 +25,49 @@ export async function processStudyRequest(request: StudyRequest): Promise<Struct
   let modelUsed = '';
   let structuredResponse: StructuredAiResponse | null = null;
 
-  if (bedrockToken) {
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+  const nvidiaBase = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
+  const nvidiaModel = process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
+
+  const jsonSystemPrompt = buildStrictJsonPrompt(opMeta.id, opMeta.outputComponent, extractedTopic, rawInput, request.programmingLanguage);
+
+  if (nvidiaKey) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const res = await fetch(`${nvidiaBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${nvidiaKey}`
+        },
+        body: JSON.stringify({
+          model: nvidiaModel,
+          messages: [{ role: 'user', content: jsonSystemPrompt }],
+          temperature: 0.2,
+          max_tokens: 2500
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const json = await res.json() as any;
+        const responseText = json?.choices?.[0]?.message?.content || '';
+        if (responseText) {
+          const parsed = tryParseJsonToStructured(responseText, opMeta.id, opMeta.outputComponent, extractedTopic);
+          if (parsed) {
+            structuredResponse = parsed;
+            modelUsed = `NVIDIA Nemotron Ultra (${nvidiaModel})`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('NVIDIA call failed in aiService, falling back to Bedrock:', e);
+    }
+  }
+
+  if (!structuredResponse && bedrockToken) {
     const defaultModels = [
       'anthropic.claude-3-haiku-20240307-v1:0',
       'meta.llama3-70b-instruct-v1:0',
@@ -37,8 +79,6 @@ export async function processStudyRequest(request: StudyRequest): Promise<Struct
     if (request.preferredModel && defaultModels.includes(request.preferredModel)) {
       bedrockModels = [request.preferredModel, ...defaultModels.filter((m) => m !== request.preferredModel)];
     }
-
-    const jsonSystemPrompt = buildStrictJsonPrompt(opMeta.id, opMeta.outputComponent, extractedTopic, rawInput, request.programmingLanguage);
 
     for (const modelId of bedrockModels) {
       try {
