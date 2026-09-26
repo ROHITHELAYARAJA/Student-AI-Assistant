@@ -49,6 +49,7 @@ api.put('/notebooks/:id',run((req,res)=>{
   saveNotebook(req.user.id,pack);res.json(pack);
 }));
 api.delete('/notebooks/:id',run((req,res)=>{const id=req.params.id;db.exec('BEGIN');try{db.prepare('DELETE FROM notebooks WHERE owner=? AND id=?').run(req.user.id,id);for(const table of ['messages','reviews','attempts'])db.prepare(`DELETE FROM ${table} WHERE owner=? AND notebook=?`).run(req.user.id,id);db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}res.json({success:true});}));
+api.delete('/history',run((req,res)=>{db.exec('BEGIN');try{for(const t of ['notebooks','messages','reviews','attempts','jobs','documents','document_images'])db.prepare(`DELETE FROM ${t} WHERE owner=?`).run(req.user.id);db.exec('COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}res.json({success:true,message:'All history cleared.'});}));
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:10*1024*1024,files:1,fields:2}});
 api.post('/documents',rateLimit({windowMs:60000,limit:10,keyGenerator:req=>req.user.id,standardHeaders:'draft-7',legacyHeaders:false}),upload.single('file'),run(async(req,res)=>{
   if(!req.file){res.status(400).json({message:'Choose a PDF, TXT, or Markdown file.'});return;}

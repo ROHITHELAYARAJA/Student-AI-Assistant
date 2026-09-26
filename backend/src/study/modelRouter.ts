@@ -11,6 +11,7 @@ export type TaskContext = {
   hasImages?: boolean;
 };
 
+const nemotron = 'nvidia/nemotron-3-ultra-550b-a55b';
 const grok = 'xai.grok-4.6';
 const k3 = 'moonshotai.kimi-k3';
 const glm = 'zai.glm-5';
@@ -20,21 +21,21 @@ const qwen480 = 'qwen.qwen3-coder-480b-a35b-v1:0';
 const kimi = 'moonshotai.kimi-k2.5';
 
 /**
- * Task-specific fallback chains strictly matching:
- * - Normal learning: Grok 4.6 -> GLM 5 -> Kimi K2.5
- * - Large textbook/PDF: Kimi K3 -> Kimi K2.5 -> Grok 4.6
- * - Hard maths / DSA: GLM 5 -> DeepSeek V3.2 -> Grok 4.6
- * - Coding: DeepSeek V3.2 -> Qwen Coder -> GLM 5
- * - Coding-heavy session: Qwen Coder -> DeepSeek V3.2 -> GLM 5
- * - PDF + image study: Kimi K2.5 -> Kimi K3 after text extraction -> Grok 4.6 after text extraction
+ * Task-specific fallback chains prioritizing active Nemotron Ultra engine:
+ * - Normal learning: Nemotron Ultra -> Grok 4.6 -> GLM 5 -> Kimi K2.5
+ * - Large textbook/PDF: Nemotron Ultra -> Kimi K3 -> Kimi K2.5 -> Grok 4.6
+ * - Hard maths / DSA: Nemotron Ultra -> GLM 5 -> DeepSeek V3.2 -> Grok 4.6
+ * - Coding: Nemotron Ultra -> DeepSeek V3.2 -> Qwen Coder -> GLM 5
+ * - Coding-heavy session: Nemotron Ultra -> Qwen Coder -> DeepSeek V3.2 -> GLM 5
+ * - PDF + image study: Nemotron Ultra -> Kimi K2.5 -> Kimi K3 -> Grok 4.6
  */
 export const routingOrder: Record<TaskType, string[]> = {
-  learning: [grok, glm, kimi],
-  'large-document': [k3, kimi, grok],
-  reasoning: [glm, deep, grok],
-  coding: [deep, qwenNext, qwen480, glm],
-  'coding-heavy': [qwenNext, qwen480, deep, glm],
-  visual: [kimi, k3, grok]
+  learning: [nemotron, grok, glm, kimi],
+  'large-document': [nemotron, k3, kimi, grok],
+  reasoning: [nemotron, glm, deep, grok],
+  coding: [nemotron, deep, qwenNext, qwen480, glm],
+  'coding-heavy': [nemotron, qwenNext, qwen480, deep, glm],
+  visual: [nemotron, kimi, k3, grok]
 };
 
 const coding = /\b(code|coding|debug|debugging|programming|typescript|javascript|python|java|compiler|refactor|stack trace|sql|implement|function|repository|unit tests?)\b|```|\b(def|const|let)\s+\w+\s*[=(]/i;

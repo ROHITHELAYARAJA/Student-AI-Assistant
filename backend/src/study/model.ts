@@ -1,6 +1,14 @@
 import { BedrockRuntimeClient, ConverseCommand, ContentBlock } from '@aws-sdk/client-bedrock-runtime';
 export type ModelSpec = { id:string; label:string; contextTokens:number; maxOutput:number; vision:boolean };
-export const models:ModelSpec[] = [
+export const nemotronSpec: ModelSpec = {
+  id: 'nvidia/nemotron-3-ultra-550b-a55b',
+  label: 'NVIDIA Nemotron Ultra',
+  contextTokens: 500000,
+  maxOutput: 8000,
+  vision: true
+};
+
+export const models: ModelSpec[] = [
   {id:'xai.grok-4.6',label:'Grok 4.6',contextTokens:500000,maxOutput:16000,vision:true},
   {id:'moonshotai.kimi-k3',label:'Kimi K3',contextTokens:1000000,maxOutput:16000,vision:true},
   {id:'zai.glm-5',label:'GLM 5',contextTokens:200000,maxOutput:16000,vision:false},
@@ -26,6 +34,10 @@ function configuration(){
 let cached:{region:string;token:string;expires:number;items:ModelSpec[]}|undefined;
 let pending:{key:string;promise:Promise<ModelSpec[]>}|undefined;
 export async function availableModels():Promise<ModelSpec[]>{
+ const nvidiaKey = process.env.NVIDIA_API_KEY;
+ if (nvidiaKey && process.env.NODE_ENV !== 'test') {
+   return [nemotronSpec, ...models];
+ }
  const {region,token}=configuration();
  if(cached?.region===region&&cached.token===token&&cached.expires>Date.now())return cached.items;
  const key=region+token;

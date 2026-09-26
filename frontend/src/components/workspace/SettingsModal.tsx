@@ -5,17 +5,21 @@ import {
   Settings as SettingsIcon,
   Crown,
   Sparkles,
-  Mic,
   Copy,
   Check,
   Edit2,
   Mail,
-  Globe,
   User as UserIcon,
   LogOut,
-  Camera,
-  ArrowRight,
-  Key
+  Cpu,
+  Sliders,
+  Moon,
+  Sun,
+  Trash2,
+  AlertTriangle,
+  Layers,
+  HelpCircle,
+  Volume2
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -25,6 +29,7 @@ interface SettingsModalProps {
   onOpenUpgrade: () => void;
   onOpenLibrary: () => void;
   onOpenDraftUploads: () => void;
+  onClearAllHistory?: () => void;
   onLogOut: () => void;
 }
 
@@ -35,15 +40,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenUpgrade,
   onOpenLibrary,
   onOpenDraftUploads,
+  onClearAllHistory,
   onLogOut
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(profile.name);
-  const [isEditingLang, setIsEditingLang] = useState(false);
-  const [langValue, setLangValue] = useState(profile.language);
   const [copiedId, setCopiedId] = useState(false);
-  const [isEditingAccessCode, setIsEditingAccessCode] = useState(false);
-  const [accessCodeValue, setAccessCodeValue] = useState(profile.accessCode || 'Not assigned');
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  // Stored preferences
+  const [difficulty, setDifficulty] = useState<string>(() => {
+    try { return localStorage.getItem('blast_pref_difficulty') || 'beginner'; } catch { return 'beginner'; }
+  });
+  const [cardCount, setCardCount] = useState<number>(() => {
+    try { return Number(localStorage.getItem('blast_pref_cards') || 8); } catch { return 8; }
+  });
+  const [questionCount, setQuestionCount] = useState<number>(() => {
+    try { return Number(localStorage.getItem('blast_pref_questions') || 5); } catch { return 5; }
+  });
+  const [voiceReadout, setVoiceReadout] = useState<boolean>(() => {
+    try { return localStorage.getItem('blast_pref_voice') === 'true'; } catch { return false; }
+  });
 
   function handleSaveName() {
     if (!nameValue.trim()) return;
@@ -62,31 +79,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsEditingName(false);
   }
 
-  function handleSaveLang(newLang: string) {
-    setLangValue(newLang);
-    const updated: UserProfile = {
-      ...profile,
-      language: newLang
-    };
-    saveStoredProfile(updated);
-    onUpdateProfile(updated);
-    setIsEditingLang(false);
-  }
-
-  function handleSaveAccessCode() {
-    const updated: UserProfile = {
-      ...profile,
-      accessCode: accessCodeValue.trim() || 'Not assigned'
-    };
-    saveStoredProfile(updated);
-    onUpdateProfile(updated);
-    setIsEditingAccessCode(false);
-  }
-
   function handleCopyUserId() {
     navigator.clipboard.writeText(profile.id);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
+  }
+
+  function handlePrefChange(key: string, val: any) {
+    try { localStorage.setItem(key, String(val)); } catch {}
   }
 
   return (
@@ -98,216 +98,165 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(5, 5, 8, 0.78)',
+        zIndex: 99999,
+        background: 'rgba(5, 5, 8, 0.88)',
         backdropFilter: 'blur(10px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 9999,
         padding: '20px',
-        overflowY: 'auto',
-        fontFamily: "'DM Sans', -apple-system, sans-serif"
+        overflowY: 'auto'
       }}
     >
       <div
-        className="blast-settings-dialog"
+        className="settings-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="settings-title"
+        aria-labelledby="settings-heading"
         style={{
           width: '100%',
-          maxWidth: '920px',
-          background: '#121215',
+          maxWidth: '820px',
+          maxHeight: '92vh',
+          background: '#111116',
+          border: '1px solid #232330',
           borderRadius: '24px',
-          border: '1px solid #24242e',
-          boxShadow: '0 25px 70px rgba(0, 0, 0, 0.8), 0 0 45px rgba(108, 71, 255, 0.12)',
-          color: '#ffffff',
-          overflow: 'hidden',
+          boxShadow: '0 25px 70px rgba(0, 0, 0, 0.6)',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '90vh'
+          overflow: 'hidden',
+          color: '#f0f0f5',
+          fontFamily: "'DM Sans', -apple-system, sans-serif"
         }}
       >
         {/* Header */}
         <div
           style={{
-            padding: '24px 28px 18px',
+            padding: '20px 24px',
+            borderBottom: '1px solid #1f1f2a',
             display: 'flex',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '1px solid #1f1f28'
+            background: '#14141a'
           }}
         >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <SettingsIcon size={22} style={{ color: '#a855f7' }} />
-              <h2
-                id="settings-title"
-                style={{
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  margin: 0,
-                  color: '#ffffff',
-                  fontFamily: "'Space Grotesk', -apple-system, sans-serif"
-                }}
-              >
-                Settings
-              </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                background: 'rgba(147, 51, 234, 0.18)',
+                border: '1px solid rgba(147, 51, 234, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#c084fc'
+              }}
+            >
+              <SettingsIcon size={20} />
             </div>
-            <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#8e8e9c' }}>
-              Manage your account, subscription, and preferences
-            </p>
+            <div>
+              <h2 id="settings-heading" style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                Blast AI Settings & Preferences
+              </h2>
+              <p style={{ margin: 0, fontSize: '12px', color: '#88889a' }}>
+                Manage active AI model, study parameters, and data collections
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close settings"
             style={{
-              background: '#1e1e26',
-              border: '1px solid #2b2b38',
+              background: '#1d1d26',
+              border: '1px solid #2f2f3e',
               borderRadius: '50%',
-              width: '34px',
-              height: '34px',
+              width: '32px',
+              height: '32px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#8e8e9c',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.color = '#ffffff';
-              e.currentTarget.style.background = '#282834';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.color = '#8e8e9c';
-              e.currentTarget.style.background = '#1e1e26';
+              color: '#9090a2',
+              cursor: 'pointer'
             }}
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        {/* Modal Body - 2 Columns */}
+        {/* Body Grid */}
         <div
           style={{
-            padding: '26px 28px 28px',
+            padding: '24px',
             overflowY: 'auto',
             display: 'grid',
             gridTemplateColumns: 'minmax(280px, 320px) 1fr',
-            gap: '24px'
+            gap: '20px'
           }}
         >
-          {/* Left Column: Account Profile Card */}
-          <div
-            style={{
-              background: '#16161b',
-              border: '1px solid #242430',
-              borderRadius: '20px',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            {/* Purple Banner */}
+          {/* Left Column: Account Profile */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div
               style={{
-                height: '90px',
-                background: 'linear-gradient(135deg, #6c47ff 0%, #a855f7 100%)',
-                position: 'relative'
-              }}
-            />
-
-            {/* Avatar & Info */}
-            <div
-              style={{
-                padding: '0 20px 20px',
+                background: '#16161d',
+                border: '1px solid #242432',
+                borderRadius: '18px',
+                padding: '20px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                textAlign: 'center',
-                position: 'relative',
-                marginTop: '-44px'
+                textAlign: 'center'
               }}
             >
-              {/* Circular Avatar */}
-              <div style={{ position: 'relative', marginBottom: '12px' }}>
-                <div
-                  style={{
-                    width: '84px',
-                    height: '84px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #44326d 0%, #2f214f 100%)',
-                    border: '4px solid #16161b',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontFamily: "'Space Grotesk', -apple-system, sans-serif"
-                  }}
-                >
-                  {profile.initials}
-                </div>
-                <button
-                  type="button"
-                  title="Change avatar photo"
-                  style={{
-                    position: 'absolute',
-                    bottom: '2px',
-                    right: '2px',
-                    width: '26px',
-                    height: '26px',
-                    borderRadius: '50%',
-                    background: '#242430',
-                    border: '2px solid #16161b',
-                    color: '#a855f7',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Camera size={13} />
-                </button>
+              {/* Avatar */}
+              <div
+                style={{
+                  width: '74px',
+                  height: '74px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                  border: '3px solid #111116',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '12px',
+                  boxShadow: '0 4px 20px rgba(124, 58, 237, 0.4)'
+                }}
+              >
+                {profile.initials || 'ST'}
               </div>
 
-              {/* User Name with inline edit */}
+              {/* Name Editor */}
               {isEditingName ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', gap: '6px', width: '100%', marginBottom: '8px' }}>
                   <input
                     type="text"
                     value={nameValue}
                     onChange={e => setNameValue(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleSaveName();
-                      if (e.key === 'Escape') setIsEditingName(false);
-                    }}
                     autoFocus
                     style={{
-                      background: '#1f1f28',
-                      border: '1px solid #6c47ff',
-                      color: '#ffffff',
-                      padding: '4px 10px',
+                      flex: 1,
+                      background: '#1d1d28',
+                      border: '1px solid #7c3aed',
                       borderRadius: '8px',
-                      fontSize: '15px',
-                      fontWeight: 600,
-                      outline: 'none',
-                      textAlign: 'center',
-                      width: '160px'
+                      padding: '6px 10px',
+                      color: '#fff',
+                      fontSize: '14px'
                     }}
                   />
                   <button
                     type="button"
                     onClick={handleSaveName}
                     style={{
-                      background: '#6c47ff',
+                      background: '#7c3aed',
                       border: 'none',
-                      borderRadius: '6px',
-                      padding: '4px 8px',
+                      borderRadius: '8px',
                       color: '#fff',
+                      padding: '0 12px',
                       cursor: 'pointer'
                     }}
                   >
@@ -315,499 +264,396 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                  <h3
-                    style={{
-                      fontSize: '19px',
-                      fontWeight: 700,
-                      margin: 0,
-                      color: '#ffffff',
-                      fontFamily: "'Space Grotesk', -apple-system, sans-serif"
-                    }}
-                  >
-                    {profile.name}
-                  </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <strong style={{ fontSize: '17px', color: '#ffffff' }}>{profile.name}</strong>
                   <button
                     type="button"
                     onClick={() => setIsEditingName(true)}
-                    title="Edit name"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#8e8e9c',
-                      cursor: 'pointer',
-                      padding: '2px',
-                      display: 'flex'
-                    }}
+                    style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: '2px' }}
+                    title="Edit Name"
                   >
-                    <Edit2 size={14} />
+                    <Edit2 size={13} />
                   </button>
                 </div>
               )}
 
-              <p style={{ margin: 0, fontSize: '12px', color: '#7a7a88', marginBottom: '18px' }}>
-                Member since {profile.memberSince}
-              </p>
+              <span style={{ fontSize: '12px', color: '#88889b', marginBottom: '14px' }}>
+                {profile.email || 'Guest Student Account'}
+              </span>
 
-              {/* Details Box Rows */}
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {/* Email */}
-                <div
-                  style={{
-                    background: '#111114',
-                    border: '1px solid #22222c',
-                    borderRadius: '12px',
-                    padding: '10px 14px',
-                    textAlign: 'left'
-                  }}
-                >
-                  <div style={{ fontSize: '11px', color: '#7a7a88', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                    <Mail size={12} style={{ color: '#8e8e9c' }} />
-                    <span>Email</span>
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 500, wordBreak: 'break-all' }}>
-                    {profile.email}
-                  </div>
-                </div>
-
-                {/* Language */}
-                <div
-                  style={{
-                    background: '#111114',
-                    border: '1px solid #22222c',
-                    borderRadius: '12px',
-                    padding: '10px 14px',
-                    textAlign: 'left',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#7a7a88', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                      <Globe size={12} style={{ color: '#8e8e9c' }} />
-                      <span>Language</span>
-                    </div>
-                    {isEditingLang ? (
-                      <select
-                        value={langValue}
-                        onChange={e => handleSaveLang(e.target.value)}
-                        style={{
-                          background: '#1f1f28',
-                          border: '1px solid #6c47ff',
-                          color: '#ffffff',
-                          borderRadius: '6px',
-                          padding: '2px 8px',
-                          fontSize: '12px'
-                        }}
-                      >
-                        <option value="English">English</option>
-                        <option value="Spanish">Spanish</option>
-                        <option value="French">French</option>
-                        <option value="German">German</option>
-                        <option value="Hindi">Hindi</option>
-                      </select>
-                    ) : (
-                      <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 500 }}>
-                        {profile.language}
-                      </div>
-                    )}
-                  </div>
-                  {!isEditingLang && (
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingLang(true)}
-                      style={{ background: 'transparent', border: 'none', color: '#8e8e9c', cursor: 'pointer' }}
-                    >
-                      <Edit2 size={13} />
-                    </button>
-                  )}
-                </div>
-
-                {/* User ID */}
-                <div
-                  style={{
-                    background: '#111114',
-                    border: '1px solid #22222c',
-                    borderRadius: '12px',
-                    padding: '10px 14px',
-                    textAlign: 'left',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '11px', color: '#7a7a88', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                      <UserIcon size={12} style={{ color: '#8e8e9c' }} />
-                      <span>User ID</span>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '12px',
-                        color: '#a0a0b0',
-                        fontFamily: "'Fira Code', monospace",
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '180px'
-                      }}
-                      title={profile.id}
-                    >
-                      {profile.id.slice(0, 18)}...
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCopyUserId}
-                    title="Copy User ID"
-                    style={{
-                      background: '#1e1e26',
-                      border: '1px solid #2c2c3a',
-                      borderRadius: '6px',
-                      padding: '5px 7px',
-                      color: copiedId ? '#22c55e' : '#a0a0b0',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '11px'
-                    }}
-                  >
-                    {copiedId ? <Check size={13} /> : <Copy size={13} />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Log Out Button */}
-              <button
-                type="button"
-                onClick={onLogOut}
-                style={{
-                  width: '100%',
-                  marginTop: '16px',
-                  padding: '10px',
-                  borderRadius: '12px',
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                  color: '#f87171',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)')}
-              >
-                <LogOut size={14} />
-                <span>Log Out</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Right Column: 3 Cards */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-            {/* 1. Subscription Card */}
-            <div
-              style={{
-                background: '#16161b',
-                border: '1px solid #242430',
-                borderRadius: '20px',
-                padding: '22px 24px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <h4
-                  style={{
-                    fontSize: '17px',
-                    fontWeight: 700,
-                    margin: 0,
-                    color: '#ffffff',
-                    fontFamily: "'Space Grotesk', -apple-system, sans-serif"
-                  }}
-                >
-                  Subscription
-                </h4>
-                <Crown size={18} style={{ color: '#e5a83b' }} />
-              </div>
-              <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#8e8e9c' }}>
-                Basic access with essential features
-              </p>
-
+              {/* Plan Pill */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '14px 18px',
-                  background: '#111114',
-                  border: '1px solid #22222c',
-                  borderRadius: '14px',
-                  marginBottom: '14px'
+                  width: '100%',
+                  background: '#121217',
+                  border: '1px solid #20202c',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  boxSizing: 'border-box',
+                  marginBottom: '12px'
                 }}
               >
-                <div>
-                  <div style={{ fontSize: '10px', color: '#7a7a88', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 600 }}>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '10px', color: '#717182', fontWeight: 700, letterSpacing: '0.5px' }}>
                     CURRENT PLAN
                   </div>
-                  <div style={{ fontSize: '19px', fontWeight: 700, color: '#ffffff', marginTop: '2px', fontFamily: "'Space Grotesk', -apple-system, sans-serif" }}>
-                    {profile.plan}
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#c084fc', marginTop: '2px' }}>
+                    {profile.plan || 'Free Student'}
                   </div>
                 </div>
-
                 <button
                   type="button"
                   onClick={onOpenUpgrade}
                   style={{
-                    background: 'linear-gradient(135deg, #6c47ff 0%, #8c66da 100%)',
-                    color: '#ffffff',
-                    padding: '8px 20px',
-                    borderRadius: '20px',
-                    fontSize: '13px',
-                    fontWeight: 600,
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
                     border: 'none',
+                    borderRadius: '16px',
+                    padding: '6px 14px',
+                    color: '#fff',
+                    fontSize: '12px',
+                    fontWeight: 600,
                     cursor: 'pointer',
-                    boxShadow: '0 4px 15px rgba(108, 71, 255, 0.4)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '7px',
-                    transition: 'all 0.15s ease'
+                    gap: '4px'
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
-                  onMouseLeave={e => (e.currentTarget.style.transform = 'none')}
                 >
-                  <Sparkles size={14} />
-                  <span>Upgrade</span>
+                  <Sparkles size={12} />
+                  <span>Pro</span>
                 </button>
               </div>
 
-              {/* Access Code */}
+              {/* Copy ID */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '10px',
-                  fontSize: '13px',
-                  color: '#8e8e9c'
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  background: '#121217',
+                  border: '1px solid #20202c',
+                  borderRadius: '10px',
+                  padding: '8px 12px',
+                  boxSizing: 'border-box',
+                  fontSize: '11px',
+                  color: '#717182'
                 }}
               >
-                <Key size={14} style={{ color: '#a855f7' }} />
-                <span>Access Code:</span>
-                {isEditingAccessCode ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <input
-                      type="text"
-                      value={accessCodeValue}
-                      onChange={e => setAccessCodeValue(e.target.value)}
-                      placeholder="Enter code"
-                      style={{
-                        background: '#1f1f28',
-                        border: '1px solid #6c47ff',
-                        color: '#fff',
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        fontSize: '12px'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSaveAccessCode}
-                      style={{ background: '#6c47ff', border: 'none', borderRadius: '4px', padding: '2px 6px', color: '#fff' }}
-                    >
-                      <Check size={12} />
-                    </button>
+                <span>ID: {profile.id.slice(0, 14)}…</span>
+                <button
+                  type="button"
+                  onClick={handleCopyUserId}
+                  style={{ background: 'none', border: 'none', color: copiedId ? '#22c55e' : '#a0a0b2', cursor: 'pointer' }}
+                >
+                  {copiedId ? <Check size={13} /> : <Copy size={13} />}
+                </button>
+              </div>
+
+              {/* Logout */}
+              <button
+                type="button"
+                onClick={onLogOut}
+                style={{
+                  width: '100%',
+                  marginTop: '14px',
+                  padding: '9px',
+                  borderRadius: '10px',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  color: '#f87171',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <LogOut size={13} />
+                <span>Log Out</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: AI Engine, Study Defaults & Data Management */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* 1. Active AI Engine Status Card */}
+            <div
+              style={{
+                background: '#16161d',
+                border: '1px solid #242432',
+                borderRadius: '18px',
+                padding: '20px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Cpu size={18} style={{ color: '#c084fc' }} />
+                  <strong style={{ fontSize: '15px', color: '#ffffff' }}>Active AI Engine</strong>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'rgba(34, 197, 94, 0.15)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    borderRadius: '12px',
+                    padding: '3px 10px',
+                    color: '#4ade80',
+                    fontSize: '11px',
+                    fontWeight: 700
+                  }}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
+                  <span>OPERATIONAL</span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: '#111116',
+                  border: '1px solid #20202c',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  marginTop: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>
+                      NVIDIA Nemotron Ultra (550B)
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#88889b', marginTop: '2px' }}>
+                      500k context window · High-speed reasoning · Diagram vision enabled
+                    </div>
                   </div>
+                  <span
+                    style={{
+                      background: 'rgba(147, 51, 234, 0.2)',
+                      border: '1px solid rgba(147, 51, 234, 0.4)',
+                      borderRadius: '6px',
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#d8b4fe'
+                    }}
+                  >
+                    Primary Engine
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Study Preferences Card */}
+            <div
+              style={{
+                background: '#16161d',
+                border: '1px solid #242432',
+                borderRadius: '18px',
+                padding: '20px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <Sliders size={18} style={{ color: '#38bdf8' }} />
+                <strong style={{ fontSize: '15px', color: '#ffffff' }}>Study Pack Defaults</strong>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>
+                    Default Difficulty
+                  </label>
+                  <select
+                    value={difficulty}
+                    onChange={e => {
+                      setDifficulty(e.target.value);
+                      handlePrefChange('blast_pref_difficulty', e.target.value);
+                    }}
+                    style={{
+                      width: '100%',
+                      background: '#121217',
+                      border: '1px solid #232330',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      color: '#fff',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="beginner">Beginner / Fundamentals</option>
+                    <option value="intermediate">Intermediate / Standard</option>
+                    <option value="advanced">Advanced / Exam Mastery</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>
+                    Flashcards per Pack
+                  </label>
+                  <select
+                    value={cardCount}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      setCardCount(val);
+                      handlePrefChange('blast_pref_cards', val);
+                    }}
+                    style={{
+                      width: '100%',
+                      background: '#121217',
+                      border: '1px solid #232330',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      color: '#fff',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value={5}>5 Flashcards (Quick)</option>
+                    <option value={8}>8 Flashcards (Standard)</option>
+                    <option value={15}>15 Flashcards (Deep Dive)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>
+                    Quiz Questions
+                  </label>
+                  <select
+                    value={questionCount}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      setQuestionCount(val);
+                      handlePrefChange('blast_pref_questions', val);
+                    }}
+                    style={{
+                      width: '100%',
+                      background: '#121217',
+                      border: '1px solid #232330',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      color: '#fff',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value={3}>3 Questions (Micro-Quiz)</option>
+                    <option value={5}>5 Questions (Standard)</option>
+                    <option value={10}>10 Questions (Comprehensive)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>
+                    Voice Tutor Readout
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !voiceReadout;
+                      setVoiceReadout(next);
+                      handlePrefChange('blast_pref_voice', next);
+                    }}
+                    style={{
+                      width: '100%',
+                      background: voiceReadout ? 'rgba(56, 189, 248, 0.15)' : '#121217',
+                      border: voiceReadout ? '1px solid #38bdf8' : '1px solid #232330',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      color: voiceReadout ? '#38bdf8' : '#88889b',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Volume2 size={15} />
+                    <span>{voiceReadout ? 'Enabled' : 'Muted'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Data & Zero-Slate History Management */}
+            <div
+              style={{
+                background: '#16161d',
+                border: '1px solid #242432',
+                borderRadius: '18px',
+                padding: '20px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Trash2 size={17} style={{ color: '#ef4444' }} />
+                    <strong style={{ fontSize: '15px', color: '#ffffff' }}>History & Collections</strong>
+                  </div>
+                  <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: '#8e8e9c' }}>
+                    Wipe all saved notebooks, chat history, and uploaded docs to start completely fresh.
+                  </p>
+                </div>
+
+                {!confirmClear ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClear(true)}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '10px',
+                      padding: '8px 14px',
+                      color: '#f87171',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Clear All History
+                  </button>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <strong style={{ color: '#ffffff' }}>{profile.accessCode}</strong>
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       type="button"
-                      onClick={() => setIsEditingAccessCode(true)}
-                      style={{ background: 'transparent', border: 'none', color: '#7a7a88', cursor: 'pointer' }}
+                      onClick={() => setConfirmClear(false)}
+                      style={{
+                        background: '#232330',
+                        border: '1px solid #36364a',
+                        borderRadius: '8px',
+                        padding: '6px 10px',
+                        color: '#a0a0b2',
+                        fontSize: '12px',
+                        cursor: 'pointer'
+                      }}
                     >
-                      <Edit2 size={12} />
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmClear(false);
+                        onClearAllHistory?.();
+                      }}
+                      style={{
+                        background: '#ef4444',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        color: '#fff',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Confirm Wipe
                     </button>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* 2. Pre-Generated Notes Card */}
-            <div
-              style={{
-                background: '#16161b',
-                border: '1px solid #242430',
-                borderRadius: '20px',
-                padding: '22px 24px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <h4
-                  style={{
-                    fontSize: '17px',
-                    fontWeight: 700,
-                    margin: 0,
-                    color: '#ffffff',
-                    fontFamily: "'Space Grotesk', -apple-system, sans-serif"
-                  }}
-                >
-                  Pre-Generated Notes
-                </h4>
-                <Sparkles size={18} style={{ color: '#a855f7' }} />
-              </div>
-              <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#8e8e9c', lineHeight: 1.5 }}>
-                Instantly access curated study materials across multiple subjects. Perfect for quick learning and exam preparation.
-              </p>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    borderRadius: '16px',
-                    background: '#281c44',
-                    color: '#c4b5fd',
-                    border: '1px solid #3c2a68'
-                  }}
-                >
-                  AP classes
-                </span>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    borderRadius: '16px',
-                    background: '#1e2448',
-                    color: '#a5b4fc',
-                    border: '1px solid #2d366c'
-                  }}
-                >
-                  Expert Curated
-                </span>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    borderRadius: '16px',
-                    background: '#251b3d',
-                    color: '#d8b4fe',
-                    border: '1px solid #3d2b64'
-                  }}
-                >
-                  Ready to Study
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenLibrary();
-                }}
-                style={{
-                  width: '100%',
-                  padding: '11px',
-                  borderRadius: '12px',
-                  background: '#202029',
-                  border: '1px solid #2d2d3a',
-                  color: '#ffffff',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#282834')}
-                onMouseLeave={e => (e.currentTarget.style.background = '#202029')}
-              >
-                <span>Explore Library</span>
-                <ArrowRight size={14} />
-              </button>
-            </div>
-
-            {/* 3. Draft Uploads Card */}
-            <div
-              style={{
-                background: '#16161b',
-                border: '1px solid #242430',
-                borderRadius: '20px',
-                padding: '22px 24px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <h4
-                  style={{
-                    fontSize: '17px',
-                    fontWeight: 700,
-                    margin: 0,
-                    color: '#ffffff',
-                    fontFamily: "'Space Grotesk', -apple-system, sans-serif"
-                  }}
-                >
-                  Draft Uploads
-                </h4>
-                <Mic size={18} style={{ color: '#a855f7' }} />
-              </div>
-              <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#8e8e9c', lineHeight: 1.5 }}>
-                Recordings that never became a lesson. The audio is safe — play it, download it, or recover interrupted recordings.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenDraftUploads();
-                }}
-                style={{
-                  width: '100%',
-                  padding: '11px',
-                  borderRadius: '12px',
-                  background: '#202029',
-                  border: '1px solid #2d2d3a',
-                  color: '#ffffff',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#282834')}
-                onMouseLeave={e => (e.currentTarget.style.background = '#202029')}
-              >
-                <span>View Draft Uploads</span>
-              </button>
-            </div>
-
-            {/* Footer Support Notice */}
-            <div style={{ textAlign: 'center', paddingTop: '4px', fontSize: '12px', color: '#7a7a88' }}>
-              Need assistance? Contact our support team{' '}
-              <a
-                href="mailto:support@blastai.com"
-                style={{
-                  color: '#a855f7',
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  marginLeft: '4px'
-                }}
-              >
-                support@blastai.com &rarr;
-              </a>
             </div>
           </div>
         </div>

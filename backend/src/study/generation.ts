@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { getDocuments, getDocumentImages, notebook, db, saveNotebook } from './store';
-import { Citation, GenerateInput, validateGenerated, TutorAnswer, ChatResponse, ChatResponseSchema } from './schema';
+import { Citation, GenerateInput, validateGenerated, TutorAnswer, ChatResponse, ChatResponseSchema, parseModelJson } from './schema';
 import { Turn } from './model';
 import { routeStructured } from './modelRouter';
 
@@ -430,8 +430,52 @@ export async function handleChat(owner: string, message: string, history: { role
     };
   }
 
-  const chatSystem = `You are Blast AI, a warm, knowledgeable personal learning assistant and study companion. Respond clearly, accurately, and conversationally in markdown. If the question relates to an educational subject, explain it intuitively with a practical example. Return valid JSON only with this shape:
+  const chatSystem = `You are Blast AI, a warm, knowledgeable personal learning assistant and study companion powered by NVIDIA Nemotron. Respond clearly, accurately, and conversationally in markdown. If the question relates to an educational subject, explain it intuitively with a practical example. Return valid JSON only with this shape:
 {"reply":"friendly conversational answer in markdown","suggestedTopic":"concise 2-4 word topic or empty string","quickPrompts":["follow up question 1","follow up question 2"]}`;
+
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+  const nvidiaBase = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
+  const nvidiaModel = process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
+
+  if (nvidiaKey) {
+    try {
+      const res = await fetch(`${nvidiaBase}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${nvidiaKey}` },
+        body: JSON.stringify({
+          model: nvidiaModel,
+          messages: [
+            { role: 'system', content: chatSystem },
+            ...history.slice(-4).map(h => ({ role: h.role, content: h.text })),
+            { role: 'user', content: message }
+          ],
+          temperature: 0.4,
+          max_tokens: 1500
+        }),
+        signal: AbortSignal.timeout(20000)
+      });
+      if (res.ok) {
+        const json = await res.json() as any;
+        const rawContent = json.choices?.[0]?.message?.content || '';
+        try {
+          const parsed = parseModelJson(rawContent);
+          const valid = ChatResponseSchema.parse(parsed);
+          return { ...valid, modelId: nvidiaModel };
+        } catch {
+          if (rawContent.trim()) {
+            return {
+              reply: rawContent.trim(),
+              modelId: nvidiaModel,
+              suggestedTopic: message.slice(0, 40),
+              quickPrompts: ['Tell me more', 'Give an example', 'Create a study pack']
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('NVIDIA direct chat warning:', e);
+    }
+  }
 
   try {
     const turns: Turn[] = [

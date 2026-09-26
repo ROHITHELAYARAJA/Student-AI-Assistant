@@ -885,3 +885,85 @@ body[data-theme='dark'],
   border: 1px solid #4d3a77 !important;
 }
 
+/* Pasted image chip inside topic composer */
+.composer-pasted-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #f0ebf8;
+  border: 1px solid #d4c5e8;
+  border-radius: 12px;
+  padding: 6px 12px 6px 8px;
+  margin: 6px 0 10px 6px;
+  max-width: calc(100% - 12px);
+}
+.composer-pasted-chip img {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+.composer-pasted-chip .chip-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.composer-pasted-chip .chip-info strong {
+  font-size: 13px;
+  color: #3b2a54;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.composer-pasted-chip .chip-info small {
+  font-size: 11px;
+  color: #7a6b92;
+}
+.composer-pasted-chip button {
+  background: #ded4ee;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #554470;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: all 0.15s ease;
+}
+.composer-pasted-chip button:hover {
+  background: #cbb8e4;
+  color: #291c3d;
+}
+
+[data-theme='dark'] .composer-pasted-chip {
+  background: #1e1b2e !important;
+  border-color: #3d3358 !important;
+}
+[data-theme='dark'] .composer-pasted-chip .chip-info strong {
+  color: #ede5fa !important;
+}
+[data-theme='dark'] .composer-pasted-chip .chip-info small {
+  color: #9d91b8 !important;
+}
+[data-theme='dark'] .composer-pasted-chip button {
+  background: #2f2747 !important;
+  color: #baa7dc !important;
+}
+[data-theme='dark'] .composer-pasted-chip button:hover {
+  background: #473a6b !important;
+  color: #ffffff !important;
+}
+
+@keyframes pulseWave {
+  0%, 100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
