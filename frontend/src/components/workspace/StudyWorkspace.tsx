@@ -13,6 +13,11 @@ import './astra-theme.css';
 import './astra-layout.css';
 import { welcomeReply, isGreeting, isNotebookIntent } from './welcome';
 import { RichMarkdown } from '../turbo/RichMarkdown';
+import { UserProfile, getStoredProfile, logInUser, logOutUser } from '../../services/auth';
+import { UserProfileMenu } from './UserProfileMenu';
+import { SettingsModal } from './SettingsModal';
+import { UpgradeModal } from './UpgradeModal';
+import ModernLoginSignup from '../ui/modern-login-signup';
 
 type Page = 'home' | 'library' | 'favorites';
 const tabs: { id: StudyTab; label: string; icon: typeof BookOpen; suffix: string }[] = [
@@ -46,11 +51,19 @@ export function StudyWorkspace() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
-  const [modal, setModal] = useState<'import' | 'settings' | null>(null);
+  const [modal, setModal] = useState<'import' | 'settings' | 'upgrade' | 'auth' | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => getStoredProfile());
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      return (localStorage.getItem('blast_theme') as 'dark' | 'light') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
   const [importTitle, setImportTitle] = useState('');
   const [importText, setImportText] = useState('');
   const [importError, setImportError] = useState('');
-  const [name, setName] = useState<string>(() => readLocal('blast_display_name', ''));
+  const [name, setName] = useState<string>(() => userProfile.name || readLocal('blast_display_name', 'Rohith E'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'progress' | 'completed'>('all');
   const [sort, setSort] = useState('recent');
@@ -72,7 +85,9 @@ export function StudyWorkspace() {
   useEffect(()=>()=>recognition.current?.stop(),[]);
   useEffect(()=>{if(!modal){recognition.current?.stop();setRecording(false);}},[modal]);
   useEffect(() => router.subscribe(next => { setRoute(next); setMobileOpen(false); window.scrollTo({ top: 0 }); }), []);
-  useEffect(() => { document.documentElement.setAttribute('data-theme', 'light'); }, []);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 3500); return () => clearTimeout(timer); }, [toast]);
   useEffect(() => {
     if (!modal) return;
@@ -180,7 +195,35 @@ export function StudyWorkspace() {
     <div className="composer-toolbar"><button type="button" className="attachment-button" onClick={()=>{setModal('import');setImportError('');}}><Mic size={17}/>Record</button><button type="button" className="attachment-button" onClick={()=>{setModal('import');setImportError('');}}><Upload size={17}/>Upload</button><button type="button" className="attachment-button" onClick={()=>{setModal('import');setImportError('');setTimeout(()=>document.getElementById('youtube-url')?.focus(),0);}}><Youtube size={17}/>YouTube</button><button className="send-button" aria-label="Send message" disabled={generating||!prompt.trim()}>{generating?<Loader2 className="spin" size={21}/>:<ArrowUp size={23}/>}</button></div>
   </form>;
   return <div className={`studio astra-studio ${inStudy?'lesson-mode':'home-mode'} ${conversation.length&&!inStudy?'conversation-mode':''}`}>
-    <header className="astra-header"><button className="astra-brand" onClick={()=>goHome()} aria-label="Blast AI home"><BlastMascot size="avatar" decorative/><strong>blast ai</strong></button>{inStudy&&<div className="astra-breadcrumb"><button onClick={()=>goHome()}><Home size={16}/>Home</button><ChevronRight size={14}/><span>{active?.topic||'Lesson'}</span></div>}<div className="astra-header-actions"><button className="text-button" onClick={()=>goHome('library')}>My lessons</button><button className="topbar-avatar" aria-label="Open profile settings" onClick={()=>setModal('settings')}>{name?name[0].toUpperCase():'Y'}</button></div></header>
+    <header className="astra-header">
+      <button className="astra-brand" onClick={()=>goHome()} aria-label="Blast AI home">
+        <BlastMascot size="avatar" decorative/>
+        <strong>blast ai</strong>
+      </button>
+      {inStudy&&<div className="astra-breadcrumb"><button onClick={()=>goHome()}><Home size={16}/>Home</button><ChevronRight size={14}/><span>{active?.topic||'Lesson'}</span></div>}
+      <div className="astra-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <button className="text-button" onClick={()=>goHome('library')}>My lessons</button>
+        <UserProfileMenu
+          profile={userProfile}
+          onOpenSettings={() => setModal('settings')}
+          onOpenUpgrade={() => setModal('upgrade')}
+          onOpenSignIn={() => setModal('auth')}
+          onLogOut={() => {
+            const updated = logOutUser();
+            setUserProfile(updated);
+            setName('');
+            setToast('Logged out successfully.');
+          }}
+          currentTheme={theme === 'dark' ? 'Dark' : 'Light'}
+          onToggleTheme={() => {
+            const next = theme === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+            try { localStorage.setItem('blast_theme', next); } catch {}
+            setToast(`Switched to ${next} theme.`);
+          }}
+        />
+      </div>
+    </header>
     {inStudy&&<aside className="lesson-rail"><nav aria-label="Study tools">{tabs.map(t=><button key={t.id} className={studyTab===t.id?'active':''} aria-current={studyTab===t.id?'page':undefined} onClick={()=>active&&openPack(active,t.id)}><t.icon size={23}/><span>{t.label}</span></button>)}</nav></aside>}
     <div className="studio-main">
     <main className="studio-content">{!inStudy&&conversation.length>0?<div className="welcome-conversation"><button className="back-link" onClick={()=>goHome()}><ArrowLeft size={17}/>Back</button><div className="welcome-messages" aria-live="polite">{conversation.map((m,i)=><div key={i} className={m.role==='user'?'welcome-user':'welcome-assistant'}>{m.role==='assistant'&&<span className="reply-spark"><BlastMascot size="small" decorative/></span>}<div className="welcome-message-body">{m.role==='assistant'?<div className="assistant-rich-text"><RichMarkdown content={m.text}/></div>:<p>{m.text}</p>}{m.suggestedAction&&<div className="suggested-action-box" style={{marginTop:'14px'}}><button type="button" className="dark-button create-node-action" onClick={()=>createNotebookForTopic(m.suggestedAction!.topic)} style={{display:'inline-flex',alignItems:'center',gap:'8px',padding:'12px 20px',borderRadius:'14px',fontWeight:600,fontSize:'15px',cursor:'pointer'}}><Sparkles size={16}/><span>{m.suggestedAction.label}</span><ArrowRight size={15}/></button></div>}{m.quickPrompts&&m.quickPrompts.length>0&&<div className="quick-prompts-row" style={{display:'flex',flexWrap:'wrap',gap:'8px',marginTop:'12px'}}>{m.quickPrompts.map((qp,qi)=><button key={qi} type="button" className="subtle-button quick-prompt-pill" onClick={()=>isNotebookIntent(qp)?createNotebookForTopic(qp):generate(qp)} style={{fontSize:'13px',padding:'6px 14px',borderRadius:'20px',cursor:'pointer'}}>{qp}</button>)}</div>}</div></div>)}{generating&&<div className="welcome-assistant generation-status" role="status"><BlastMascot pose="working" size="small" decorative/>{generationPhase}…</div>}{error&&<div className="conversation-error" role="alert"><p>{error}</p><button className="text-button" onClick={()=>{const last=conversation.filter(m=>m.role==='user').slice(-1)[0];if(last){setPrompt(last.text);setError('');promptRef.current?.focus();}}}>Edit and try again</button></div>}</div><div className="conversation-input">{composer}</div></div>:!inStudy ? <motion.div key={page} {...motionProps}>
@@ -191,6 +234,154 @@ export function StudyWorkspace() {
       {studyTab==='learn'&&active.roadmap.stages.length>0&&<div className="lesson-continue"><button className="dark-button" onClick={()=>openPack(active,'notes')}>Continue <ArrowRight size={20}/></button><div><small>UP NEXT</small><strong>{active.roadmap.stages.flatMap(s=>s.milestones).find(m=>!m.completed)?.title||'Review what you’ve learned'}</strong></div><span>{progress(active)}% complete</span></div>}<motion.section key={`${active.id}-${studyTab}`} {...motionProps} className="study-panel"><StudyTools key={`${active.id}-${studyTab}`} pack={active} tab={studyTab} save={persist} notify={setToast} />{!active.roadmap.stages.length && studyTab !== 'sources' && <div className="generate-tools"><button className="dark-button" disabled={generating} onClick={() => { const text = active.notes.sections.map(s => s.content).join('\n'); if (!active.documentIds?.length && text.length > 12000) { setError('For now, generate activities from a notebook with fewer than 12,000 characters. Your full notes are still saved.'); return; } generate(`Create study materials from these notes: ${text}`, active.topic); }}>{generating ? <Loader2 className="spin" size={16} /> : <Sparkles size={16} />}Generate study activities</button>{error && <p className="inline-error" role="alert">{error}</p>}</div>}</motion.section><div className="bottom-note"><BookOpen size={14} /><span>Learning is a journey. Make this space your own.</span></div>
     </motion.div>}</main></div>
     <AnimatePresence>{toast && <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="studio-toast" role="status"><CheckCircle2 size={17} />{toast}<button aria-label="Dismiss notification" onClick={() => setToast('')}><X size={14} /></button></motion.div>}</AnimatePresence>
-    {modal && <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setModal(null); }}><div ref={modalRef} className="studio-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button className="modal-close icon-button" aria-label="Close dialog" onClick={() => setModal(null)}><X size={20} /></button><span className="modal-icon">{modal === 'import' ? <FileText size={25} /> : <Settings2 size={25} />}</span><h2 id="modal-title">{modal === 'import' ? 'Bring your notes along.' : 'Make yourself at home.'}</h2><p>{modal === 'import' ? 'Paste your text or import a text file. Your sources are saved privately on the study server and sent to the model only when you generate or ask a question.' : 'A little personal touch for your study space.'}</p>{modal === 'import' ? <><input ref={fileRef} type="file" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,application/pdf,text/plain,text/markdown,image/png,image/jpeg" hidden onChange={e => { importFile(e.target.files?.[0]); e.target.value = ''; }} /><button className="file-drop" onClick={() => fileRef.current?.click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); importFile(e.dataTransfer.files[0]); }}><Upload size={21} /><strong>{uploading?'Reading your source…':'Choose a file or drop it here'}</strong><small>PDF, TXT, Markdown or image · up to 10 MB</small></button><div className="import-alternatives"><button type="button" className="subtle-button" onClick={recordLecture}>{recording?'Stop transcription':'Record a lecture'}</button><small>{recording?'Listening… your transcript appears below.':'Live speech transcription where supported'}</small></div><label className="field-label" htmlFor="youtube-url">Or import a YouTube transcript</label><div className="youtube-input"><input id="youtube-url" type="url" placeholder="https://www.youtube.com/watch?v=…" value={youtube} onChange={e=>setYoutube(e.target.value)} /><button className="subtle-button" disabled={uploading||!youtube} onClick={importYoutube}>Import</button></div><label className="field-label" htmlFor="import-title">Notebook title</label><input id="import-title" placeholder="e.g. Biology · Chapter 3" value={importTitle} maxLength={120} onChange={e => setImportTitle(e.target.value)} /><label className="field-label" htmlFor="import-text">Your notes</label><textarea id="import-text" placeholder="Paste something worth learning…" value={importText} maxLength={600000} onChange={e => {setImportText(e.target.value);setDocumentIds([]);}} />{importError && <p className="inline-error" role="alert">{importError}</p>}<button className="dark-button modal-submit" disabled={uploading || !importTitle.trim() || !importText.trim()} onClick={saveImport}>Add to my library <ArrowRight size={17} /></button></> : <><AccountPanel session={session} onChange={()=>{refreshWorkspace();setModal(null);goHome();}} /><label className="field-label" htmlFor="display-name">What should we call you?</label><input id="display-name" value={name} placeholder="Your first name" maxLength={30} onChange={e => setName(e.target.value)} /><p className="privacy-note">Your signed-in notebooks and progress are stored on the study server. Export notes whenever you need an independent backup.</p><button className="dark-button modal-submit" onClick={() => { try { localStorage.setItem('blast_display_name', JSON.stringify(name.trim())); setModal(null); setToast('Your profile is updated.'); } catch { setToast('Could not save your profile.'); } }}>Save preferences <Check size={16} /></button></>}</div></div>}
+    {modal === 'settings' && (
+      <SettingsModal
+        profile={userProfile}
+        onClose={() => setModal(null)}
+        onUpdateProfile={(updated) => {
+          setUserProfile(updated);
+          setName(updated.name);
+          setToast('Profile updated');
+        }}
+        onOpenUpgrade={() => setModal('upgrade')}
+        onOpenLibrary={() => {
+          setModal(null);
+          goHome('library');
+        }}
+        onOpenDraftUploads={() => {
+          setModal('import');
+          setToast('Draft recordings and uploads');
+        }}
+        onLogOut={() => {
+          const updated = logOutUser();
+          setUserProfile(updated);
+          setName('');
+          setModal(null);
+          setToast('Logged out successfully.');
+        }}
+      />
+    )}
+
+    {modal === 'upgrade' && (
+      <UpgradeModal
+        profile={userProfile}
+        onClose={() => setModal(null)}
+        onPlanUpgraded={(updated) => {
+          setUserProfile(updated);
+          setToast('Welcome to Blast AI Pro!');
+        }}
+      />
+    )}
+
+    {modal === 'auth' && (
+      <div
+        className="modal-overlay"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 99999,
+          background: 'rgba(5, 5, 8, 0.88)',
+          backdropFilter: 'blur(8px)',
+          overflowY: 'auto'
+        }}
+      >
+        <ModernLoginSignup
+          onSuccess={(user) => {
+            const updated = logInUser(user?.name, user?.email);
+            setUserProfile(updated);
+            setName(updated.name);
+            setModal(null);
+            setToast(`Welcome back, ${updated.name}!`);
+          }}
+          onCancel={() => setModal(null)}
+        />
+      </div>
+    )}
+
+    {modal === 'import' && (
+      <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setModal(null); }}>
+        <div ref={modalRef} className="studio-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <button className="modal-close icon-button" aria-label="Close dialog" onClick={() => setModal(null)}>
+            <X size={20} />
+          </button>
+          <span className="modal-icon">
+            <FileText size={25} />
+          </span>
+          <h2 id="modal-title">Bring your notes along.</h2>
+          <p>
+            Paste your text or import a text file. Your sources are saved privately on the study server and sent to the model only when you generate or ask a question.
+          </p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.txt,.md,.png,.jpg,.jpeg,application/pdf,text/plain,text/markdown,image/png,image/jpeg"
+            hidden
+            onChange={e => {
+              importFile(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
+          <button
+            className="file-drop"
+            onClick={() => fileRef.current?.click()}
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => {
+              e.preventDefault();
+              importFile(e.dataTransfer.files[0]);
+            }}
+          >
+            <Upload size={21} />
+            <strong>{uploading ? 'Reading your source…' : 'Choose a file or drop it here'}</strong>
+            <small>PDF, TXT, Markdown or image · up to 10 MB</small>
+          </button>
+          <div className="import-alternatives">
+            <button type="button" className="subtle-button" onClick={recordLecture}>
+              {recording ? 'Stop transcription' : 'Record a lecture'}
+            </button>
+            <small>{recording ? 'Listening… your transcript appears below.' : 'Live speech transcription where supported'}</small>
+          </div>
+          <label className="field-label" htmlFor="youtube-url">Or import a YouTube transcript</label>
+          <div className="youtube-input">
+            <input
+              id="youtube-url"
+              type="url"
+              placeholder="https://www.youtube.com/watch?v=…"
+              value={youtube}
+              onChange={e => setYoutube(e.target.value)}
+            />
+            <button className="subtle-button" disabled={uploading || !youtube} onClick={importYoutube}>
+              Import
+            </button>
+          </div>
+          <label className="field-label" htmlFor="import-title">Notebook title</label>
+          <input
+            id="import-title"
+            placeholder="e.g. Biology · Chapter 3"
+            value={importTitle}
+            maxLength={120}
+            onChange={e => setImportTitle(e.target.value)}
+          />
+          <label className="field-label" htmlFor="import-text">Your notes</label>
+          <textarea
+            id="import-text"
+            placeholder="Paste something worth learning…"
+            value={importText}
+            maxLength={600000}
+            onChange={e => {
+              setImportText(e.target.value);
+              setDocumentIds([]);
+            }}
+          />
+          {importError && <p className="inline-error" role="alert">{importError}</p>}
+          <button
+            className="dark-button modal-submit"
+            disabled={uploading || !importTitle.trim() || !importText.trim()}
+            onClick={saveImport}
+          >
+            Add to my library <ArrowRight size={17} />
+          </button>
+        </div>
+      </div>
+    )}
   </div>;
 }

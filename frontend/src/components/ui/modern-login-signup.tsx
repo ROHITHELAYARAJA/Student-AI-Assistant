@@ -200,9 +200,9 @@ export default function Component({ onSuccess, onCancel, defaultMode = 'login' }
         if (!isSupabaseConfigured) {
           setTimeout(() => {
             try {
-              localStorage.setItem('blast_display_name', JSON.stringify('Google Scholar'));
+              localStorage.setItem('blast_display_name', JSON.stringify('Rohith E'));
             } catch {}
-            if (onSuccess) onSuccess({ email: 'user@gmail.com', name: 'Google Scholar' });
+            if (onSuccess) onSuccess({ email: 'e.rohith3130@gmail.com', name: 'Rohith E' });
             else window.location.href = '/dashboard';
           }, 800);
         }
@@ -226,9 +226,9 @@ export default function Component({ onSuccess, onCancel, defaultMode = 'login' }
         if (!isSupabaseConfigured) {
           setTimeout(() => {
             try {
-              localStorage.setItem('blast_display_name', JSON.stringify('GitHub Explorer'));
+              localStorage.setItem('blast_display_name', JSON.stringify('Rohith E'));
             } catch {}
-            if (onSuccess) onSuccess({ email: 'user@github.com', name: 'GitHub Explorer' });
+            if (onSuccess) onSuccess({ email: 'e.rohith3130@gmail.com', name: 'Rohith E' });
             else window.location.href = '/dashboard';
           }, 800);
         }
@@ -252,9 +252,9 @@ export default function Component({ onSuccess, onCancel, defaultMode = 'login' }
         if (!isSupabaseConfigured) {
           setTimeout(() => {
             try {
-              localStorage.setItem('blast_display_name', JSON.stringify('Apple Scholar'));
+              localStorage.setItem('blast_display_name', JSON.stringify('Rohith E'));
             } catch {}
-            if (onSuccess) onSuccess({ email: 'user@apple.com', name: 'Apple Scholar' });
+            if (onSuccess) onSuccess({ email: 'e.rohith3130@gmail.com', name: 'Rohith E' });
             else window.location.href = '/dashboard';
           }, 800);
         }
