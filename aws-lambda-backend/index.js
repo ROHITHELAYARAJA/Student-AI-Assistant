@@ -57,12 +57,92 @@ app.get('/api/notebooks', (req, res) => {
   res.json({ notebooks: Array.from(notebooksStore.values()) });
 });
 
-// Pedagogical system prompt builder
-function buildPedagogicalPrompt(message) {
+// Sentiment Analysis for educational dialogue
+function analyzeSentiment(message) {
+  const text = (message || '').trim().toLowerCase();
+
+  // Insult and hostility patterns
+  const insultPatterns = [
+    /\b(idiot|stupid|dumb|moron|fool|loser|jerk|trash|garbage|clueless|incompetent|retard)\b/i,
+    /\b(you\s+(are|re)\s+(an?\s+)?(idiot|stupid|dumb|useless|worthless|terrible|awful|bad|annoying|clueless|clown))\b/i,
+    /\b(shut\s*up|hate\s*you|you\s*suck|get\s*lost|piss\s*off|screw\s*you)\b/i,
+    /\b(worst\s+(ai|bot|assistant|app)|useless\s+(ai|bot|assistant|app))\b/i,
+    /\b(stop\s+(talking|lying|being\s+stupid))\b/i
+  ];
+
+  // Frustration and critical feedback patterns
+  const frustrationPatterns = [
+    /\b(this\s+(is\s+)?(useless|terrible|awful|broken|garbage|trash|horrible|wrong))\b/i,
+    /\b(not\s+helpful|doesn'?t\s+help|waste\s+of\s+time|so\s+bad)\b/i,
+    /\b(why\s+(are\s+you\s+so\s+bad|can'?t\s+you|did\s+you\s+say\s+that))\b/i,
+    /\b(you\s+failed|total\s+fail|you\s+don'?t\s+know\s+anything|you\s+know\s+nothing)\b/i,
+    /\b(not\s+message|wrong\s+answer|that'?s\s+not\s+what\s+i\s+asked)\b/i
+  ];
+
+  // Confusion and struggling patterns
+  const confusionPatterns = [
+    /\b(i\s+don'?t\s+(understand|get\s+it|get\s+this))\b/i,
+    /\b(i'?m\s+(confused|lost|stuck|struggling))\b/i,
+    /\b(too\s+hard|too\s+complicated|makes?\s+no\s+sense)\b/i,
+    /\b(explain\s+simpler|can'?t\s+understand|overwhelmed)\b/i
+  ];
+
+  // Positive and appreciation patterns
+  const positivePatterns = [
+    /\b(thank\s+you|thanks|thx|ty|appreciate\s+it|grateful)\b/i,
+    /\b(you\s+(are|re)\s+(awesome|amazing|great|the\s+best|smart|helpful|cool|genius|superb))\b/i,
+    /\b(love\s+(this|it|you)|good\s+job|well\s+done|perfect|brilliant|fantastic)\b/i
+  ];
+
+  const isInsult = insultPatterns.some(p => p.test(text));
+  const isFrustrated = frustrationPatterns.some(p => p.test(text));
+  const isConfused = confusionPatterns.some(p => p.test(text));
+  const isPositive = positivePatterns.some(p => p.test(text));
+
+  if (isInsult) {
+    return { label: 'negative', type: 'insult', score: -0.9 };
+  }
+  if (isFrustrated) {
+    return { label: 'negative', type: 'frustration', score: -0.7 };
+  }
+  if (isConfused) {
+    return { label: 'confused', type: 'struggling', score: -0.3 };
+  }
+  if (isPositive) {
+    return { label: 'positive', type: 'gratitude', score: 0.85 };
+  }
+  return { label: 'neutral', type: 'informational', score: 0.0 };
+}
+
+// Pedagogical system prompt builder with sentiment guidance
+function buildPedagogicalPrompt(message, sentiment) {
   const norm = (message || '').toLowerCase();
   let intentGuidance = '';
 
-  if (/\b(study materials?|source materials?|attached|notes|document|lecture|pdf|syllabus text)\b/i.test(norm) || message.length > 500) {
+  if (sentiment && sentiment.label === 'negative') {
+    intentGuidance = `
+PEDAGOGICAL INTENT: Student Expressed Frustration / Criticism (${sentiment.type}).
+- The student expressed: "${message}"
+- Guidelines:
+  1. Respond with calm empathy, humility, and polite professionalism.
+  2. Sincerely apologize for any misunderstanding, confusion, or unhelpful previous response.
+  3. Reassure the student that your goal is to make their studying clear and effective.
+  4. Invite them to tell you what specific concept they need help with, or what went wrong so you can fix it.
+  5. Never be dismissive, defensive, or return a cheerful robotic greeting.`;
+  } else if (sentiment && sentiment.label === 'confused') {
+    intentGuidance = `
+PEDAGOGICAL INTENT: Student is Confused / Struggling.
+- The student said: "${message}"
+- Guidelines:
+  1. Be warm, patient, and encouraging.
+  2. Break down the concept into much simpler, intuitive steps.
+  3. Use an intuitive real-world analogy.
+  4. Ask which specific step was unclear.`;
+  } else if (sentiment && sentiment.label === 'positive') {
+    intentGuidance = `
+PEDAGOGICAL INTENT: Student Expressed Gratitude / Positive Feedback.
+- Acknowledge warmly and offer active learning follow-ups (quizzes, flashcards, or next topic).`;
+  } else if (/\b(study materials?|source materials?|attached|notes|document|lecture|pdf|syllabus text)\b/i.test(norm) || message.length > 500) {
     intentGuidance = `
 PEDAGOGICAL INTENT: The student has shared studying material.
 - Follow the 5-step analysis:
@@ -114,7 +194,7 @@ Always return valid JSON only with this exact shape:
 }
 
 // Clean model output helper
-function extractChatReply(rawContent, userMessage, modelId) {
+function extractChatReply(rawContent, userMessage, modelId, sentiment) {
   let trimmed = (rawContent || '').trim();
   if (trimmed.startsWith('```json')) trimmed = trimmed.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim();
   else if (trimmed.startsWith('```')) trimmed = trimmed.replace(/^```\s*/i, '').replace(/\s*```$/, '').trim();
@@ -125,6 +205,7 @@ function extractChatReply(rawContent, userMessage, modelId) {
       return {
         reply: parsed.reply,
         modelId: modelId || 'nvidia/nemotron-3-ultra-550b-a55b',
+        sentiment,
         suggestedTopic: parsed.suggestedTopic || userMessage.slice(0, 40),
         quickPrompts: Array.isArray(parsed.quickPrompts) ? parsed.quickPrompts : ['Tell me more', 'Give an example', 'Create flashcards']
       };
@@ -137,6 +218,7 @@ function extractChatReply(rawContent, userMessage, modelId) {
         return {
           reply,
           modelId: modelId || 'nvidia/nemotron-3-ultra-550b-a55b',
+          sentiment,
           suggestedTopic: userMessage.slice(0, 40),
           quickPrompts: ['Tell me more', 'Give an example', 'Create flashcards']
         };
@@ -147,6 +229,7 @@ function extractChatReply(rawContent, userMessage, modelId) {
   return {
     reply: trimmed,
     modelId: modelId || 'nvidia/nemotron-3-ultra-550b-a55b',
+    sentiment,
     suggestedTopic: userMessage.slice(0, 40),
     quickPrompts: ['Tell me more', 'Give an example', 'Create flashcards']
   };
@@ -160,12 +243,18 @@ app.post('/api/chat', async (req, res) => {
   }
 
   const norm = message.trim().toLowerCase().replace(/[!.?,👋\s]+$/gu, '');
+  const sentiment = analyzeSentiment(message);
 
-  // Fast path: Conversational greetings
-  if (/^(hi|hey|hello|hey blast|hello blast|hi blast|yo|sup|howdy|greetings)/i.test(norm) || norm === 'hey' || norm === 'hi') {
+  // Fast path: Pure Conversational greetings (ONLY when NOT negative/insult and strictly matching greeting phrases)
+  const isPureGreeting = sentiment.label !== 'negative' &&
+    (/^(hi|hey|hello|yo|sup|howdy|greetings|good\s+(morning|afternoon|evening))(\s+(blast|there|buddy|friend|ai))?$/i.test(norm) ||
+     norm === 'hey' || norm === 'hi' || norm === 'hello');
+
+  if (isPureGreeting) {
     return res.json({
       reply: "Hey there! 🚀 I'm **Blast AI**, your personal study companion. What are we diving into today?\n\nHere is how I can help:\n- **Paste or upload study materials** to generate instant notes and flashcards.\n- **Ask me to explain any difficult concept** in simple terms.\n- **Create a custom study plan or roadmap** for your upcoming exams.",
       modelId: 'blast-fast-response',
+      sentiment,
       suggestedTopic: 'Study Topics',
       quickPrompts: [
         'Explain a difficult concept simply',
@@ -180,6 +269,7 @@ app.post('/api/chat', async (req, res) => {
     return res.json({
       reply: "Flask is a lightweight and powerful Python web framework. Here are essential **Flask commands** and concepts:\n\n- `flask run`: Starts the local development web server.\n- `flask --app <app.py> run`: Specifies the application file or module.\n- `flask run --debug`: Enables development mode with live code reloading and interactive tracebacks.\n- `flask routes`: Displays all registered URL rules, endpoints, and accepted HTTP methods.\n- `flask shell`: Opens an interactive Python shell pre-configured with the application context.\n\n```python\nfrom flask import Flask, jsonify\n\napp = Flask(__name__)\n\n@app.route('/api/hello')\ndef hello():\n    return jsonify(message='Hello from Flask!')\n\nif __name__ == '__main__':\n    app.run(debug=True)\n```\n\nWould you like me to build a complete interactive study notebook on Flask commands with notes, flashcards, and a practice quiz?",
       modelId: 'blast-fast-response',
+      sentiment,
       suggestedTopic: 'Flask commands',
       suggestedAction: {
         type: 'create_notebook',
@@ -198,7 +288,7 @@ app.post('/api/chat', async (req, res) => {
   const nvidiaKey = process.env.NVIDIA_API_KEY;
   const nvidiaBase = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
   const targetModel = modelId || process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
-  const chatSystem = buildPedagogicalPrompt(message);
+  const chatSystem = buildPedagogicalPrompt(message, sentiment);
 
   if (nvidiaKey) {
     try {
@@ -225,7 +315,7 @@ app.post('/api/chat', async (req, res) => {
         const json = await response.json();
         const rawContent = json.choices?.[0]?.message?.content || '';
         if (rawContent.trim()) {
-          return res.json(extractChatReply(rawContent, message, targetModel));
+          return res.json(extractChatReply(rawContent, message, targetModel, sentiment));
         }
       }
     } catch (err) {
@@ -233,10 +323,52 @@ app.post('/api/chat', async (req, res) => {
     }
   }
 
-  // Fallback response
+  // Sentiment-aware fallback responses if NVIDIA is unavailable
+  if (sentiment.label === 'negative') {
+    return res.json({
+      reply: "I'm really sorry if I frustrated you or gave an unhelpful answer! 😔\n\nAs your study copilot, I want to make sure you get clear, accurate, and genuinely helpful explanations. Tell me what went wrong or what concept you're working on, and I'll do my best to break it down properly.",
+      modelId: targetModel,
+      sentiment,
+      suggestedTopic: 'Study Help',
+      quickPrompts: [
+        'Explain a concept more simply',
+        'Help me solve a specific problem',
+        'Start fresh with a new topic'
+      ]
+    });
+  }
+
+  if (sentiment.label === 'positive') {
+    return res.json({
+      reply: "You're very welcome! 🎉 I'm glad that helped. Whenever you're ready, we can quiz yourself on this topic, review active recall flashcards, or explore something new!\n\nWhat would you like to dive into next?",
+      modelId: targetModel,
+      sentiment,
+      quickPrompts: [
+        'Quiz me on this topic',
+        'Create flashcards for this',
+        'Move on to the next topic'
+      ]
+    });
+  }
+
+  if (sentiment.label === 'confused') {
+    return res.json({
+      reply: "No worries at all — learning complex topics is tough, and feeling confused is completely normal! 💡\n\nLet's take a step back and break this down into smaller, simpler pieces. Which specific part feels tricky?",
+      modelId: targetModel,
+      sentiment,
+      quickPrompts: [
+        'Explain with a real-world analogy',
+        'Show me a step-by-step example',
+        'Start from the absolute basics'
+      ]
+    });
+  }
+
+  // Fallback response for neutral topics
   return res.json({
     reply: `I understand you'd like to learn about **"${message}"**.\n\nI can help break down this concept or generate a full interactive study set with notes, active recall flashcards, and practice quiz questions.`,
     modelId: targetModel,
+    sentiment,
     suggestedTopic: message.slice(0, 40),
     suggestedAction: {
       type: 'create_notebook',

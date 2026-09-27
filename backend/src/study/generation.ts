@@ -788,11 +788,86 @@ export async function handleChat(
     };
   }
 
-function buildPedagogicalPrompt(message: string): string {
+function analyzeSentiment(message: string): { label: 'negative' | 'positive' | 'confused' | 'neutral'; type: string; score: number } {
+  const text = (message || '').trim().toLowerCase();
+
+  const insultPatterns = [
+    /\b(idiot|stupid|dumb|moron|fool|loser|jerk|trash|garbage|clueless|incompetent|retard)\b/i,
+    /\b(you\s+(are|re)\s+(an?\s+)?(idiot|stupid|dumb|useless|worthless|terrible|awful|bad|annoying|clueless|clown))\b/i,
+    /\b(shut\s*up|hate\s*you|you\s*suck|get\s*lost|piss\s*off|screw\s*you)\b/i,
+    /\b(worst\s+(ai|bot|assistant|app)|useless\s+(ai|bot|assistant|app))\b/i,
+    /\b(stop\s+(talking|lying|being\s+stupid))\b/i
+  ];
+
+  const frustrationPatterns = [
+    /\b(this\s+(is\s+)?(useless|terrible|awful|broken|garbage|trash|horrible|wrong))\b/i,
+    /\b(not\s+helpful|doesn'?t\s+help|waste\s+of\s+time|so\s+bad)\b/i,
+    /\b(why\s+(are\s+you\s+so\s+bad|can'?t\s+you|did\s+you\s+say\s+that))\b/i,
+    /\b(you\s+failed|total\s+fail|you\s+don'?t\s+know\s+anything|you\s+know\s+nothing)\b/i,
+    /\b(not\s+message|wrong\s+answer|that'?s\s+not\s+what\s+i\s+asked)\b/i
+  ];
+
+  const confusionPatterns = [
+    /\b(i\s+don'?t\s+(understand|get\s+it|get\s+this))\b/i,
+    /\b(i'?m\s+(confused|lost|stuck|struggling))\b/i,
+    /\b(too\s+hard|too\s+complicated|makes?\s+no\s+sense)\b/i,
+    /\b(explain\s+simpler|can'?t\s+understand|overwhelmed)\b/i
+  ];
+
+  const positivePatterns = [
+    /\b(thank\s+you|thanks|thx|ty|appreciate\s+it|grateful)\b/i,
+    /\b(you\s+(are|re)\s+(awesome|amazing|great|the\s+best|smart|helpful|cool|genius|superb))\b/i,
+    /\b(love\s+(this|it|you)|good\s+job|well\s+done|perfect|brilliant|fantastic)\b/i
+  ];
+
+  const isInsult = insultPatterns.some(p => p.test(text));
+  const isFrustrated = frustrationPatterns.some(p => p.test(text));
+  const isConfused = confusionPatterns.some(p => p.test(text));
+  const isPositive = positivePatterns.some(p => p.test(text));
+
+  if (isInsult) {
+    return { label: 'negative', type: 'insult', score: -0.9 };
+  }
+  if (isFrustrated) {
+    return { label: 'negative', type: 'frustration', score: -0.7 };
+  }
+  if (isConfused) {
+    return { label: 'confused', type: 'struggling', score: -0.3 };
+  }
+  if (isPositive) {
+    return { label: 'positive', type: 'gratitude', score: 0.85 };
+  }
+  return { label: 'neutral', type: 'informational', score: 0.0 };
+}
+
+function buildPedagogicalPrompt(message: string, sentiment: ReturnType<typeof analyzeSentiment>): string {
   const norm = message.toLowerCase();
   let intentGuidance = '';
 
-  if (/\b(study materials?|source materials?|attached|notes|document|lecture|pdf|syllabus text|here are my notes|summary below)\b/i.test(norm) || message.length > 500) {
+  if (sentiment.label === 'negative') {
+    intentGuidance = `
+PEDAGOGICAL INTENT: Student Expressed Frustration / Criticism (${sentiment.type}).
+- The student expressed: "${message}"
+- Guidelines:
+  1. Respond with calm empathy, humility, and polite professionalism.
+  2. Sincerely apologize for any misunderstanding, confusion, or unhelpful previous response.
+  3. Reassure the student that your goal is to make their studying clear and effective.
+  4. Invite them to tell you what specific concept they need help with, or what went wrong so you can fix it.
+  5. Never be dismissive, defensive, or return a cheerful robotic greeting.`;
+  } else if (sentiment.label === 'confused') {
+    intentGuidance = `
+PEDAGOGICAL INTENT: Student is Confused / Struggling.
+- The student said: "${message}"
+- Guidelines:
+  1. Be warm, patient, and encouraging.
+  2. Break down the concept into much simpler, intuitive steps.
+  3. Use an intuitive real-world analogy.
+  4. Ask which specific step was unclear.`;
+  } else if (sentiment.label === 'positive') {
+    intentGuidance = `
+PEDAGOGICAL INTENT: Student Expressed Gratitude / Positive Feedback.
+- Acknowledge warmly and offer active learning follow-ups (quizzes, flashcards, or next topic).`;
+  } else if (/\b(study materials?|source materials?|attached|notes|document|lecture|pdf|syllabus text|here are my notes|summary below)\b/i.test(norm) || message.length > 500) {
     intentGuidance = `
 PEDAGOGICAL INTENT: The student has shared studying material.
 - Acknowledge that the student has shared their study material.
@@ -847,7 +922,8 @@ Always return valid JSON only with this exact shape:
 {"reply":"your response in markdown","suggestedTopic":"concise 2-4 word topic or empty string","quickPrompts":["follow up question 1","follow up question 2"]}`;
 }
 
-  const chatSystem = buildPedagogicalPrompt(message);
+  const sentiment = analyzeSentiment(message);
+  const chatSystem = buildPedagogicalPrompt(message, sentiment);
 
   const nvidiaKey = process.env.NVIDIA_API_KEY;
   const nvidiaBase = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
@@ -905,6 +981,18 @@ Always return valid JSON only with this exact shape:
     });
     return response.value;
   } catch {
+    if (sentiment.label === 'negative') {
+      return {
+        reply: "I'm really sorry if I frustrated you or gave an unhelpful answer! 😔\n\nAs your study companion, I want to make sure you get clear, accurate explanations. Tell me what went wrong or what concept you're working on, and I'll do my best to explain it properly.",
+        modelId: preferredModel || 'nvidia/nemotron-3-ultra-550b-a55b',
+        suggestedTopic: 'Study Help',
+        quickPrompts: [
+          'Explain this concept more simply',
+          'Help me solve a specific problem',
+          'Start a new study topic'
+        ]
+      };
+    }
     return {
       reply: `I understand you'd like to learn about "${message}". I can help explain concepts or generate an interactive study set with notes, active recall flashcards, and practice quiz questions.`,
       modelId: preferredModel || 'xai.grok-4.6',
