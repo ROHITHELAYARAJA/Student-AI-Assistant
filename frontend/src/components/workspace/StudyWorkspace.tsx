@@ -21,6 +21,7 @@ import { UploadModal } from './UploadModal';
 import { YouTubeModal } from './YouTubeModal';
 import ModernLoginSignup from '../ui/modern-login-signup';
 import ThinkingState from '../ui/thinking';
+import { AIPlanningCard, isConversationalMessage } from '../ui/AIPlanningCard';
 import { StudyNotebookWizard } from './StudyNotebookWizard';
 
 type Page = 'home' | 'library' | 'favorites';
@@ -755,52 +756,35 @@ export function StudyWorkspace() {
                     </div>
                   </div>
                 ))}
-                {generating && planningMode && (
-                  <div className="welcome-assistant blast-thinking-container" role="status">
-                    <div className="thinking-bubble">
-                      <div className="thinking-header-row">
-                        <BlastMascot pose="working" size="small" decorative />
-                        <div className="thinking-title-text">
-                          <span>AI Blast is planning study pack</span>
-                          <span className="thinking-dots-anim" aria-label="...">
-                            <span className="dot-1">.</span>
-                            <span className="dot-2">.</span>
-                            <span className="dot-3">.</span>
-                          </span>
-                        </div>
-                      </div>
-                      <div className="thinking-starter-wrapper">
-                        <ThinkingState
-                          variant="Steps"
-                          phase={generationPhase}
-                          topic={conversation.filter(m => m.role === 'user').slice(-1)[0]?.text}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {generating && !planningMode && (
-                  <div className="welcome-assistant blast-thinking-container" role="status">
-                    <div className="thinking-bubble">
-                      <div className="thinking-header-row">
+                {generating && (
+                  <div className="welcome-assistant blast-thinking-container" role="status" style={{ margin: '20px 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                    {isConversationalMessage(conversation.filter(m => m.role === 'user').slice(-1)[0]?.text || prompt) && !documentIds.length && !attachedImage && !planningMode ? (
+                      <div className="quick-thinking-bubble" style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px 22px',
+                        borderRadius: '24px',
+                        background: '#ffffff',
+                        border: '1px solid rgba(226, 232, 240, 0.9)',
+                        boxShadow: '0 4px 18px rgba(15, 23, 42, 0.05)',
+                        fontSize: '14.5px',
+                        fontWeight: 600,
+                        color: '#334155'
+                      }}>
                         <BlastMascot pose="reading" size="small" decorative />
-                        <div className="thinking-title-text">
-                          <span>AI Blast is thinking</span>
-                          <span className="thinking-dots-anim" aria-label="...">
-                            <span className="dot-1">.</span>
-                            <span className="dot-2">.</span>
-                            <span className="dot-3">.</span>
-                          </span>
-                        </div>
+                        <span>Blast is formulating a quick answer...</span>
                       </div>
-                      <div className="thinking-starter-wrapper">
-                        <ThinkingState
-                          variant="Reasoning"
-                          topic={conversation.filter(m => m.role === 'user').slice(-1)[0]?.text}
-                          phase="Analyzing concepts and formulating answer"
-                        />
-                      </div>
-                    </div>
+                    ) : (
+                      <AIPlanningCard
+                        prompt={conversation.filter(m => m.role === 'user').slice(-1)[0]?.text || prompt}
+                        context={{
+                          hasDocuments: documentIds.length > 0,
+                          hasImages: !!attachedImage,
+                          isNotebook: planningMode
+                        }}
+                      />
+                    )}
                   </div>
                 )}
                 <div ref={messagesEndRef} />
@@ -836,8 +820,34 @@ export function StudyWorkspace() {
                     </p>
                     {composer}
                     {generating && (
-                      <div className="blast-thinking-card" style={{ marginTop: '20px', padding: '16px 20px', borderRadius: '18px', background: 'var(--canvas, #f1f2f3)', border: '1px solid var(--line, #e2e4e8)' }}>
-                        <ThinkingState variant="Steps" phase={generationPhase} />
+                      <div className="blast-thinking-card" style={{ marginTop: '24px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                        {isConversationalMessage(prompt) && !documentIds.length && !attachedImage && !planningMode ? (
+                          <div className="quick-thinking-bubble" style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '12px 22px',
+                            borderRadius: '24px',
+                            background: '#ffffff',
+                            border: '1px solid rgba(226, 232, 240, 0.9)',
+                            boxShadow: '0 4px 18px rgba(15, 23, 42, 0.05)',
+                            fontSize: '14.5px',
+                            fontWeight: 600,
+                            color: '#334155'
+                          }}>
+                            <BlastMascot pose="reading" size="small" decorative />
+                            <span>Blast is formulating a quick answer...</span>
+                          </div>
+                        ) : (
+                          <AIPlanningCard
+                            prompt={prompt}
+                            context={{
+                              hasDocuments: documentIds.length > 0,
+                              hasImages: !!attachedImage,
+                              isNotebook: planningMode
+                            }}
+                          />
+                        )}
                       </div>
                     )}
                     {error && <p className="conversation-error" role="alert">{error}</p>}

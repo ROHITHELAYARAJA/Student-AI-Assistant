@@ -3,9 +3,11 @@ import express from 'express';
 import helmet from 'helmet';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
+import cors from 'cors';
 import { api } from './study/api';
 export const app = express();
 app.disable('x-powered-by');
+app.use(cors({ origin: true, credentials: true }));
 app.use(helmet({ contentSecurityPolicy: { directives: { 'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], 'font-src': ["'self'", 'https://fonts.gstatic.com'], 'img-src': ["'self'", 'data:', 'blob:'], 'script-src': ["'self'"], 'upgrade-insecure-requests': process.env.NODE_ENV === 'production' ? [] : null } } }));
 app.use(express.json({ limit: '2mb' }));
 app.use('/api', (req,res,next) => {
@@ -13,8 +15,9 @@ app.use('/api', (req,res,next) => {
   if (!['GET','HEAD','OPTIONS'].includes(req.method) && req.headers.origin) {
     const origin = req.headers.origin;
     const isVercel = origin.endsWith('.vercel.app') || origin.endsWith('vercel.app');
+    const isAwsS3 = origin.includes('amazonaws.com') || origin.includes('s3-website');
     const allowed = (process.env.APP_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5000,http://127.0.0.1:5000').split(',');
-    if (!allowed.includes(origin) && !isVercel) { res.status(403).json({message:'This request origin is not allowed.'}); return; }
+    if (!allowed.includes(origin) && !isVercel && !isAwsS3) { res.status(403).json({message:'This request origin is not allowed.'}); return; }
   }
   next();
 });
