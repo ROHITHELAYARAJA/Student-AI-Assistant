@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Mic, Youtube, ArrowUp, ArrowUpRight, ArrowRight, ArrowLeft, Plus, Search, Home, Star, BookOpen, FileText, Layers, Headphones, X, ChevronRight, Download, Upload, Sparkles, CheckCircle2, HelpCircle, Loader2, Compass } from 'lucide-react';
 import { router, RouteState } from '../../services/router';
 import { TurboStudyPack } from '../../types/turbo';
-import { request, createStudy, followStudy, saveRemote, StudySettings, sendChat } from '../../services/studyApi';
+import { request, uploadDocumentFile, createStudy, followStudy, saveRemote, StudySettings, sendChat } from '../../services/studyApi';
 import { StudyTools, StudyTab, progress, readLocal } from './StudyTools';
 import './workspace.css';
 import './astra-layout.css';
@@ -126,7 +126,7 @@ export function StudyWorkspace() {
     }
   }, []);
 
-  useEffect(() => router.subscribe(next => {
+  useEffect(() => router.subscribe((next: RouteState) => {
     setRoute(next);
     window.scrollTo({ top: 0 });
   }), []);
@@ -207,9 +207,7 @@ export function StudyWorkspace() {
         setAttachedImage({ previewUrl, name: 'Pasted Screenshot' });
         setToast('Uploading pasted image…');
         try {
-          const body = new FormData();
-          body.append('file', file, 'pasted-image.png');
-          const doc = await request<any>('/documents', { method: 'POST', body });
+          const doc = await uploadDocumentFile(file);
           setDocumentIds(prev => [...prev, doc.id]);
           setAttachedImage({ id: doc.id, previewUrl, name: 'Pasted Screenshot' });
           setToast('Image attached! Ask Blast anything about this image.');
@@ -362,7 +360,7 @@ export function StudyWorkspace() {
   }
 
   function exportNotes(pack: TurboStudyPack) {
-    const content = `# ${pack.notes.title}\n\n${pack.notes.summary}\n\n${pack.notes.sections.map(s => `## ${s.heading}\n\n${s.content}\n${(s.bulletPoints || []).map(b => `- ${b}`).join('\n')}\n${(s.formulas || []).join('\n')}\n${s.codeSnippet ? '\n```' + s.codeSnippet.language + '\n' + s.codeSnippet.code + '\n```' : ''}`).join('\n\n')}`;
+    const content = `# ${pack.notes.title}\n\n${pack.notes.summary}\n\n${pack.notes.sections.map((s: any) => `## ${s.heading}\n\n${s.content}\n${(s.bulletPoints || []).map((b: any) => `- ${b}`).join('\n')}\n${(s.formulas || []).join('\n')}\n${s.codeSnippet ? '\n```' + s.codeSnippet.language + '\n' + s.codeSnippet.code + '\n```' : ''}`).join('\n\n')}`;
     const url = URL.createObjectURL(new Blob([content], { type: 'text/markdown' }));
     const a = document.createElement('a');
     a.href = url;
@@ -1104,7 +1102,7 @@ export function StudyWorkspace() {
                       className="dark-button"
                       disabled={generating}
                       onClick={() => {
-                        const text = active.notes.sections.map(s => s.content).join('\n');
+                        const text = active.notes.sections.map((s: any) => s.content).join('\n');
                         if (!active.documentIds?.length && text.length > 12000) {
                           setError('For now, generate activities from a notebook with fewer than 12,000 characters. Your full notes are still saved.');
                           return;

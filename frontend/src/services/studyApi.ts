@@ -28,6 +28,45 @@ export async function request<T=any>(url:string, options:RequestInit={}):Promise
   if (!res.ok) throw new Error(data.message || 'This action could not be completed.');
   return data;
 }
+
+export async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result as string;
+      const base64 = res.split(',')[1] || '';
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function uploadDocumentFile(file: File): Promise<{ id: string; name: string; text?: string; pageCount?: number; notice?: string }> {
+  try {
+    const body = new FormData();
+    body.append('file', file);
+    return await request<any>('/documents', { method: 'POST', body });
+  } catch (err) {
+    console.warn('FormData upload failed, retrying with base64 JSON payload:', err);
+    let text = '';
+    if (file.type.startsWith('text/') || /\.(txt|md|markdown|csv|tsv|json)$/i.test(file.name)) {
+      try {
+        text = await file.text();
+      } catch {}
+    }
+    const base64 = await fileToBase64(file);
+    return await request<any>('/documents', {
+      method: 'POST',
+      body: JSON.stringify({
+        filename: file.name,
+        base64,
+        mime: file.type || 'application/octet-stream',
+        text: text || undefined
+      })
+    });
+  }
+}
 export type StudySettings={questionCount:number;cardCount:number;difficulty:'beginner'|'intermediate'|'advanced';language:string};
 export async function createStudy(topic:string,documentIds:string[],settings:StudySettings,onProgress:(s:string)=>void):Promise<TurboStudyPack>{
   const {id}=await request('/jobs',{method:'POST',body:JSON.stringify({topic,documentIds,...settings})});

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileText, CheckCircle2, AlertCircle, Sparkles, ArrowRight, Loader2, Image as ImageIcon } from 'lucide-react';
 import { TurboStudyPack } from '../../types/turbo';
-import { request } from '../../services/studyApi';
+import { request, uploadDocumentFile } from '../../services/studyApi';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -15,7 +15,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
   onToast
 }) => {
   const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'analyzing' | 'ready' | 'error'>('idle');
   const [docId, setDocId] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState('');
   const [title, setTitle] = useState('');
@@ -36,20 +36,32 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     setError('');
     setFile(selectedFile);
     setTitle(selectedFile.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
-    setUploading(true);
+    setUploadStatus('analyzing');
+
+    // Instant local extraction for text files
+    if (selectedFile.type.startsWith('text/') || /\.(txt|md|markdown|csv|tsv|json)$/i.test(selectedFile.name)) {
+      try {
+        const local = await selectedFile.text();
+        if (local) {
+          setExtractedText(local);
+          setNotes(local.slice(0, 3000));
+        }
+      } catch {}
+    }
 
     try {
-      const body = new FormData();
-      body.append('file', selectedFile);
-      const doc = await request<any>('/documents', { method: 'POST', body });
+      const doc = await uploadDocumentFile(selectedFile);
       setDocId(doc.id);
-      setExtractedText(doc.text || '');
-      setNotes(doc.text?.slice(0, 1500) || '');
+      if (doc.text) {
+        setExtractedText(doc.text);
+        setNotes(prev => prev || doc.text?.slice(0, 3000) || '');
+      }
+      setUploadStatus('ready');
       onToast(doc.notice || 'Document uploaded and analyzed successfully.');
     } catch (e: any) {
+      console.error('Upload failed:', e);
+      setUploadStatus('error');
       setError(e.message || 'Failed to upload document.');
-    } finally {
-      setUploading(false);
     }
   }
 
@@ -60,7 +72,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       setError('Please provide a title for this notebook.');
       return;
     }
-    if (!docId && !textContent) {
+    if (!docId && !textContent && !file) {
       setError('Please upload a file or paste your study material.');
       return;
     }
@@ -72,7 +84,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
         method: 'POST',
         body: JSON.stringify({
           topic,
-          text: textContent || `Uploaded study source: ${topic}`,
+          text: textContent || (file ? `Uploaded study source: ${file.name}` : `Study material for: ${topic}`),
           documentIds: docId ? [docId] : []
         })
       });
@@ -283,17 +295,25 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 <strong style={{ fontSize: '14px', color: '#ffffff', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                   {file.name}
                 </strong>
-                <span style={{ fontSize: '12px', color: '#88889b' }}>
-                  {formatBytes(file.size)} · {uploading ? 'Analyzing document…' : 'Parsed & ready'}
+                <span style={{ fontSize: '12px', color: uploadStatus === 'error' ? '#f87171' : '#88889b' }}>
+                  {formatBytes(file.size)} · {
+                    uploadStatus === 'analyzing' ? 'Analyzing document…' :
+                    uploadStatus === 'ready' ? 'Parsed & ready' :
+                    uploadStatus === 'error' ? 'Analysis failed (retrying)' : 'Ready'
+                  }
                 </span>
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {uploading ? (
+              {uploadStatus === 'analyzing' && (
                 <Loader2 size={18} className="spin" style={{ color: '#c084fc' }} />
-              ) : (
+              )}
+              {uploadStatus === 'ready' && (
                 <CheckCircle2 size={18} style={{ color: '#22c55e' }} />
+              )}
+              {uploadStatus === 'error' && (
+                <AlertCircle size={18} style={{ color: '#f87171' }} />
               )}
               <button
                 type="button"
@@ -301,6 +321,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                   setFile(null);
                   setDocId(null);
                   setExtractedText('');
+                  setNotes('');
+                  setUploadStatus('idle');
+                  setError('');
                 }}
                 style={{
                   background: 'transparent',
@@ -394,22 +417,22 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={uploading || creating || !title.trim() || (!file && !notes.trim())}
+            disabled={uploadStatus === 'analyzing' || creating || !title.trim() || (!file && !notes.trim())}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              background: (!uploading && !creating && title.trim() && (file || notes.trim()))
+              background: (uploadStatus !== 'analyzing' && !creating && title.trim() && (file || notes.trim()))
                 ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
                 : '#252533',
               border: 'none',
               borderRadius: '12px',
               padding: '11px 22px',
-              color: (!uploading && !creating && title.trim() && (file || notes.trim())) ? '#ffffff' : '#6b7280',
+              color: (uploadStatus !== 'analyzing' && !creating && title.trim() && (file || notes.trim())) ? '#ffffff' : '#6b7280',
               fontSize: '14px',
               fontWeight: 600,
-              cursor: (!uploading && !creating && title.trim() && (file || notes.trim())) ? 'pointer' : 'not-allowed',
-              boxShadow: (!uploading && !creating && title.trim() && (file || notes.trim())) ? '0 4px 16px rgba(37, 99, 235, 0.4)' : 'none'
+              cursor: (uploadStatus !== 'analyzing' && !creating && title.trim() && (file || notes.trim())) ? 'pointer' : 'not-allowed',
+              boxShadow: (uploadStatus !== 'analyzing' && !creating && title.trim() && (file || notes.trim())) ? '0 4px 16px rgba(37, 99, 235, 0.4)' : 'none'
             }}
           >
             <Sparkles size={16} />

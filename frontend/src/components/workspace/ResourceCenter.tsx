@@ -5,7 +5,7 @@ import {
   Layers, HelpCircle, Compass, Headphones, File
 } from 'lucide-react';
 import { TurboStudyPack } from '../../types/turbo';
-import { request, createStudy, StudySettings } from '../../services/studyApi';
+import { request, uploadDocumentFile, createStudy, StudySettings } from '../../services/studyApi';
 import { SourceViewer } from './SourceViewer';
 
 interface ResourceCenterProps {
@@ -38,9 +38,7 @@ export const ResourceCenter: React.FC<ResourceCenterProps> = ({
 
     setUploading(true);
     try {
-      const body = new FormData();
-      body.append('file', file);
-      const doc = await request<any>('/documents', { method: 'POST', body });
+      const doc = await uploadDocumentFile(file);
 
       // Add document ID to this notebook
       const updatedDocIds = [...new Set([...docIds, doc.id])];
