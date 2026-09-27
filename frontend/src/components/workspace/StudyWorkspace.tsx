@@ -53,7 +53,7 @@ export function StudyWorkspace() {
 
   useEffect(() => {
     if (conversation.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [conversation]);
   const [connectionError, setConnectionError] = useState('');
@@ -757,34 +757,52 @@ export function StudyWorkspace() {
                   </div>
                 ))}
                 {generating && (
-                  <div className="welcome-assistant blast-thinking-container" role="status" style={{ margin: '20px 0', width: '100%', display: 'flex', justifyContent: 'center' }}>
-                    {isConversationalMessage(conversation.filter(m => m.role === 'user').slice(-1)[0]?.text || prompt) && !documentIds.length && !attachedImage && !planningMode ? (
-                      <div className="quick-thinking-bubble" style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '12px 22px',
-                        borderRadius: '24px',
-                        background: '#ffffff',
-                        border: '1px solid rgba(226, 232, 240, 0.9)',
-                        boxShadow: '0 4px 18px rgba(15, 23, 42, 0.05)',
-                        fontSize: '14.5px',
-                        fontWeight: 600,
-                        color: '#334155'
-                      }}>
-                        <BlastMascot pose="reading" size="small" decorative />
-                        <span>Blast is formulating a quick answer...</span>
-                      </div>
-                    ) : (
-                      <AIPlanningCard
-                        prompt={conversation.filter(m => m.role === 'user').slice(-1)[0]?.text || prompt}
-                        context={{
-                          hasDocuments: documentIds.length > 0,
-                          hasImages: !!attachedImage,
-                          isNotebook: planningMode
-                        }}
-                      />
-                    )}
+                  <div className="welcome-assistant blast-thinking-container" role="status" style={{ margin: '14px 0', width: '100%' }}>
+                    <span className="reply-spark">
+                      <BlastMascot pose="reading" size="small" decorative />
+                    </span>
+                    <div className="welcome-message-body">
+                      {isConversationalMessage(conversation.filter(m => m.role === 'user').slice(-1)[0]?.text || prompt) && !documentIds.length && !attachedImage && !planningMode ? (
+                        <div
+                          className="quick-thinking-bubble"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '9px 16px',
+                            borderRadius: '16px',
+                            background: 'rgba(21, 23, 34, 0.75)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.4)',
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            color: '#cbd5e1',
+                            backdropFilter: 'blur(16px)'
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: '#a582f2',
+                              display: 'inline-block',
+                              animation: 'pulse 1.8s infinite'
+                            }}
+                          />
+                          <span>Blast is formulating a quick answer...</span>
+                        </div>
+                      ) : (
+                        <AIPlanningCard
+                          prompt={conversation.filter(m => m.role === 'user').slice(-1)[0]?.text || prompt}
+                          context={{
+                            hasDocuments: documentIds.length > 0,
+                            hasImages: !!attachedImage,
+                            isNotebook: planningMode
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
@@ -820,21 +838,25 @@ export function StudyWorkspace() {
                     </p>
                     {composer}
                     {generating && (
-                      <div className="blast-thinking-card" style={{ marginTop: '24px', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                      <div className="blast-thinking-card" style={{ marginTop: '24px', width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
                         {isConversationalMessage(prompt) && !documentIds.length && !attachedImage && !planningMode ? (
-                          <div className="quick-thinking-bubble" style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            padding: '12px 22px',
-                            borderRadius: '24px',
-                            background: '#ffffff',
-                            border: '1px solid rgba(226, 232, 240, 0.9)',
-                            boxShadow: '0 4px 18px rgba(15, 23, 42, 0.05)',
-                            fontSize: '14.5px',
-                            fontWeight: 600,
-                            color: '#334155'
-                          }}>
+                          <div
+                            className="quick-thinking-bubble"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              padding: '9px 18px',
+                              borderRadius: '16px',
+                              background: 'rgba(21, 23, 34, 0.75)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.4)',
+                              fontSize: '13px',
+                              fontWeight: 500,
+                              color: '#cbd5e1',
+                              backdropFilter: 'blur(16px)'
+                            }}
+                          >
                             <BlastMascot pose="reading" size="small" decorative />
                             <span>Blast is formulating a quick answer...</span>
                           </div>

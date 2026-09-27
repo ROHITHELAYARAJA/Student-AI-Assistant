@@ -122,10 +122,10 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
   return (
     <div className="turbo-roadmap-container" style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 20px 60px' }}>
       {/* Top Breadcrumb */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.45)', marginBottom: '28px' }}>
-        <span style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.7)' }}>Home</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--roadmap-breadcrumb, #64748b)', marginBottom: '28px' }}>
+        <span style={{ cursor: 'pointer', color: 'var(--roadmap-breadcrumb, #64748b)' }}>Home</span>
         <span>›</span>
-        <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
+        <span style={{ color: 'var(--roadmap-breadcrumb-active, #0f172a)', fontWeight: 600 }}>
           Roadmap: {pack.topic}
         </span>
       </div>
@@ -137,12 +137,12 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
           display: 'flex',
           alignItems: 'center',
           gap: '32px',
-          background: 'linear-gradient(135deg, rgba(20, 22, 33, 0.8) 0%, rgba(13, 14, 21, 0.95) 100%)',
-          border: '1px solid rgba(139, 92, 246, 0.15)',
+          background: 'var(--roadmap-hero-bg)',
+          border: '1px solid var(--roadmap-hero-border)',
           borderRadius: '20px',
           padding: '28px 36px',
           marginBottom: '36px',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+          boxShadow: 'var(--roadmap-hero-shadow)',
           position: 'relative',
           overflow: 'hidden'
         }}
@@ -201,7 +201,7 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
 
         {/* Hero Details */}
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#f3f4f6', margin: '0 0 14px 0', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--roadmap-text-bold, #020617)', margin: '0 0 14px 0', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
             Roadmap: {pack.topic}
           </h1>
 
@@ -212,7 +212,7 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
                 flex: 1,
                 maxWidth: '340px',
                 height: '7px',
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                backgroundColor: 'var(--roadmap-node-border, #cbd5e1)',
                 borderRadius: '8px',
                 overflow: 'hidden'
               }}
@@ -227,7 +227,7 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
                 }}
               />
             </div>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--roadmap-subtext, #475569)' }}>
               {progressPercent}%
             </span>
           </div>
@@ -261,10 +261,10 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
 
             {activeNode && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--roadmap-subtext, #475569)', textTransform: 'uppercase' }}>
                   UP NEXT
                 </span>
-                <span style={{ fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.85)', maxWidth: '400px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--roadmap-text, #0f172a)', maxWidth: '400px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {activeNode.title}
                 </span>
               </div>
@@ -275,15 +275,15 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
 
       {/* Contents Section Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', padding: '0 4px' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#f3f4f6', margin: 0 }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--roadmap-text, #0f172a)', margin: 0 }}>
           Contents
         </h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--roadmap-subtext, #475569)', fontSize: '13px' }}>
           <span>{completedCount} of {totalCount} complete</span>
           <button
             type="button"
             aria-label="Roadmap settings"
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '4px' }}
+            style={{ background: 'none', border: 'none', color: 'var(--roadmap-subtext, #475569)', cursor: 'pointer', padding: '4px' }}
           >
             <Settings size={15} />
           </button>
@@ -300,7 +300,7 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
             top: '24px',
             bottom: '40px',
             width: '2px',
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            backgroundColor: 'var(--roadmap-spine, #cbd5e1)',
             zIndex: 1
           }}
         />
@@ -330,12 +330,12 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
                     width: '30px',
                     height: '30px',
                     borderRadius: '50%',
-                    backgroundColor: isCheck ? '#10b981' : '#1e2230',
-                    border: '2px solid rgba(255,255,255,0.1)',
+                    backgroundColor: isCheck ? '#10b981' : 'var(--roadmap-node-bg, #f1f5f9)',
+                    border: '1px solid var(--roadmap-node-border, #cbd5e1)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: isCheck ? '#ffffff' : 'rgba(255,255,255,0.5)',
+                    color: isCheck ? '#ffffff' : 'var(--roadmap-node-text, #334155)',
                     flexShrink: 0
                   }}
                 >
@@ -343,10 +343,10 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--roadmap-text, #0f172a)' }}>
                     {node.title}
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--roadmap-subtext, #475569)' }}>
                     <span>Checkpoint</span>
                     <Lock size={12} />
                   </div>
@@ -375,12 +375,12 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
                     width: '30px',
                     height: '30px',
                     borderRadius: '50%',
-                    backgroundColor: isCheck ? '#10b981' : '#1e2230',
-                    border: '2px solid rgba(255,255,255,0.1)',
+                    backgroundColor: isCheck ? '#10b981' : 'var(--roadmap-node-bg, #f1f5f9)',
+                    border: '1px solid var(--roadmap-node-border, #cbd5e1)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: isCheck ? '#ffffff' : 'rgba(255,255,255,0.5)',
+                    color: isCheck ? '#ffffff' : 'var(--roadmap-node-text, #334155)',
                     flexShrink: 0
                   }}
                 >
@@ -388,10 +388,10 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--roadmap-text, #0f172a)' }}>
                     Final Quiz
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--roadmap-subtext, #475569)' }}>
                     <span>Checkpoint</span>
                     <Lock size={12} />
                   </div>
@@ -438,22 +438,22 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
                 <div
                   style={{
                     flex: 1,
-                    background: 'rgba(32, 35, 48, 0.85)',
-                    border: '1px solid rgba(139, 92, 246, 0.25)',
+                    background: 'var(--roadmap-card-bg, #ffffff)',
+                    border: '1px solid var(--roadmap-card-border, #d8cfec)',
                     borderRadius: '14px',
                     padding: '16px 20px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+                    boxShadow: 'var(--roadmap-card-shadow)',
                     backdropFilter: 'blur(10px)'
                   }}
                 >
                   <div style={{ paddingRight: '16px' }}>
-                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', margin: '0 0 4px 0' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--roadmap-text, #0f172a)', margin: '0 0 4px 0' }}>
                       {node.title}
                     </h3>
-                    <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.45)' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--roadmap-subtext, #475569)' }}>
                       {node.pages || 6} pages · {node.duration || '15 min'}
                     </div>
                   </div>
@@ -515,7 +515,7 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--roadmap-text, #0f172a)' }}>
                     {node.title}
                   </span>
                   <Check size={16} color="#10b981" strokeWidth={2.5} />
@@ -545,12 +545,12 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
                   width: '30px',
                   height: '30px',
                   borderRadius: '50%',
-                  backgroundColor: '#181b24',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  backgroundColor: 'var(--roadmap-node-bg, #f1f5f9)',
+                  border: '1px solid var(--roadmap-node-border, #cbd5e1)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'rgba(255, 255, 255, 0.45)',
+                  color: 'var(--roadmap-node-text, #64748b)',
                   fontWeight: 500,
                   fontSize: '12px',
                   flexShrink: 0
@@ -560,10 +560,10 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
               </div>
 
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: 'rgba(255, 255, 255, 0.65)' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--roadmap-text, #0f172a)' }}>
                   {node.title}
                 </span>
-                <Lock size={13} color="rgba(255, 255, 255, 0.3)" />
+                <Lock size={13} color="var(--roadmap-subtext, #64748b)" />
               </div>
             </div>
           );
@@ -586,19 +586,19 @@ export const TurboRoadmap: React.FC<TurboRoadmapProps> = ({
               width: '30px',
               height: '30px',
               borderRadius: '50%',
-              backgroundColor: '#161922',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: 'var(--roadmap-node-bg, #f1f5f9)',
+              border: '1px solid var(--roadmap-node-border, #cbd5e1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'rgba(255, 255, 255, 0.4)',
+              color: 'var(--roadmap-node-text, #64748b)',
               flexShrink: 0
             }}
           >
             <Trophy size={14} />
           </div>
 
-          <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.4)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--roadmap-subtext, #475569)' }}>
             Finish every section to complete the lesson
           </span>
         </div>

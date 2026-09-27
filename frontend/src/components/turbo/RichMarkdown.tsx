@@ -161,43 +161,57 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
       elements.push(
         <div
           key={`table-${tableKey}`}
-          className="my-5 overflow-hidden rounded-2xl border border-zinc-700/60 bg-zinc-900/80 shadow-xl backdrop-blur-md"
+          className="my-5 overflow-hidden rounded-2xl border shadow-xl backdrop-blur-md"
+          style={{
+            background: 'var(--chat-card-bg, #ffffff)',
+            borderColor: 'var(--chat-card-border, #e2e8f0)',
+            boxShadow: 'var(--chat-card-shadow, 0 8px 24px rgba(0,0,0,0.06))'
+          }}
         >
-          <div className="px-4 py-2 bg-gradient-to-r from-purple-950/60 via-zinc-900 to-zinc-900 border-b border-zinc-800 flex items-center justify-between text-[11.5px] font-semibold text-purple-300 tracking-wider uppercase">
+          <div
+            className="px-4 py-2 border-b flex items-center justify-between text-[11.5px] font-semibold tracking-wider uppercase"
+            style={{
+              background: 'var(--chat-code-bg, #f3e8ff)',
+              borderColor: 'var(--chat-card-border, #e2e8f0)',
+              color: 'var(--chat-code-text, #581c87)'
+            }}
+          >
             <span className="flex items-center gap-1.5">
-              <TableIcon className="w-3.5 h-3.5 text-purple-400" />
+              <TableIcon className="w-3.5 h-3.5" style={{ color: 'var(--chat-bullet, #7c3aed)' }} />
               Summary Comparison
             </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-zinc-800/60 border-b border-zinc-700/60">
+                <tr className="border-b" style={{ borderColor: 'var(--chat-card-border, #e2e8f0)', background: 'var(--notes-doc-bg, #ffffff)' }}>
                   {headers.map((h, hi) => (
                     <th
                       key={hi}
-                      className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-purple-200"
-                      style={{ textAlign: (alignments[hi] as any) || 'left' }}
+                      className="px-4 py-3 text-xs font-bold uppercase tracking-wider"
+                      style={{ color: 'var(--chat-heading, #0f172a)', textAlign: (alignments[hi] as any) || 'left' }}
                     >
                       {formatInline(h)}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-800/60">
+              <tbody className="divide-y" style={{ borderColor: 'var(--chat-card-border, #e2e8f0)' }}>
                 {rows.map((row, ri) => {
                   const isSingleCell = row.length === 1 && headers.length > 1;
                   return (
                     <tr
                       key={ri}
-                      className={`hover:bg-purple-500/[0.05] transition-colors ${
-                        isSingleCell ? 'bg-purple-950/20 font-medium' : ''
-                      }`}
+                      className="hover:bg-purple-500/[0.05] transition-colors"
+                      style={{
+                        background: isSingleCell ? 'var(--chat-code-bg, #f3e8ff)' : 'transparent'
+                      }}
                     >
                       {isSingleCell ? (
                         <td
                           colSpan={headers.length}
-                          className="px-4 py-3 text-[13.5px] text-purple-200 leading-relaxed italic"
+                          className="px-4 py-3 text-[13.5px] leading-relaxed italic"
+                          style={{ color: 'var(--chat-text-muted, #475569)' }}
                         >
                           {formatInline(row[0])}
                         </td>
@@ -205,8 +219,8 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
                         row.map((cell, ci) => (
                           <td
                             key={ci}
-                            className="px-4 py-3 text-[14px] text-zinc-200 leading-relaxed align-top"
-                            style={{ textAlign: (alignments[ci] as any) || 'left' }}
+                            className="px-4 py-3 text-[14px] leading-relaxed align-top"
+                            style={{ color: 'var(--chat-text, #1e293b)', textAlign: (alignments[ci] as any) || 'left' }}
                           >
                             {formatInline(cell)}
                           </td>
@@ -232,10 +246,15 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
       elements.push(
         <div
           key={`check-${i}`}
-          className="my-1.5 flex items-start gap-2.5 px-3 py-2 rounded-xl bg-emerald-950/25 border border-emerald-500/25 text-emerald-100 text-[14px] leading-relaxed shadow-sm"
+          className="my-1.5 flex items-start gap-2.5 px-3 py-2 rounded-xl text-[14px] leading-relaxed shadow-sm"
+          style={{
+            background: 'var(--fc-flipped-bg, #f0fdf4)',
+            border: '1px solid var(--fc-flipped-border, #86efac)',
+            color: 'var(--chat-text, #1e293b)'
+          }}
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-          <div className="flex-1 text-zinc-100 font-medium">
+          <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#16a34a' }} />
+          <div className="flex-1 font-medium" style={{ color: 'var(--chat-text, #1e293b)' }}>
             {formatInline(checkMatch[1])}
           </div>
         </div>
@@ -262,7 +281,7 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
           <span className="text-xl p-1.5 rounded-xl bg-purple-500/15 border border-purple-500/30 shrink-0">
             {emoji}
           </span>
-          <h3 className="text-[17px] font-bold text-white tracking-tight">
+          <h3 className="text-[17px] font-bold tracking-tight" style={{ color: 'var(--chat-heading, #0f172a)' }}>
             {formatInline(title)}
           </h3>
         </div>
@@ -278,10 +297,10 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
 
       elements.push(
         <div key={`kv-${i}`} className="my-2 flex items-start gap-2.5 text-[14.5px] leading-relaxed">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11.5px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/30 shrink-0 mt-0.5">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11.5px] font-bold uppercase tracking-wider shrink-0 mt-0.5" style={{ background: 'var(--chat-code-bg, #f3e8ff)', color: 'var(--chat-code-text, #581c87)', border: '1px solid var(--chat-code-border, #d8b4fe)' }}>
             {keyLabel}
           </span>
-          <div className="flex-1 text-zinc-200">
+          <div className="flex-1" style={{ color: 'var(--chat-text, #1e293b)' }}>
             {valText ? formatInline(valText) : null}
           </div>
         </div>
@@ -294,7 +313,8 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
       elements.push(
         <blockquote
           key={`quote-${i}`}
-          className="my-3 pl-3.5 py-2 border-l-3 border-purple-500 bg-purple-500/[0.05] rounded-r-xl text-sm italic text-zinc-300 leading-relaxed"
+          className="my-3 pl-3.5 py-2 border-l-3 rounded-r-xl text-sm italic leading-relaxed"
+          style={{ borderColor: 'var(--chat-bullet, #7c3aed)', background: 'var(--chat-code-bg, #f3e8ff)', color: 'var(--chat-text-muted, #475569)' }}
         >
           {formatInline(line.replace(/^>\s*/, ''))}
         </blockquote>
@@ -305,7 +325,7 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
     // 9. Markdown Headings
     if (line.startsWith('#### ')) {
       elements.push(
-        <h4 key={`h4-${i}`} className="text-xs font-bold uppercase tracking-wider text-purple-400 mt-4 mb-1.5">
+        <h4 key={`h4-${i}`} className="text-xs font-bold uppercase tracking-wider mt-4 mb-1.5" style={{ color: 'var(--chat-bullet, #7c3aed)' }}>
           {formatInline(line.replace('#### ', ''))}
         </h4>
       );
@@ -313,8 +333,8 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
     }
     if (line.startsWith('### ')) {
       elements.push(
-        <h3 key={`h3-${i}`} className="text-[16px] font-bold text-white mt-4 mb-2 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+        <h3 key={`h3-${i}`} className="text-[16px] font-bold mt-4 mb-2 flex items-center gap-2" style={{ color: 'var(--chat-heading, #0f172a)' }}>
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--chat-bullet, #7c3aed)' }}></span>
           <span>{formatInline(line.replace('### ', ''))}</span>
         </h3>
       );
@@ -322,7 +342,7 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
     }
     if (line.startsWith('## ')) {
       elements.push(
-        <h2 key={`h2-${i}`} className="text-[18px] font-bold text-white mt-5 mb-2.5 pb-1 border-b border-zinc-700/60">
+        <h2 key={`h2-${i}`} className="text-[18px] font-bold mt-5 mb-2.5 pb-1 border-b" style={{ color: 'var(--chat-heading, #0f172a)', borderColor: 'var(--chat-heading-border, #e2e8f0)' }}>
           {formatInline(line.replace('## ', ''))}
         </h2>
       );
@@ -330,7 +350,7 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
     }
     if (line.startsWith('# ')) {
       elements.push(
-        <h1 key={`h1-${i}`} className="text-[20px] font-extrabold text-white mt-5 mb-3">
+        <h1 key={`h1-${i}`} className="text-[20px] font-extrabold mt-5 mb-3" style={{ color: 'var(--chat-heading, #0f172a)' }}>
           {formatInline(line.replace('# ', ''))}
         </h1>
       );
@@ -348,11 +368,11 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
         elements.push(
           <div key={`li-${i}`} className="flex items-start gap-2.5 my-1 ml-1 text-[14.5px] leading-relaxed">
             {isNumeric ? (
-              <span className="text-purple-400 font-bold shrink-0 text-xs mt-0.5">{bulletSymbol}</span>
+              <span className="font-bold shrink-0 text-xs mt-0.5" style={{ color: 'var(--chat-bullet, #7c3aed)' }}>{bulletSymbol}</span>
             ) : (
-              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0 mt-2"></span>
+              <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-2" style={{ background: 'var(--chat-bullet, #7c3aed)' }}></span>
             )}
-            <div className="flex-1 text-zinc-200">{formatInline(textContent)}</div>
+            <div className="flex-1" style={{ color: 'var(--chat-text, #1e293b)' }}>{formatInline(textContent)}</div>
           </div>
         );
         continue;
@@ -361,7 +381,7 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
 
     // 11. Regular paragraph
     elements.push(
-      <p key={`p-${i}`} className="my-1.5 text-[15px] leading-relaxed text-zinc-200">
+      <p key={`p-${i}`} className="my-1.5 text-[15px] leading-relaxed" style={{ color: 'var(--chat-text, #1e293b)' }}>
         {formatInline(line)}
       </p>
     );
@@ -372,7 +392,8 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
     elements.push(
       <span
         key="streaming-cursor"
-        className="inline-block w-2 h-4.5 ml-1 bg-purple-400 rounded-sm animate-pulse align-middle shadow-[0_0_8px_rgba(168,85,247,0.7)]"
+        className="inline-block w-2 h-4.5 ml-1 rounded-sm animate-pulse align-middle"
+        style={{ background: 'var(--chat-bullet, #7c3aed)', boxShadow: '0 0 8px rgba(124, 58, 237, 0.5)' }}
         aria-hidden="true"
       />
     );
@@ -380,9 +401,10 @@ export const RichMarkdown: React.FC<RichMarkdownProps> = ({ content, className =
 
   return (
     <div
-      className={`font-sans leading-relaxed text-zinc-200 select-text ${className}`}
+      className={`font-sans leading-relaxed select-text ${className}`}
       style={{
-        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        color: 'var(--chat-text, #1e293b)'
       }}
     >
       {elements}
@@ -409,20 +431,25 @@ function formatInline(text: string): React.ReactNode[] {
       parts.push(
         <code
           key={`c-${match.index}`}
-          className="px-1.5 py-0.5 mx-0.5 rounded bg-purple-950/70 text-purple-300 font-mono text-[12.5px] border border-purple-500/30"
+          className="px-1.5 py-0.5 mx-0.5 rounded font-mono text-[12.5px]"
+          style={{
+            background: 'var(--chat-code-bg, #f3e8ff)',
+            color: 'var(--chat-code-text, #581c87)',
+            border: '1px solid var(--chat-code-border, #d8b4fe)'
+          }}
         >
           {token.slice(1, -1)}
         </code>
       );
     } else if (token.startsWith('**') && token.endsWith('**')) {
       parts.push(
-        <strong key={`b-${match.index}`} className="font-bold text-white tracking-tight">
+        <strong key={`b-${match.index}`} className="font-bold tracking-tight" style={{ color: 'var(--chat-text-bold, #09090b)' }}>
           {token.slice(2, -2)}
         </strong>
       );
     } else if (token.startsWith('*') && token.endsWith('*')) {
       parts.push(
-        <em key={`i-${match.index}`} className="italic text-purple-200">
+        <em key={`i-${match.index}`} className="italic" style={{ color: 'var(--chat-text-muted, #475569)' }}>
           {token.slice(1, -1)}
         </em>
       );
@@ -433,7 +460,8 @@ function formatInline(text: string): React.ReactNode[] {
           href={match[3]}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-purple-400 hover:text-purple-300 underline underline-offset-2 transition-colors font-medium"
+          className="underline underline-offset-2 transition-colors font-medium"
+          style={{ color: 'var(--chat-link, #6b21a8)' }}
         >
           {match[2]}
         </a>

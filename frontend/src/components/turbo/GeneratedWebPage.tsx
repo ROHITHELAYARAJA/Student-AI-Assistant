@@ -375,9 +375,9 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
               return (
                 <div key={vli} style={{ margin: '8px 0', display: 'flex', alignItems: 'flex-start', gap: '9px' }}>
                   {isBullet ? (
-                    <span style={{ color: '#c084fc', fontWeight: 800, fontSize: '16px', lineHeight: 1 }}>•</span>
+                    <span style={{ color: 'var(--chat-bullet, #7c3aed)', fontWeight: 800, fontSize: '16px', lineHeight: 1 }}>•</span>
                   ) : null}
-                  <div style={{ flex: 1 }}>{formatInline(cleanVl)}</div>
+                  <div style={{ flex: 1, color: 'var(--chat-text, #1e293b)' }}>{formatInline(cleanVl)}</div>
                 </div>
               );
             })}
@@ -398,7 +398,7 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
       renderedElements.push(
         <div key={`sec-head-${i}`} className="blast-entity-header" style={{ marginTop: '22px' }}>
           <span className="blast-entity-icon">{emoji}</span>
-          <h3 className="blast-entity-title">{formatInline(titleText)}</h3>
+          <h3 className="blast-entity-title" style={{ color: 'var(--chat-heading, #0f172a)' }}>{formatInline(titleText)}</h3>
         </div>
       );
       continue;
@@ -414,17 +414,17 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
       if (isBestFor) {
         renderedElements.push(
           <div key={`bestfor-${i}`} className="blast-bestfor-banner">
-            <strong style={{ color: '#d8b4fe', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.05em', marginRight: '8px' }}>
+            <strong style={{ color: 'var(--chat-bullet, #7c3aed)', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.05em', marginRight: '8px' }}>
               🎯 BEST FOR:
             </strong>
-            <span>{formatInline(val)}</span>
+            <span style={{ color: 'var(--chat-text, #1e293b)' }}>{formatInline(val)}</span>
           </div>
         );
       } else {
         renderedElements.push(
           <div key={`kv-${i}`} className="blast-kv-row">
             <span className="blast-kv-label">{label}</span>
-            <div className="blast-kv-val">{formatInline(val)}</div>
+            <div className="blast-kv-val" style={{ color: 'var(--chat-text, #1e293b)' }}>{formatInline(val)}</div>
           </div>
         );
       }
@@ -436,8 +436,8 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
     if (checkMatch) {
       renderedElements.push(
         <div key={`chk-${i}`} className="blast-check-card">
-          <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
-          <div style={{ flex: 1, color: '#f1f5f9', fontWeight: 500 }}>
+          <CheckCircle2 size={16} className="text-emerald-500 dark:text-emerald-400 shrink-0 mt-0.5" />
+          <div style={{ flex: 1, color: 'var(--chat-text-bold, #09090b)', fontWeight: 550 }}>
             {formatInline(checkMatch[1])}
           </div>
         </div>
@@ -448,8 +448,8 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
     // 7. Regular Headings
     if (line.startsWith('### ')) {
       renderedElements.push(
-        <h3 key={`h3-${i}`} style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', margin: '20px 0 10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#a855f7' }} />
+        <h3 key={`h3-${i}`} style={{ fontSize: '18px', fontWeight: 700, color: 'var(--chat-heading, #0f172a)', margin: '20px 0 10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--chat-bullet, #7c3aed)' }} />
           {formatInline(line.replace('### ', ''))}
         </h3>
       );
@@ -457,7 +457,7 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
     }
     if (line.startsWith('## ')) {
       renderedElements.push(
-        <h2 key={`h2-${i}`} style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', margin: '24px 0 12px', borderBottom: '1px solid rgba(168,85,247,0.2)', paddingBottom: '6px' }}>
+        <h2 key={`h2-${i}`} style={{ fontSize: '20px', fontWeight: 800, color: 'var(--chat-heading, #0f172a)', margin: '24px 0 12px', borderBottom: '1px solid var(--chat-heading-border, #e2e8f0)', paddingBottom: '6px' }}>
           {formatInline(line.replace('## ', ''))}
         </h2>
       );
@@ -474,11 +474,73 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
         renderedElements.push(
           <div key={`li-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', margin: '6px 0 6px 4px', fontSize: '14.5px', lineHeight: 1.6 }}>
             {isNum ? (
-              <span style={{ color: '#c084fc', fontWeight: 700, fontSize: '13px', flexShrink: 0 }}>{symbol}</span>
+              <span style={{ color: 'var(--chat-bullet, #7c3aed)', fontWeight: 700, fontSize: '13px', flexShrink: 0 }}>{symbol}</span>
             ) : (
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#a855f7', flexShrink: 0, marginTop: '9px' }} />
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--chat-bullet, #7c3aed)', flexShrink: 0, marginTop: '9px' }} />
             )}
-            <div style={{ flex: 1, color: '#ded9ed' }}>{formatInline(text)}</div>
+            <div style={{ flex: 1, color: 'var(--chat-text, #1e293b)' }}>{formatInline(text)}</div>
+          </div>
+        );
+        continue;
+      }
+    }
+
+    // 8b. Single schedule/table rows with pipes (e.g. | Wed | Chain rule & implicit | 2 hrs | ...)
+    if (line.trim().startsWith('|') && line.includes('|')) {
+      const cells = line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim()).filter(Boolean);
+      if (cells.length >= 2) {
+        const dayBadge = cells[0];
+        const topic = cells[1];
+        const duration = cells.length >= 3 ? cells[2] : '';
+        const details = cells.length >= 4 ? cells.slice(3).join(' • ') : '';
+
+        renderedElements.push(
+          <div
+            key={`sched-${i}`}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              padding: '10px 14px',
+              margin: '8px 0',
+              borderRadius: '12px',
+              background: 'var(--chat-code-bg, #f3e8ff)',
+              border: '1px solid var(--chat-code-border, #d8b4fe)',
+              color: 'var(--chat-text, #1e293b)'
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '3px 9px',
+                borderRadius: '6px',
+                background: 'var(--chat-bullet, #7c3aed)',
+                color: '#ffffff',
+                fontSize: '12px',
+                fontWeight: 700,
+                flexShrink: 0,
+                marginTop: '1px'
+              }}
+            >
+              {dayBadge}
+            </span>
+            <div style={{ flex: 1, fontSize: '14px', lineHeight: 1.55 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <strong style={{ color: 'var(--chat-text-bold, #09090b)', fontWeight: 650 }}>{formatInline(topic)}</strong>
+                {duration && (
+                  <span style={{ fontSize: '11.5px', color: 'var(--chat-text-muted, #475569)', fontWeight: 500, background: 'rgba(0,0,0,0.05)', padding: '1px 6px', borderRadius: '4px' }}>
+                    {duration}
+                  </span>
+                )}
+              </div>
+              {details && (
+                <div style={{ marginTop: '4px', color: 'var(--chat-text, #1e293b)', fontSize: '13.5px' }}>
+                  {formatInline(details)}
+                </div>
+              )}
+            </div>
           </div>
         );
         continue;
@@ -487,7 +549,7 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
 
     // 9. Standard paragraphs
     renderedElements.push(
-      <p key={`p-${i}`} className="blast-hero-intro" style={{ margin: '8px 0' }}>
+      <p key={`p-${i}`} className="blast-hero-intro" style={{ margin: '8px 0', color: 'var(--chat-text, #1e293b)' }}>
         {formatInline(line)}
       </p>
     );
@@ -503,7 +565,7 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
           width: '8px',
           height: '18px',
           marginLeft: '4px',
-          background: '#a855f7',
+          background: 'var(--chat-bullet, #7c3aed)',
           borderRadius: '2px',
           verticalAlign: 'middle',
           animation: 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite'
@@ -513,7 +575,7 @@ export const GeneratedWebPage: React.FC<GeneratedWebPageProps> = ({
   }
 
   return (
-    <div className={`blast-structured-response ${className}`}>
+    <div className={`blast-structured-response ${className}`} style={{ color: 'var(--chat-text, #1e293b)' }}>
       {renderedElements}
     </div>
   );
@@ -527,7 +589,7 @@ function renderPickBadge(text: string): React.ReactNode {
   if (lower.includes('striver')) {
     return (
       <span className="blast-pick-badge blast-pick-striver">
-        <CheckCircle2 size={13} className="text-purple-300" />
+        <CheckCircle2 size={13} className="text-purple-500 dark:text-purple-300" />
         <span>Striver</span>
       </span>
     );
@@ -535,14 +597,14 @@ function renderPickBadge(text: string): React.ReactNode {
   if (lower.includes('kunal')) {
     return (
       <span className="blast-pick-badge blast-pick-kunal">
-        <CheckCircle2 size={13} className="text-emerald-300" />
+        <CheckCircle2 size={13} className="text-emerald-500 dark:text-emerald-300" />
         <span>Kunal</span>
       </span>
     );
   }
   return (
     <span className="blast-pick-badge blast-pick-generic">
-      <CheckCircle2 size={13} className="text-cyan-300" />
+      <CheckCircle2 size={13} className="text-cyan-500 dark:text-cyan-300" />
       <span>{clean}</span>
     </span>
   );
@@ -570,11 +632,11 @@ function formatInline(text: string): React.ReactNode[] {
             padding: '2px 6px',
             margin: '0 2px',
             borderRadius: '5px',
-            background: 'rgba(147, 51, 234, 0.18)',
-            color: '#d8b4fe',
+            background: 'var(--chat-code-bg, #f3e8ff)',
+            color: 'var(--chat-code-text, #581c87)',
             fontFamily: 'monospace',
             fontSize: '12.5px',
-            border: '1px solid rgba(168, 85, 247, 0.3)'
+            border: '1px solid var(--chat-code-border, #d8b4fe)'
           }}
         >
           {token.slice(1, -1)}
@@ -582,13 +644,13 @@ function formatInline(text: string): React.ReactNode[] {
       );
     } else if (token.startsWith('**') && token.endsWith('**')) {
       parts.push(
-        <strong key={`b-${match.index}`} style={{ fontWeight: 700, color: '#ffffff' }}>
+        <strong key={`b-${match.index}`} style={{ fontWeight: 700, color: 'var(--chat-text-bold, #09090b)' }}>
           {token.slice(2, -2)}
         </strong>
       );
     } else if (token.startsWith('*') && token.endsWith('*')) {
       parts.push(
-        <em key={`i-${match.index}`} style={{ fontStyle: 'italic', color: '#e9d5ff' }}>
+        <em key={`i-${match.index}`} style={{ fontStyle: 'italic', color: 'var(--chat-text-muted, #475569)' }}>
           {token.slice(1, -1)}
         </em>
       );
@@ -600,7 +662,7 @@ function formatInline(text: string): React.ReactNode[] {
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            color: '#c084fc',
+            color: 'var(--chat-link, #6b21a8)',
             textDecoration: 'underline',
             textUnderlineOffset: '2px',
             fontWeight: 600

@@ -240,7 +240,7 @@ export function StudyNotebookWizard({
                 disabled={isGenerating}
                 className="wizard-btn-secondary"
               >
-                <Zap size={14} style={{ color: '#fbbf24' }} />
+                <Zap size={14} style={{ color: '#c4adfc' }} />
                 <span>Quick 1-Click Build</span>
               </button>
             </div>

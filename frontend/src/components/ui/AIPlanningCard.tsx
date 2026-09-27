@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles } from 'lucide-react';
 
 export type PlanningIntent =
   | 'document'
@@ -290,33 +291,49 @@ export function AIPlanningCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 14, scale: 0.98 }}
+      initial={{ opacity: 0, y: 10, scale: 0.99 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -10, scale: 0.98 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      exit={{ opacity: 0, y: -8, scale: 0.99 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
       className={`ai-planning-card ${className}`}
       style={{
-        background: '#ffffff',
-        borderRadius: '24px',
-        padding: '36px 38px',
-        boxShadow: '0 20px 45px -12px rgba(15, 23, 42, 0.08), 0 4px 16px -2px rgba(15, 23, 42, 0.04)',
-        border: '1px solid rgba(226, 232, 240, 0.8)',
-        maxWidth: '460px',
+        background: 'var(--plan-card-bg, #ffffff)',
+        borderRadius: '18px',
+        padding: '20px 22px',
+        boxShadow: 'var(--plan-card-shadow, 0 12px 32px rgba(102, 80, 181, 0.12))',
+        border: '1px solid var(--plan-card-border, #d8cfec)',
+        backdropFilter: 'blur(20px)',
+        maxWidth: '480px',
         width: '100%',
-        margin: '0 auto',
-        fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+        margin: '0',
+        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
       }}
     >
+      {/* Eyebrow */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+        <Sparkles size={12} style={{ color: 'var(--plan-badge, #7c3aed)' }} />
+        <span
+          style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.07em',
+            color: 'var(--plan-badge, #7c3aed)'
+          }}
+        >
+          AI Study Planning
+        </span>
+      </div>
+
       {/* Title */}
       <h3
         style={{
-          fontSize: '25px',
-          fontWeight: 700,
-          color: '#0f172a',
-          textAlign: 'center',
-          letterSpacing: '-0.025em',
-          margin: '0 0 6px 0',
-          lineHeight: 1.25
+          fontSize: '16px',
+          fontWeight: 650,
+          color: 'var(--plan-title, #0f172a)',
+          letterSpacing: '-0.015em',
+          margin: '0 0 4px 0',
+          lineHeight: 1.35
         }}
       >
         {config.title}
@@ -325,10 +342,9 @@ export function AIPlanningCard({
       {/* Subtitle */}
       <p
         style={{
-          fontSize: '14.5px',
-          color: '#64748b',
-          textAlign: 'center',
-          margin: '0 0 32px 0',
+          fontSize: '13px',
+          color: 'var(--plan-subtitle, #475569)',
+          margin: '0 0 16px 0',
           lineHeight: 1.5
         }}
       >
@@ -336,7 +352,7 @@ export function AIPlanningCard({
       </p>
 
       {/* Stepper Vertical Chain */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0', maxWidth: '340px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0', maxWidth: '380px' }}>
         {config.steps.map((stepName, idx) => {
           const isDone = activeStep > idx;
           const isActive = activeStep === idx;
@@ -349,9 +365,9 @@ export function AIPlanningCard({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '16px',
+                gap: '14px',
                 position: 'relative',
-                minHeight: isLast ? '32px' : '48px'
+                minHeight: isLast ? '28px' : '38px'
               }}
             >
               {/* Connector line to next node */}
@@ -359,11 +375,11 @@ export function AIPlanningCard({
                 <div
                   style={{
                     position: 'absolute',
-                    left: '13px',
-                    top: '26px',
+                    left: '11px',
+                    top: '22px',
                     width: '2px',
-                    height: '24px',
-                    background: isDone ? '#10b981' : '#e2e8f0',
+                    height: '18px',
+                    background: isDone ? 'var(--plan-connector-done, #7c3aed)' : 'var(--plan-connector-pending, #e2e8f0)',
                     transition: 'background 0.3s ease',
                     zIndex: 1
                   }}
@@ -373,8 +389,8 @@ export function AIPlanningCard({
               {/* Indicator Circle */}
               <div
                 style={{
-                  width: '28px',
-                  height: '28px',
+                  width: '24px',
+                  height: '24px',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -384,33 +400,33 @@ export function AIPlanningCard({
                   transition: 'all 0.3s ease',
                   ...(isDone
                     ? {
-                        background: '#10b981',
-                        border: 'none',
-                        color: '#ffffff'
+                        background: 'rgba(124, 58, 237, 0.15)',
+                        border: '1.5px solid var(--plan-indicator-active, #7c3aed)',
+                        color: 'var(--plan-indicator-active, #7c3aed)'
                       }
                     : isActive
                     ? {
-                        background: '#ffffff',
-                        border: '2.5px solid #2563eb',
-                        boxShadow: '0 0 0 4px rgba(37, 99, 235, 0.12)'
+                        background: 'rgba(124, 58, 237, 0.15)',
+                        border: '2px solid var(--plan-indicator-active, #7c3aed)',
+                        boxShadow: '0 0 12px rgba(124, 58, 237, 0.3)'
                       }
                     : {
-                        background: '#ffffff',
-                        border: '2px solid #cbd5e1'
+                        background: 'transparent',
+                        border: '1.5px solid var(--plan-connector-pending, #cbd5e1)'
                       })
                 }}
               >
                 {isDone ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 ) : isActive ? (
                   <div
                     style={{
-                      width: '8px',
-                      height: '8px',
+                      width: '7px',
+                      height: '7px',
                       borderRadius: '50%',
-                      background: '#2563eb',
+                      background: 'var(--plan-indicator-active, #7c3aed)',
                       animation: 'pulse 1.8s infinite'
                     }}
                   />
@@ -420,21 +436,21 @@ export function AIPlanningCard({
               {/* Step Label */}
               <span
                 style={{
-                  fontSize: '15px',
+                  fontSize: '13.5px',
                   lineHeight: 1.4,
                   transition: 'color 0.25s ease, font-weight 0.25s ease',
                   ...(isDone
                     ? {
-                        color: '#1e293b',
+                        color: 'var(--plan-step-done, #334155)',
                         fontWeight: 500
                       }
                     : isActive
                     ? {
-                        color: '#0f172a',
-                        fontWeight: 700
+                        color: 'var(--plan-step-active, #0f172a)',
+                        fontWeight: 650
                       }
                     : {
-                        color: '#94a3b8',
+                        color: 'var(--plan-step-pending, #94a3b8)',
                         fontWeight: 400
                       })
                 }}

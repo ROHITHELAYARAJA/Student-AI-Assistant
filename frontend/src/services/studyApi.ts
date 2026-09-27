@@ -1,11 +1,32 @@
 import { TurboStudyPack } from '../types/turbo';
+
+const AWS_API_ENDPOINT = 'https://riplbhin7i.execute-api.ap-south-1.amazonaws.com/api';
+
+const isAwsHost = typeof window !== 'undefined' && (
+  window.location.hostname.includes('amazonaws.com') ||
+  window.location.hostname.includes('s3-website') ||
+  window.location.hostname.includes('cloudfront.net')
+);
+
+export const API_BASE = (import.meta.env.VITE_API_URL as string) || (isAwsHost ? AWS_API_ENDPOINT : '/api');
+
 export async function request<T=any>(url:string, options:RequestInit={}):Promise<T> {
   let res:Response;
-  try { res=await fetch(`/api${url}`,{credentials:'same-origin',...options,headers: options.body instanceof FormData?options.headers:{'Content-Type':'application/json',...options.headers}}); }
-  catch { throw new Error('We couldn’t connect to your workspace. Check your connection and try again.'); }
-  if(!res.headers.get('content-type')?.includes('application/json'))throw new Error('This preview isn’t connected to Blast. Open the Blast workspace and try again.');
-  const data=await res.json().catch(()=>{throw new Error('We couldn’t read this response. Please try again.');});
-  if(!res.ok)throw new Error(data.message||'This action could not be completed.');return data;
+  const targetUrl = url.startsWith('http') ? url : `${API_BASE}${url.startsWith('/') ? url : '/' + url}`;
+  try {
+    res = await fetch(targetUrl, {
+      ...options,
+      headers: options.body instanceof FormData ? options.headers : { 'Content-Type': 'application/json', ...options.headers }
+    });
+  } catch {
+    throw new Error('We couldn’t connect to your workspace. Check your connection and try again.');
+  }
+  if (!res.headers.get('content-type')?.includes('application/json')) {
+    throw new Error('This preview isn’t connected to Blast. Open the Blast workspace and try again.');
+  }
+  const data = await res.json().catch(() => { throw new Error('We couldn’t read this response. Please try again.'); });
+  if (!res.ok) throw new Error(data.message || 'This action could not be completed.');
+  return data;
 }
 export type StudySettings={questionCount:number;cardCount:number;difficulty:'beginner'|'intermediate'|'advanced';language:string};
 export async function createStudy(topic:string,documentIds:string[],settings:StudySettings,onProgress:(s:string)=>void):Promise<TurboStudyPack>{

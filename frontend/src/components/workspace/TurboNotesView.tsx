@@ -80,7 +80,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
   };
 
   return (
-    <div className="turbo-notes-view" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '85vh', background: '#0c0d12' }}>
+    <div className="turbo-notes-view" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '85vh', background: 'var(--notes-page-bg, #f7f7f2)' }}>
       {/* Top Rich Text Editing Toolbar matching Turbo AI Image 3 */}
       <header
         className="turbo-editor-toolbar"
@@ -89,8 +89,8 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 20px',
-          background: 'rgba(18, 20, 29, 0.95)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          background: 'var(--notes-toolbar-bg, #ffffff)',
+          borderBottom: '1px solid var(--notes-toolbar-border, #e2e8f0)',
           position: 'sticky',
           top: 0,
           zIndex: 50,
@@ -99,7 +99,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
       >
         {/* Left Title / Breadcrumb */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '320px', overflow: 'hidden' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--notes-heading, #0f172a)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
             {pack.topic}
           </span>
         </div>
@@ -112,10 +112,10 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
               value={fontFamily}
               onChange={e => setFontFamily(e.target.value)}
               style={{
-                background: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                background: 'var(--notes-input-bg, #ffffff)',
+                border: '1px solid var(--notes-input-border, #cbd5e1)',
                 borderRadius: '8px',
-                color: '#e2e8f0',
+                color: 'var(--notes-input-text, #0f172a)',
                 fontSize: '12px',
                 padding: '4px 24px 4px 10px',
                 appearance: 'none',
@@ -128,40 +128,40 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
               <option value="JetBrains Mono">Mono</option>
               <option value="Georgia">Serif</option>
             </select>
-            <ChevronDown size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', opacity: 0.5 }} />
+            <ChevronDown size={12} style={{ position: 'absolute', right: '8px', pointerEvents: 'none', color: 'var(--notes-toolbar-btn, #475569)' }} />
           </div>
 
           {/* Font Size - 14 + */}
-          <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: '2px 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--notes-input-bg, #ffffff)', border: '1px solid var(--notes-input-border, #cbd5e1)', borderRadius: '8px', padding: '2px 4px' }}>
             <button
               type="button"
               onClick={() => setFontSize(prev => Math.max(11, prev - 1))}
-              style={{ background: 'none', border: 'none', color: '#e2e8f0', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}
+              style={{ background: 'none', border: 'none', color: 'var(--notes-toolbar-btn, #334155)', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}
             >
               <Minus size={11} />
             </button>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#e2e8f0', padding: '0 4px', minWidth: '18px', textAlign: 'center' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--notes-heading, #0f172a)', padding: '0 4px', minWidth: '18px', textAlign: 'center' }}>
               {fontSize}
             </span>
             <button
               type="button"
               onClick={() => setFontSize(prev => Math.min(24, prev + 1))}
-              style={{ background: 'none', border: 'none', color: '#e2e8f0', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}
+              style={{ background: 'none', border: 'none', color: 'var(--notes-toolbar-btn, #334155)', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}
             >
               <Plus size={11} />
             </button>
           </div>
 
-          <div style={{ width: '1px', height: '18px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+          <div style={{ width: '1px', height: '18px', background: 'var(--notes-toolbar-border, #e2e8f0)', margin: '0 4px' }} />
 
           {/* Formatting Buttons: B, I, U, S */}
           <button
             type="button"
             onClick={() => setIsBold(!isBold)}
             style={{
-              background: isBold ? 'rgba(139, 92, 246, 0.3)' : 'none',
+              background: isBold ? 'rgba(124, 58, 237, 0.15)' : 'none',
               border: 'none',
-              color: isBold ? '#a78bfa' : 'rgba(255,255,255,0.7)',
+              color: isBold ? '#7c3aed' : 'var(--notes-toolbar-btn, #475569)',
               borderRadius: '6px',
               padding: '6px',
               cursor: 'pointer'
@@ -175,9 +175,9 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
             type="button"
             onClick={() => setIsItalic(!isItalic)}
             style={{
-              background: isItalic ? 'rgba(139, 92, 246, 0.3)' : 'none',
+              background: isItalic ? 'rgba(124, 58, 237, 0.15)' : 'none',
               border: 'none',
-              color: isItalic ? '#a78bfa' : 'rgba(255,255,255,0.7)',
+              color: isItalic ? '#7c3aed' : 'var(--notes-toolbar-btn, #475569)',
               borderRadius: '6px',
               padding: '6px',
               cursor: 'pointer'
@@ -191,9 +191,9 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
             type="button"
             onClick={() => setIsUnderline(!isUnderline)}
             style={{
-              background: isUnderline ? 'rgba(139, 92, 246, 0.3)' : 'none',
+              background: isUnderline ? 'rgba(124, 58, 237, 0.15)' : 'none',
               border: 'none',
-              color: isUnderline ? '#a78bfa' : 'rgba(255,255,255,0.7)',
+              color: isUnderline ? '#7c3aed' : 'var(--notes-toolbar-btn, #475569)',
               borderRadius: '6px',
               padding: '6px',
               cursor: 'pointer'
@@ -207,9 +207,9 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
             type="button"
             onClick={() => setIsStrike(!isStrike)}
             style={{
-              background: isStrike ? 'rgba(139, 92, 246, 0.3)' : 'none',
+              background: isStrike ? 'rgba(124, 58, 237, 0.15)' : 'none',
               border: 'none',
-              color: isStrike ? '#a78bfa' : 'rgba(255,255,255,0.7)',
+              color: isStrike ? '#7c3aed' : 'var(--notes-toolbar-btn, #475569)',
               borderRadius: '6px',
               padding: '6px',
               cursor: 'pointer'
@@ -221,7 +221,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
 
           <button
             type="button"
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: '6px', padding: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}
+            style={{ background: 'none', border: 'none', color: 'var(--notes-toolbar-btn, #475569)', borderRadius: '6px', padding: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}
             title="Text Color"
           >
             A
@@ -229,7 +229,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
 
           <button
             type="button"
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: '6px', padding: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '14px' }}
+            style={{ background: 'none', border: 'none', color: 'var(--notes-toolbar-btn, #475569)', borderRadius: '6px', padding: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '14px' }}
             title="Formula"
           >
             Σ
@@ -237,7 +237,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
 
           <button
             type="button"
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: '6px', padding: '6px', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: 'var(--notes-toolbar-btn, #475569)', borderRadius: '6px', padding: '6px', cursor: 'pointer' }}
             title="Table"
           >
             <Table size={13} />
@@ -245,7 +245,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
 
           <button
             type="button"
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: '6px', padding: '6px', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: 'var(--notes-toolbar-btn, #475569)', borderRadius: '6px', padding: '6px', cursor: 'pointer' }}
             title="Bullet List"
           >
             <List size={13} />
@@ -253,7 +253,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
 
           <button
             type="button"
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', borderRadius: '6px', padding: '6px', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: 'var(--notes-toolbar-btn, #475569)', borderRadius: '6px', padding: '6px', cursor: 'pointer' }}
             title="Numbered List"
           >
             <ListOrdered size={13} />
@@ -273,7 +273,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
             style={{
               background: 'none',
               border: 'none',
-              color: 'rgba(255,255,255,0.6)',
+              color: 'var(--notes-toolbar-btn, #475569)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -339,11 +339,12 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
           style={{
             padding: '36px 48px',
             overflowY: 'auto',
-            borderRight: '1px solid rgba(255, 255, 255, 0.07)',
+            background: 'var(--notes-doc-bg, #ffffff)',
+            borderRight: '1px solid var(--notes-doc-border, #e2e8f0)',
             fontFamily: fontFamily === 'JetBrains Mono' ? 'monospace' : fontFamily === 'Georgia' ? 'Georgia, serif' : 'var(--font-sans, "Plus Jakarta Sans", sans-serif)',
             fontSize: `${fontSize}px`,
             lineHeight: 1.65,
-            color: '#e5e7eb'
+            color: 'var(--notes-text, #1e293b)'
           }}
         >
           {/* Note Document Title matching Image 3 */}
@@ -353,7 +354,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
               style={{
                 fontSize: `${fontSize * 1.5}px`,
                 fontWeight: 700,
-                color: '#ffffff',
+                color: 'var(--notes-heading, #0f172a)',
                 margin: 0,
                 letterSpacing: '-0.02em'
               }}
@@ -366,7 +367,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
           <p
             style={{
               fontSize: `${fontSize * 0.95}px`,
-              color: 'rgba(255, 255, 255, 0.65)',
+              color: 'var(--notes-text-muted, #475569)',
               marginBottom: '32px',
               lineHeight: 1.5
             }}
@@ -380,7 +381,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
               <section
                 key={sIdx}
                 style={{
-                  borderTop: sIdx > 0 ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
+                  borderTop: sIdx > 0 ? '1px solid var(--notes-doc-border, #e2e8f0)' : 'none',
                   paddingTop: sIdx > 0 ? '24px' : '0'
                 }}
               >
@@ -389,7 +390,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
                   style={{
                     fontSize: `${fontSize * 1.2}px`,
                     fontWeight: 600,
-                    color: '#f9fafb',
+                    color: 'var(--notes-heading, #0f172a)',
                     margin: '0 0 12px 0',
                     display: 'flex',
                     alignItems: 'center',
@@ -401,7 +402,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
 
                 {/* Optional short intro sentence */}
                 {sec.content && (
-                  <p style={{ margin: '0 0 14px 0', color: 'rgba(255, 255, 255, 0.7)', fontSize: `${fontSize}px` }}>
+                  <p style={{ margin: '0 0 14px 0', color: 'var(--notes-text, #334155)', fontSize: `${fontSize}px` }}>
                     {sec.content}
                   </p>
                 )}
@@ -439,11 +440,11 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
                           <div style={{ flex: 1 }}>
                             {prefix ? (
                               <>
-                                <strong style={{ color: '#ffffff', fontWeight: 600 }}>{prefix}:</strong>{' '}
-                                <span style={{ color: 'rgba(255, 255, 255, 0.78)' }}>{rest}</span>
+                                <strong style={{ color: 'var(--notes-heading, #0f172a)', fontWeight: 650 }}>{prefix}:</strong>{' '}
+                                <span style={{ color: 'var(--notes-text, #334155)' }}>{rest}</span>
                               </>
                             ) : (
-                              <span style={{ color: 'rgba(255, 255, 255, 0.78)' }}>{bp}</span>
+                              <span style={{ color: 'var(--notes-text, #334155)' }}>{bp}</span>
                             )}
                           </div>
                         </li>
@@ -456,15 +457,15 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
                 {sec.codeSnippet && sec.codeSnippet.code && (
                   <div
                     style={{
-                      background: '#13151f',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'var(--notes-code-bg, #f8fafc)',
+                      border: '1px solid var(--notes-code-border, #e2e8f0)',
                       borderRadius: '10px',
                       padding: '14px 16px',
                       margin: '12px 0',
                       position: 'relative'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '11px', color: 'var(--notes-text-muted, #64748b)' }}>
                       <span>{sec.codeSnippet.language || 'code'}</span>
                       <button
                         type="button"
@@ -474,13 +475,13 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
                             notify('Code snippet copied!');
                           }
                         }}
-                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--notes-text-muted, #64748b)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                       >
                         <Copy size={12} />
                         <span>Copy</span>
                       </button>
                     </div>
-                    <pre style={{ margin: 0, fontSize: '12px', fontFamily: 'monospace', color: '#a5b4fc', overflowX: 'auto' }}>
+                    <pre style={{ margin: 0, fontSize: '12px', fontFamily: 'monospace', color: 'var(--chat-code-text, #581c87)', overflowX: 'auto' }}>
                       <code>{sec.codeSnippet.code}</code>
                     </pre>
                   </div>
@@ -497,7 +498,8 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
-            background: '#10121a',
+            background: 'var(--notes-copilot-bg, #fafafa)',
+            borderLeft: '1px solid var(--notes-doc-border, #e2e8f0)',
             overflow: 'hidden'
           }}
         >
@@ -508,15 +510,15 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
               display: 'grid',
               gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '12px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
+              borderBottom: '1px solid var(--notes-doc-border, #e2e8f0)'
             }}
           >
             {/* Quizzes Tool Card */}
             <div
               onClick={() => onNavigateTab('quiz')}
               style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background: 'var(--notes-card-bg, #ffffff)',
+                border: '1px solid var(--notes-card-border, #e2e8f0)',
                 borderRadius: '12px',
                 padding: '12px',
                 cursor: 'pointer',
@@ -529,14 +531,14 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <HelpCircle size={14} color="#a78bfa" />
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#f3f4f6' }}>Quizzes</span>
+                  <HelpCircle size={14} color="#7c3aed" />
+                  <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--notes-heading, #0f172a)' }}>Quizzes</span>
                 </div>
                 <span
                   style={{
                     fontSize: '9px',
                     fontWeight: 700,
-                    color: '#10b981',
+                    color: '#059669',
                     background: 'rgba(16, 185, 129, 0.15)',
                     padding: '2px 5px',
                     borderRadius: '6px'
@@ -545,7 +547,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
                   Popular
                 </span>
               </div>
-              <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.45)' }}>
+              <span style={{ fontSize: '10px', color: 'var(--notes-text-muted, #64748b)' }}>
                 Test your knowledge
               </span>
             </div>
@@ -554,8 +556,8 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
             <div
               onClick={() => onNavigateTab('audio')}
               style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background: 'var(--notes-card-bg, #ffffff)',
+                border: '1px solid var(--notes-card-border, #e2e8f0)',
                 borderRadius: '12px',
                 padding: '12px',
                 cursor: 'pointer',
@@ -566,10 +568,10 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Headphones size={14} color="#38bdf8" />
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#f3f4f6' }}>Podcast</span>
+                <Headphones size={14} color="#0284c7" />
+                <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--notes-heading, #0f172a)' }}>Podcast</span>
               </div>
-              <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.45)' }}>
+              <span style={{ fontSize: '10px', color: 'var(--notes-text-muted, #64748b)' }}>
                 Listen and learn
               </span>
             </div>
@@ -578,8 +580,8 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
             <div
               onClick={() => onNavigateTab('cards')}
               style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background: 'var(--notes-card-bg, #ffffff)',
+                border: '1px solid var(--notes-card-border, #e2e8f0)',
                 borderRadius: '12px',
                 padding: '12px',
                 cursor: 'pointer',
@@ -590,10 +592,10 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Layers size={14} color="#f59e0b" />
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#f3f4f6' }}>Flashcards</span>
+                <Layers size={14} color="#d97706" />
+                <span style={{ fontSize: '12px', fontWeight: 650, color: 'var(--notes-heading, #0f172a)' }}>Flashcards</span>
               </div>
-              <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.45)' }}>
+              <span style={{ fontSize: '10px', color: 'var(--notes-text-muted, #64748b)' }}>
                 Active recall drill
               </span>
             </div>
@@ -616,10 +618,10 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
                 <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
                   <BlastMascot pose="reading" size="medium" />
                 </div>
-                <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', margin: '0 0 8px 0' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--notes-heading, #0f172a)', margin: '0 0 8px 0' }}>
                   Hey, I'm Blast
                 </h3>
-                <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.5)', margin: 0, lineHeight: 1.5 }}>
+                <p style={{ fontSize: '13px', color: 'var(--notes-text-muted, #64748b)', margin: 0, lineHeight: 1.5 }}>
                   I can work with you on your doc and answer any questions!
                 </p>
               </div>
@@ -631,21 +633,22 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
                     style={{
                       alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                       maxWidth: '88%',
-                      background: msg.role === 'user' ? 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)' : 'rgba(255, 255, 255, 0.05)',
-                      border: msg.role === 'user' ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: msg.role === 'user' ? 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)' : 'var(--notes-chat-bot-bg, #ffffff)',
+                      border: msg.role === 'user' ? 'none' : '1px solid var(--notes-chat-bot-border, #e2e8f0)',
                       borderRadius: '14px',
                       padding: '12px 16px',
                       fontSize: '13px',
-                      color: '#ffffff',
-                      lineHeight: 1.55
+                      color: msg.role === 'user' ? '#ffffff' : 'var(--notes-chat-bot-text, #1e293b)',
+                      lineHeight: 1.55,
+                      boxShadow: msg.role === 'user' ? '0 2px 8px rgba(124, 58, 237, 0.25)' : '0 2px 8px rgba(0, 0, 0, 0.04)'
                     }}
                   >
                     {msg.text}
                   </div>
                 ))}
                 {copilotLoading && (
-                  <div style={{ alignSelf: 'flex-start', color: 'rgba(255,255,255,0.4)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Sparkles size={12} className="spin" />
+                  <div style={{ alignSelf: 'flex-start', color: 'var(--notes-text-muted, #64748b)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={12} className="spin" color="#7c3aed" />
                     <span>Blast is analyzing your notes...</span>
                   </div>
                 )}
@@ -658,8 +661,8 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
           <div
             style={{
               padding: '16px 20px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-              background: '#0d0e15'
+              borderTop: '1px solid var(--notes-doc-border, #e2e8f0)',
+              background: 'var(--notes-toolbar-bg, #ffffff)'
             }}
           >
             <form
@@ -667,8 +670,8 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                background: 'var(--notes-input-bg, #ffffff)',
+                border: '1px solid var(--notes-input-border, #cbd5e1)',
                 borderRadius: '16px',
                 padding: '6px 12px 6px 14px',
                 gap: '10px'
@@ -677,7 +680,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigateTab('sources')}
-                style={{ background: 'none', border: 'none', color: 'rgba(255, 255, 255, 0.4)', cursor: 'pointer', padding: 0 }}
+                style={{ background: 'none', border: 'none', color: 'var(--notes-toolbar-btn, #64748b)', cursor: 'pointer', padding: 0 }}
                 title="Attach Resources"
               >
                 <Paperclip size={16} />
@@ -692,7 +695,7 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
                   flex: 1,
                   background: 'none',
                   border: 'none',
-                  color: '#ffffff',
+                  color: 'var(--notes-input-text, #0f172a)',
                   fontSize: '13px',
                   outline: 'none'
                 }}
@@ -702,8 +705,8 @@ export const TurboNotesView: React.FC<TurboNotesViewProps> = ({
                 type="submit"
                 disabled={!copilotPrompt.trim() || copilotLoading}
                 style={{
-                  background: copilotPrompt.trim() ? 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)' : 'rgba(255, 255, 255, 0.08)',
-                  color: copilotPrompt.trim() ? '#ffffff' : 'rgba(255, 255, 255, 0.3)',
+                  background: copilotPrompt.trim() ? 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)' : 'rgba(124, 58, 237, 0.15)',
+                  color: copilotPrompt.trim() ? '#ffffff' : 'var(--notes-text-muted, #94a3b8)',
                   border: 'none',
                   borderRadius: '10px',
                   padding: '6px 14px',
